@@ -3054,3 +3054,100 @@ async fn heading_shortcuts_toggle_paragraph_and_heading_levels(cx: &mut TestAppC
         assert_eq!(block.kind(), BlockKind::BulletedListItem);
     });
 }
+
+fn focused_heading(cx: &mut gpui::VisualTestContext, level: u8, text: &str) -> gpui::Entity<Block> {
+    let block = cx.new(|cx| {
+        Block::with_record(
+            cx,
+            BlockRecord::with_plain_text(BlockKind::Heading { level }, text),
+        )
+    });
+    block.update(cx, |block, cx| {
+        block.move_to(0, cx);
+        block.sync_inline_projection_for_focus(true);
+    });
+    block
+}
+
+#[gpui::test]
+async fn focused_heading_reveals_editable_prefix(cx: &mut TestAppContext) {
+    let cx = cx.add_empty_window();
+    let block = focused_heading(cx, 2, "Title");
+
+    block.update(cx, |block, _cx| {
+        assert_eq!(block.display_text(), "## Title");
+        assert_eq!(block.block_prefix_display_len(), Some(3));
+        // The caret sits at the start of the content, after the prefix.
+        assert_eq!(block.selected_range, 3..3);
+        assert_eq!(block.record.title.serialize_markdown(), "Title");
+        block.sync_inline_projection_for_focus(false);
+        assert_eq!(block.display_text(), "Title");
+    });
+
+    let paragraph = cx.new(|cx| Block::with_record(cx, BlockRecord::paragraph("Plain")));
+    paragraph.update(cx, |block, _cx| {
+        block.sync_inline_projection_for_focus(true);
+        assert_eq!(block.display_text(), "Plain");
+        assert_eq!(block.block_prefix_display_len(), None);
+    });
+}
+
+#[gpui::test]
+async fn editing_heading_prefix_changes_level_or_kind(cx: &mut TestAppContext) {
+    let cx = cx.add_empty_window();
+
+    // Typing another `#` raises the level.
+    let block = focused_heading(cx, 2, "Title");
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(0..0, "#", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Heading { level: 3 });
+        assert_eq!(block.display_text(), "### Title");
+        assert_eq!(block.record.title.serialize_markdown(), "Title");
+    });
+
+    // Removing a `#` lowers it.
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(0..1, "", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Heading { level: 2 });
+    });
+
+    // Backspace over the space leaves literal hashes in a paragraph.
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(2..3, "", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        assert_eq!(block.record.title.serialize_markdown(), "##Title");
+        assert_eq!(block.block_prefix_display_len(), None);
+    });
+
+    // Deleting the whole prefix keeps just the text.
+    let block = focused_heading(cx, 1, "Title");
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(0..2, "", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        assert_eq!(block.display_text(), "Title");
+    });
+
+    // A selection spanning prefix and content removes both parts.
+    let block = focused_heading(cx, 2, "Title");
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(1..5, "", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        assert_eq!(block.record.title.serialize_markdown(), "#tle");
+    });
+
+    // Seven hashes are not a heading.
+    let block = focused_heading(cx, 6, "Title");
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(0..0, "#", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        assert_eq!(block.record.title.serialize_markdown(), "####### Title");
+    });
+
+    // Retyping the prefix as a list marker converts through the usual shortcut.
+    let block = focused_heading(cx, 2, "Title");
+    block.update(cx, |block, cx| {
+        block.replace_text_in_visible_range(0..3, "- ", None, false, cx);
+        assert_eq!(block.kind(), BlockKind::BulletedListItem);
+        assert_eq!(block.display_text(), "Title");
+    });
+}
