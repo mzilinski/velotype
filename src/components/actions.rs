@@ -72,6 +72,7 @@ actions!(
         ToggleFocusMode,
         ToggleTypewriterMode,
         ToggleReadOnly,
+        ToggleSpellcheck,
         DismissTransientUi,
         ToggleViewMode,
         ToggleWorkspace,
@@ -94,6 +95,15 @@ pub struct SelectTheme {
 pub struct SelectLanguage {
     /// Stable language id from the built-in language catalog.
     pub language_id: String,
+}
+
+/// Selects the spell-check dictionary language.
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+#[action(namespace = velotype)]
+#[serde(deny_unknown_fields)]
+pub struct SelectSpellcheckLanguage {
+    /// BCP-47 language tag such as `de-DE`.
+    pub language: String,
 }
 
 /// Opens a previously recorded Markdown file path.
@@ -166,6 +176,7 @@ pub(crate) enum ShortcutCommand {
     ToggleFocusMode,
     ToggleTypewriterMode,
     ToggleReadOnly,
+    ToggleSpellcheck,
     DismissTransientUi,
     ToggleViewMode,
     ToggleWorkspace,
@@ -547,6 +558,13 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         context: None,
     },
     ShortcutDefinition {
+        command: ShortcutCommand::ToggleSpellcheck,
+        id: "toggle_spellcheck",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: None,
+    },
+    ShortcutDefinition {
         command: ShortcutCommand::ToggleViewMode,
         id: "toggle_view_mode",
         category: ShortcutCategory::Navigation,
@@ -773,6 +791,7 @@ fn key_binding_for(
             KeyBinding::new(key, ToggleTypewriterMode, context)
         }
         ShortcutCommand::ToggleReadOnly => KeyBinding::new(key, ToggleReadOnly, context),
+        ShortcutCommand::ToggleSpellcheck => KeyBinding::new(key, ToggleSpellcheck, context),
         ShortcutCommand::ToggleViewMode => KeyBinding::new(key, ToggleViewMode, context),
         ShortcutCommand::ToggleWorkspace => KeyBinding::new(key, ToggleWorkspace, context),
     }

@@ -357,6 +357,12 @@ impl Block {
         self.current_cache().visible_text()
     }
 
+    /// Visible text without the inline-marker projection used while focused,
+    /// so offsets into it stay stable whether or not the block has focus.
+    pub(crate) fn clean_text(&self) -> &str {
+        self.render_cache.visible_text()
+    }
+
     /// Cheap clone of the current display text as a `SharedString` (Arc bump)
     /// — avoids a fresh String allocation per render. The cached value is
     /// refreshed by [`Self::refresh_cached_display_text`] whenever the
