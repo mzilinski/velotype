@@ -1494,7 +1494,22 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleWorkspace => {
                 strings.preferences_shortcut_toggle_workspace.clone()
             }
+            ShortcutCommand::SetParagraph => strings.preferences_shortcut_set_paragraph.clone(),
+            ShortcutCommand::SetHeading1 => Self::heading_shortcut_label(strings, 1),
+            ShortcutCommand::SetHeading2 => Self::heading_shortcut_label(strings, 2),
+            ShortcutCommand::SetHeading3 => Self::heading_shortcut_label(strings, 3),
+            ShortcutCommand::SetHeading4 => Self::heading_shortcut_label(strings, 4),
+            ShortcutCommand::SetHeading5 => Self::heading_shortcut_label(strings, 5),
+            ShortcutCommand::SetHeading6 => Self::heading_shortcut_label(strings, 6),
         }
+    }
+
+    fn heading_shortcut_label(strings: &crate::i18n::I18nStrings, level: u8) -> String {
+        Self::format_template(
+            &strings.preferences_shortcut_set_heading,
+            "{level}",
+            &level.to_string(),
+        )
     }
 
     fn format_template(template: &str, key: &str, value: &str) -> String {

@@ -236,6 +236,9 @@ pub struct I18nStrings {
     pub preferences_shortcut_dismiss_transient_ui: String,
     pub preferences_shortcut_toggle_view_mode: String,
     pub preferences_shortcut_toggle_workspace: String,
+    pub preferences_shortcut_set_paragraph: String,
+    /// Template; `{level}` is replaced with the heading level 1-6.
+    pub preferences_shortcut_set_heading: String,
     /// Workspace drawer Files tab.
     pub workspace_tab_files: String,
     /// Workspace drawer Outline tab.
@@ -476,6 +479,8 @@ struct I18nStringsDe {
     preferences_shortcut_dismiss_transient_ui: Option<String>,
     preferences_shortcut_toggle_view_mode: Option<String>,
     preferences_shortcut_toggle_workspace: Option<String>,
+    preferences_shortcut_set_paragraph: Option<String>,
+    preferences_shortcut_set_heading: Option<String>,
     workspace_tab_files: Option<String>,
     workspace_tab_outline: Option<String>,
     workspace_no_file_title: Option<String>,
@@ -668,6 +673,8 @@ const I18N_STRING_KEYS: &[&str] = &[
     "preferences_shortcut_dismiss_transient_ui",
     "preferences_shortcut_toggle_view_mode",
     "preferences_shortcut_toggle_workspace",
+    "preferences_shortcut_set_paragraph",
+    "preferences_shortcut_set_heading",
     "workspace_tab_files",
     "workspace_tab_outline",
     "workspace_no_file_title",
@@ -1104,6 +1111,12 @@ impl I18nStringsDe {
             preferences_shortcut_toggle_workspace: self
                 .preferences_shortcut_toggle_workspace
                 .unwrap_or(defaults.preferences_shortcut_toggle_workspace),
+            preferences_shortcut_set_paragraph: self
+                .preferences_shortcut_set_paragraph
+                .unwrap_or(defaults.preferences_shortcut_set_paragraph),
+            preferences_shortcut_set_heading: self
+                .preferences_shortcut_set_heading
+                .unwrap_or(defaults.preferences_shortcut_set_heading),
             workspace_tab_files: self
                 .workspace_tab_files
                 .unwrap_or(defaults.workspace_tab_files),
@@ -1386,6 +1399,8 @@ impl I18nStrings {
             preferences_shortcut_dismiss_transient_ui: "关闭临时界面".into(),
             preferences_shortcut_toggle_view_mode: "切换视图模式".into(),
             preferences_shortcut_toggle_workspace: "切换工作区".into(),
+            preferences_shortcut_set_paragraph: "段落".into(),
+            preferences_shortcut_set_heading: "{level} 级标题".into(),
             workspace_tab_files: "文件".into(),
             workspace_tab_outline: "大纲".into(),
             workspace_no_file_title: "未打开 Markdown 文件".into(),
@@ -1607,6 +1622,8 @@ impl I18nStrings {
             preferences_shortcut_dismiss_transient_ui: "Dismiss Temporary UI".into(),
             preferences_shortcut_toggle_view_mode: "Toggle View Mode".into(),
             preferences_shortcut_toggle_workspace: "Toggle Workspace".into(),
+            preferences_shortcut_set_paragraph: "Paragraph".into(),
+            preferences_shortcut_set_heading: "Heading {level}".into(),
             workspace_tab_files: "Files".into(),
             workspace_tab_outline: "Outline".into(),
             workspace_no_file_title: "No Markdown File Open".into(),

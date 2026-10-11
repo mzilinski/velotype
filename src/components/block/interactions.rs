@@ -17,7 +17,8 @@ use crate::components::{
     BlockDown, BlockUp, BoldSelection, CodeSelection, Copy, Cut, Delete, DeleteBack,
     DismissTransientUi, End, ExitCodeBlock, FocusNext, FocusPrev, Home, IndentBlock,
     ItalicSelection, MoveLeft, MoveRight, Newline, OutdentBlock, Paste, SelectAll, SelectEnd,
-    SelectHome, SelectLeft, SelectRight, UnderlineSelection, WordDeleteBack, WordDeleteForward,
+    SelectHome, SelectLeft, SelectRight, SetHeading1, SetHeading2, SetHeading3, SetHeading4,
+    SetHeading5, SetHeading6, SetParagraph, UnderlineSelection, WordDeleteBack, WordDeleteForward,
     WordMoveLeft, WordMoveRight, WordSelectLeft, WordSelectRight,
 };
 
@@ -1687,6 +1688,69 @@ impl Block {
         cx: &mut Context<Self>,
     ) {
         self.toggle_inline_format(InlineFormat::Code, cx);
+    }
+
+    pub(crate) fn on_set_paragraph(
+        &mut self,
+        _: &SetParagraph,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(0, cx);
+    }
+
+    pub(crate) fn on_set_heading_1(
+        &mut self,
+        _: &SetHeading1,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(1, cx);
+    }
+
+    pub(crate) fn on_set_heading_2(
+        &mut self,
+        _: &SetHeading2,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(2, cx);
+    }
+
+    pub(crate) fn on_set_heading_3(
+        &mut self,
+        _: &SetHeading3,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(3, cx);
+    }
+
+    pub(crate) fn on_set_heading_4(
+        &mut self,
+        _: &SetHeading4,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(4, cx);
+    }
+
+    pub(crate) fn on_set_heading_5(
+        &mut self,
+        _: &SetHeading5,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(5, cx);
+    }
+
+    pub(crate) fn on_set_heading_6(
+        &mut self,
+        _: &SetHeading6,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_heading_level(6, cx);
     }
 
     pub(crate) fn on_exit_code_block(

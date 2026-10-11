@@ -1775,6 +1775,32 @@ impl Block {
         self.mark_changed(cx);
     }
 
+    /// Typora-style heading shortcut: `level` 1-6 turns a paragraph or heading
+    /// into that heading level, pressing the active level again (or `level` 0)
+    /// turns it back into a paragraph. Other block kinds are left untouched.
+    pub(crate) fn set_heading_level(&mut self, level: u8, cx: &mut Context<Self>) {
+        if self.is_table_cell() || self.uses_raw_text_editing() {
+            return;
+        }
+        let current = self.kind();
+        let next = match current {
+            BlockKind::Paragraph | BlockKind::Heading { .. } => {
+                if level == 0 || current == (BlockKind::Heading { level }) {
+                    BlockKind::Paragraph
+                } else {
+                    BlockKind::Heading { level }
+                }
+            }
+            _ => return,
+        };
+        if next == current {
+            return;
+        }
+        self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+        self.record.kind = next;
+        self.mark_changed(cx);
+    }
+
     pub(crate) fn convert_to_separator(&mut self, cx: &mut Context<Self>) {
         self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
         self.make_separator();

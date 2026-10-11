@@ -1627,6 +1627,13 @@ impl Block {
                 .on_action(cx.listener(Self::on_italic_selection))
                 .on_action(cx.listener(Self::on_underline_selection))
                 .on_action(cx.listener(Self::on_code_selection))
+                .on_action(cx.listener(Self::on_set_paragraph))
+                .on_action(cx.listener(Self::on_set_heading_1))
+                .on_action(cx.listener(Self::on_set_heading_2))
+                .on_action(cx.listener(Self::on_set_heading_3))
+                .on_action(cx.listener(Self::on_set_heading_4))
+                .on_action(cx.listener(Self::on_set_heading_5))
+                .on_action(cx.listener(Self::on_set_heading_6))
         }
     }
 }

@@ -2984,3 +2984,73 @@ async fn typing_destination_into_empty_link_parens_keeps_caret_inside(cx: &mut T
         assert_eq!(block.selected_range, close..close);
     });
 }
+
+/// Regression for #107: typing `*` followed by CJK text and then selecting
+/// with the mouse must not panic on non-char-boundary offsets.
+#[gpui::test]
+async fn asterisk_with_cjk_text_survives_every_selection(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        I18nManager::init(cx);
+        ThemeManager::init(cx);
+    });
+    let (block, cx) =
+        cx.add_window_view(|_window, cx| Block::with_record(cx, BlockRecord::paragraph("")));
+
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            block.replace_text_in_range(None, "*", window, cx);
+            block.replace_text_in_range(None, "测试", window, cx);
+            block.sync_inline_projection_for_focus(true);
+        });
+    });
+    cx.run_until_parked();
+
+    let len = block.read_with(cx, |block, _| block.visible_len());
+    for start in 0..=len {
+        for end in start..=len {
+            cx.update(|window, cx| {
+                block.update(cx, |block, cx| {
+                    block.move_to(start, cx);
+                    block.select_to(end, cx);
+                    let _ = block.selected_text_range(false, window, cx);
+                    let range = block.selected_range.clone();
+                    let utf16 = block.range_to_utf16(&range);
+                    let _ = block.text_for_range(utf16, &mut None, window, cx);
+                });
+                window.refresh();
+            });
+            cx.run_until_parked();
+        }
+    }
+}
+
+#[gpui::test]
+async fn heading_shortcuts_toggle_paragraph_and_heading_levels(cx: &mut TestAppContext) {
+    let cx = cx.add_empty_window();
+    let block = cx.new(|cx| Block::with_record(cx, BlockRecord::paragraph("title")));
+
+    block.update(cx, |block, cx| {
+        block.set_heading_level(2, cx);
+        assert_eq!(block.kind(), BlockKind::Heading { level: 2 });
+        block.set_heading_level(4, cx);
+        assert_eq!(block.kind(), BlockKind::Heading { level: 4 });
+        // Pressing the active level again toggles back to a paragraph.
+        block.set_heading_level(4, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        block.set_heading_level(1, cx);
+        block.set_heading_level(0, cx);
+        assert_eq!(block.kind(), BlockKind::Paragraph);
+        assert_eq!(block.display_text(), "title");
+    });
+
+    let list = cx.new(|cx| {
+        Block::with_record(
+            cx,
+            BlockRecord::with_plain_text(BlockKind::BulletedListItem, "item"),
+        )
+    });
+    list.update(cx, |block, cx| {
+        block.set_heading_level(1, cx);
+        assert_eq!(block.kind(), BlockKind::BulletedListItem);
+    });
+}
