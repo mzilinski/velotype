@@ -1816,7 +1816,9 @@ impl Render for Block {
 
             let source_base = if self.kind() == BlockKind::Comment {
                 source_base.bg(c.comment_bg).rounded_sm()
-            } else if focused {
+            } else if focused || self.kind() == BlockKind::FrontMatter {
+                // Front matter always keeps the source-block chrome so it reads
+                // as metadata rather than document text.
                 source_base.bg(c.source_mode_block_bg).rounded_sm()
             } else {
                 source_base
@@ -2953,6 +2955,7 @@ impl Render for Block {
             BlockKind::Paragraph
             | BlockKind::Comment
             | BlockKind::RawMarkdown
+            | BlockKind::FrontMatter
             | BlockKind::Heading { .. } => focused_base
                 .text_size(px(t.text_size))
                 .text_color(c.text_default)

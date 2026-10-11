@@ -2701,6 +2701,33 @@ async fn toggle_view_mode_preserves_paragraph_caret_position(cx: &mut TestAppCon
 }
 
 #[gpui::test]
+async fn toggle_view_mode_maps_caret_after_front_matter(cx: &mut TestAppContext) {
+    let markdown = "---\ntitle: Doc\n---\nbeta";
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown.to_string(), None));
+
+    editor.update(cx, |editor, cx| {
+        let target = editor.document.visible_blocks()[1].entity.clone();
+        target.update(cx, |block, _cx| {
+            block.selected_range = 2..2;
+        });
+        editor.active_entity_id = Some(target.entity_id());
+
+        editor.toggle_view_mode(cx);
+        let source = editor.document.first_root().expect("source root").clone();
+        assert_eq!(source.read(cx).display_text(), markdown);
+        // "---\ntitle: Doc\n---\n" is 19 bytes, then "be".
+        assert_eq!(source.read(cx).selected_range, 21..21);
+
+        editor.toggle_view_mode(cx);
+        let visible = editor.document.visible_blocks();
+        assert_eq!(visible[0].entity.read(cx).kind(), BlockKind::FrontMatter);
+        assert_eq!(visible[1].entity.read(cx).display_text(), "beta");
+        assert_eq!(visible[1].entity.read(cx).selected_range, 2..2);
+        assert_eq!(editor.document.markdown_text(cx), markdown);
+    });
+}
+
+#[gpui::test]
 async fn toggle_view_mode_ends_stale_code_block_pointer_selection(cx: &mut TestAppContext) {
     let editor =
         cx.new(|cx| Editor::from_markdown(cx, "```rust\nfn main() {}\n```".to_string(), None));

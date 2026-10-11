@@ -10,7 +10,7 @@ use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, html};
 use crate::components::{
     inline_math_font_size, is_mermaid_closing_fence, parse_display_math_source,
     parse_html_image_block, parse_mermaid_fence_source, parse_mermaid_fence_start,
-    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export,
+    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter,
 };
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings};
 use crate::net;
@@ -92,6 +92,8 @@ fn markdown_options() -> Options {
 }
 
 fn render_browser_html_body(markdown: &str, theme: &Theme, base_dir: Option<&Path>) -> String {
+    // Front matter is document metadata, not content.
+    let markdown = strip_front_matter(markdown);
     let rewritten = rewrite_visible_comment_blocks(markdown);
     let rewritten = rewrite_unsafe_html_blocks(&rewritten, base_dir);
     let rewritten = rewrite_display_math_blocks(&rewritten, theme);
@@ -1376,6 +1378,19 @@ mod tests {
 
         assert!(html.contains("x<sup>2</sup>"));
         assert!(html.contains("H<sub>2</sub>O"));
+    }
+
+    #[test]
+    fn export_omits_front_matter() {
+        let html = render_html(
+            "---\ntitle: Secret\n---\n# Body",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(!html.contains("Secret"));
+        assert!(!html.contains("<hr"));
+        assert!(html.contains("<h1>Body</h1>"));
     }
 
     #[test]

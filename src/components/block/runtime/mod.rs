@@ -68,6 +68,7 @@ impl EditMode {
         } else if matches!(
             kind,
             BlockKind::RawMarkdown
+                | BlockKind::FrontMatter
                 | BlockKind::Comment
                 | BlockKind::HtmlBlock
                 | BlockKind::MathBlock

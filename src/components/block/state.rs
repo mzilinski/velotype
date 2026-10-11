@@ -138,6 +138,8 @@ pub enum BlockKind {
     MermaidBlock,
     /// Raw Markdown fallback for syntax outside the native runtime subset.
     RawMarkdown,
+    /// Leading YAML front matter, kept verbatim and shown as source text.
+    FrontMatter,
 }
 
 /// Opening fence parsed from a fenced code block.
@@ -191,6 +193,7 @@ impl BlockKind {
                 | Self::HtmlBlock
                 | Self::Comment
                 | Self::RawMarkdown
+                | Self::FrontMatter
         )
     }
 
@@ -213,6 +216,7 @@ impl BlockKind {
                 | Self::HtmlBlock
                 | Self::Comment
                 | Self::RawMarkdown
+                | Self::FrontMatter
         )
     }
 
@@ -232,6 +236,7 @@ impl BlockKind {
                     | Self::MermaidBlock
                     | Self::Comment
                     | Self::RawMarkdown
+                    | Self::FrontMatter
             )
     }
 
@@ -524,6 +529,13 @@ impl BlockRecord {
         record
     }
 
+    pub fn front_matter(markdown: impl Into<String>) -> Self {
+        let markdown = markdown.into();
+        let mut record = Self::with_plain_text(BlockKind::FrontMatter, markdown.clone());
+        record.raw_fallback = Some(markdown);
+        record
+    }
+
     pub fn comment(markdown: impl Into<String>) -> Self {
         let markdown = markdown.into();
         let mut record = Self::with_plain_text(BlockKind::Comment, markdown.clone());
@@ -577,6 +589,7 @@ impl BlockRecord {
         matches!(
             self.kind,
             BlockKind::RawMarkdown
+                | BlockKind::FrontMatter
                 | BlockKind::Comment
                 | BlockKind::HtmlBlock
                 | BlockKind::MathBlock
@@ -632,6 +645,7 @@ impl BlockRecord {
             BlockKind::Table => String::new(),
             BlockKind::CodeBlock { .. } => title_markdown,
             BlockKind::RawMarkdown
+            | BlockKind::FrontMatter
             | BlockKind::Comment
             | BlockKind::HtmlBlock
             | BlockKind::MathBlock

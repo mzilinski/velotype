@@ -2,6 +2,7 @@
 
 pub(crate) mod code_highlight;
 pub(crate) mod footnote;
+pub(crate) mod front_matter;
 pub(crate) mod html;
 pub(crate) mod image;
 pub mod inline;
