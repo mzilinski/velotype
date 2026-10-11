@@ -1,20 +1,24 @@
-//! Spell checking against the operating system's dictionaries.
+//! Spell checking.
 //!
-//! The checker is a gpui [`Global`] holding a platform backend plus a cache of
-//! results per checked text, so repainting a block does not re-run the
-//! platform check. Results are byte ranges into the checked text. Only
-//! Windows (ISpellChecker, Windows 8+) has a backend today; elsewhere the
-//! checker reports no errors and offers no languages.
+//! The checker is a gpui [`Global`] holding one backend plus a cache of
+//! results per checked text, so repainting a block does not re-run the check.
+//! Results are byte ranges into the checked text.
+//!
+//! Hunspell dictionaries ([`hunspell`]) are preferred: they work on every
+//! platform, cover many languages and can be combined (e.g. German and
+//! English at once). When none is installed yet, Windows falls back to the
+//! system ISpellChecker for the system language.
 
 use std::collections::HashMap;
 use std::ops::Range;
 
-use gpui::{App, Global};
+use gpui::{App, AsyncApp, Global};
 
+pub(crate) mod hunspell;
 #[cfg(windows)]
 mod windows_backend;
 
-/// Platform spell-checking backend for one language.
+/// Spell-checking backend for the active languages.
 pub(crate) trait SpellBackend {
     /// Byte ranges of misspelled words in `text`.
     fn misspelled(&self, text: &str) -> Vec<Range<usize>>;
@@ -30,63 +34,90 @@ pub(crate) trait SpellBackend {
 const CACHE_LIMIT: usize = 4096;
 
 pub(crate) struct SpellChecker {
-    language: Option<String>,
+    /// Active BCP-47 tags, in the order the user enabled them.
+    languages: Vec<String>,
     backend: Option<Box<dyn SpellBackend>>,
     cache: HashMap<String, Vec<Range<usize>>>,
 }
 
 impl Global for SpellChecker {}
 
+/// Parses the persisted language preference: comma-separated BCP-47 tags.
+pub(crate) fn parse_languages(preference: &str) -> Vec<String> {
+    preference
+        .split(',')
+        .map(str::trim)
+        .filter(|tag| !tag.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
 impl SpellChecker {
-    /// Installs the global checker for `preferred` (a BCP-47 tag such as
-    /// `de-DE`), falling back to the system locale and then `en-US`.
-    pub(crate) fn init(cx: &mut App, preferred: Option<&str>) {
-        let checker = Self::for_language(preferred);
-        cx.set_global(checker);
+    /// Installs the global checker for the comma-separated `preference`; an
+    /// empty preference follows the system locale.
+    pub(crate) fn init(cx: &mut App, preference: &str) {
+        let mut languages = parse_languages(preference);
+        if languages.is_empty() {
+            languages.extend(sys_locale::get_locale());
+        }
+        cx.set_global(Self::for_languages(languages));
     }
 
-    fn for_language(preferred: Option<&str>) -> Self {
-        let system = sys_locale::get_locale();
-        let candidates = preferred
-            .map(str::to_string)
-            .into_iter()
-            .chain(system)
-            .chain(std::iter::once("en-US".to_string()));
-        for language in candidates {
-            if let Some(backend) = create_backend(&language) {
-                return Self {
-                    language: Some(language),
-                    backend: Some(backend),
-                    cache: HashMap::new(),
-                };
-            }
-        }
+    fn for_languages(languages: Vec<String>) -> Self {
+        let backend = create_backend(&languages);
         Self {
-            language: None,
-            backend: None,
+            languages,
+            backend,
             cache: HashMap::new(),
         }
     }
 
-    /// Switches the dictionary language; unknown languages keep the current one.
-    pub(crate) fn set_language(cx: &mut App, language: &str) {
-        if let Some(backend) = create_backend(language) {
-            cx.set_global(Self {
-                language: Some(language.to_string()),
-                backend: Some(backend),
-                cache: HashMap::new(),
-            });
-        }
-    }
-
-    pub(crate) fn language(cx: &App) -> Option<String> {
+    pub(crate) fn languages(cx: &App) -> Vec<String> {
         cx.try_global::<Self>()
-            .and_then(|checker| checker.language.clone())
+            .map(|checker| checker.languages.clone())
+            .unwrap_or_default()
     }
 
-    /// Languages the platform can check, as BCP-47 tags.
-    pub(crate) fn available_languages() -> Vec<String> {
-        available_backend_languages()
+    /// Enables or disables `tag`. A dictionary that is not installed yet is
+    /// downloaded in the background first; `done` runs on the UI thread with
+    /// the new language list (persist it) or the download error.
+    pub(crate) fn toggle_language(
+        cx: &mut App,
+        tag: String,
+        done: impl FnOnce(&mut App, anyhow::Result<Vec<String>>) + 'static,
+    ) {
+        let mut languages = Self::languages(cx);
+        if let Some(index) = languages.iter().position(|active| *active == tag) {
+            languages.remove(index);
+            cx.set_global(Self::for_languages(languages.clone()));
+            done(cx, Ok(languages));
+            return;
+        }
+        if hunspell::is_installed(&tag) {
+            languages.push(tag);
+            cx.set_global(Self::for_languages(languages.clone()));
+            done(cx, Ok(languages));
+            return;
+        }
+        let download_tag = tag.clone();
+        let download = cx
+            .background_executor()
+            .spawn(async move { hunspell::download(&download_tag) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = download.await;
+            let _ = cx.update(move |cx| match result {
+                Ok(()) => {
+                    let mut languages = Self::languages(cx);
+                    if !languages.contains(&tag) {
+                        languages.push(tag);
+                    }
+                    cx.set_global(Self::for_languages(languages.clone()));
+                    done(cx, Ok(languages));
+                }
+                Err(err) => done(cx, Err(err)),
+            });
+        })
+        .detach();
     }
 
     /// Misspelled byte ranges of `text`, cached per text.
@@ -137,29 +168,31 @@ impl SpellChecker {
     }
 }
 
+/// Hunspell for every installed active language; otherwise the platform
+/// checker for the first language it supports.
+fn create_backend(languages: &[String]) -> Option<Box<dyn SpellBackend>> {
+    if let Some(backend) = hunspell::HunspellBackend::new(languages) {
+        return Some(Box::new(backend));
+    }
+    platform_backend(languages)
+}
+
 #[cfg(windows)]
-fn create_backend(language: &str) -> Option<Box<dyn SpellBackend>> {
-    windows_backend::WindowsSpellBackend::new(language)
-        .map(|backend| Box::new(backend) as Box<dyn SpellBackend>)
+fn platform_backend(languages: &[String]) -> Option<Box<dyn SpellBackend>> {
+    languages.iter().find_map(|language| {
+        windows_backend::WindowsSpellBackend::new(language)
+            .map(|backend| Box::new(backend) as Box<dyn SpellBackend>)
+    })
 }
 
 #[cfg(not(windows))]
-fn create_backend(_language: &str) -> Option<Box<dyn SpellBackend>> {
+fn platform_backend(_languages: &[String]) -> Option<Box<dyn SpellBackend>> {
     None
-}
-
-#[cfg(windows)]
-fn available_backend_languages() -> Vec<String> {
-    windows_backend::supported_languages()
-}
-
-#[cfg(not(windows))]
-fn available_backend_languages() -> Vec<String> {
-    Vec::new()
 }
 
 /// Converts a UTF-16 code-unit range reported by a platform API into a byte
 /// range of `text`, or `None` when it does not land on character boundaries.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn utf16_range_to_utf8(text: &str, start: usize, len: usize) -> Option<Range<usize>> {
     let end = start + len;
     let mut utf16 = 0usize;
@@ -181,7 +214,7 @@ pub(crate) fn utf16_range_to_utf8(text: &str, start: usize, len: usize) -> Optio
 
 #[cfg(test)]
 mod tests {
-    use super::utf16_range_to_utf8;
+    use super::{parse_languages, utf16_range_to_utf8};
 
     #[test]
     fn maps_utf16_ranges_to_bytes() {
@@ -193,5 +226,11 @@ mod tests {
         assert_eq!(utf16_range_to_utf8(text, 9, 4), Some(welt..welt + 4));
         // Splitting the emoji surrogate pair is rejected.
         assert_eq!(utf16_range_to_utf8(text, 7, 1), None);
+    }
+
+    #[test]
+    fn parses_language_preference_list() {
+        assert_eq!(parse_languages(" de-DE, en-US ,,"), vec!["de-DE", "en-US"]);
+        assert!(parse_languages("").is_empty());
     }
 }

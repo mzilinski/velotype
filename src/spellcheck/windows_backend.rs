@@ -48,6 +48,7 @@ fn collect_strings(strings: &IEnumString) -> Vec<String> {
     values
 }
 
+#[cfg(test)]
 pub(super) fn supported_languages() -> Vec<String> {
     let Some(factory) = factory() else {
         return Vec::new();
@@ -118,21 +119,17 @@ mod tests {
 
     #[test]
     fn checks_and_suggests_with_the_system_dictionary() {
+        // Use whatever language Windows actually has a dictionary for, so the
+        // test cannot pass by skipping.
         let languages = supported_languages();
-        assert!(
-            !languages.is_empty(),
-            "Windows reports no spell-check languages"
-        );
-        let Some(backend) = WindowsSpellBackend::new("en-US") else {
-            // en-US dictionaries are not installed on every Windows edition.
-            return;
-        };
-        let text = "Thsi is a tset with Grüße";
+        let language = languages
+            .first()
+            .expect("Windows reports no spell-check languages");
+        let backend = WindowsSpellBackend::new(language).expect("supported language loads");
+        let text = "Qxzvrtl Wrtzqp";
         let ranges = backend.misspelled(text);
-        let words = ranges.iter().map(|r| &text[r.clone()]).collect::<Vec<_>>();
-        assert!(words.contains(&"Thsi"), "{words:?}");
-        assert!(words.contains(&"tset"), "{words:?}");
-        assert!(!words.contains(&"is"));
-        assert!(backend.suggestions("tset").iter().any(|s| s == "test"));
+        assert_eq!(ranges, vec![0..7, 8..14], "{language}");
+        backend.ignore("Qxzvrtl");
+        assert_eq!(backend.misspelled(text), vec![8..14], "{language}");
     }
 }
