@@ -49,6 +49,9 @@ actions!(
         ItalicSelection,
         UnderlineSelection,
         CodeSelection,
+        PasteAsPlainText,
+        CopyAsPlainText,
+        CopyAsHtml,
         IncreaseHeadingLevel,
         DecreaseHeadingLevel,
         ToggleQuote,
@@ -215,6 +218,9 @@ pub(crate) enum ShortcutCommand {
     ItalicSelection,
     UnderlineSelection,
     CodeSelection,
+    PasteAsPlainText,
+    CopyAsPlainText,
+    CopyAsHtml,
     IncreaseHeadingLevel,
     DecreaseHeadingLevel,
     ToggleQuote,
@@ -559,6 +565,27 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         id: "code_selection",
         category: ShortcutCategory::Formatting,
         default_keys: &["cmd-`", "ctrl-`"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::PasteAsPlainText,
+        id: "paste_as_plain_text",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-shift-v", "ctrl-shift-v"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::CopyAsPlainText,
+        id: "copy_as_plain_text",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::CopyAsHtml,
+        id: "copy_as_html",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
         context: BLOCK_CONTEXT,
     },
     ShortcutDefinition {
@@ -1173,6 +1200,9 @@ fn key_binding_for(
         ShortcutCommand::ItalicSelection => KeyBinding::new(key, ItalicSelection, context),
         ShortcutCommand::UnderlineSelection => KeyBinding::new(key, UnderlineSelection, context),
         ShortcutCommand::CodeSelection => KeyBinding::new(key, CodeSelection, context),
+        ShortcutCommand::PasteAsPlainText => KeyBinding::new(key, PasteAsPlainText, context),
+        ShortcutCommand::CopyAsPlainText => KeyBinding::new(key, CopyAsPlainText, context),
+        ShortcutCommand::CopyAsHtml => KeyBinding::new(key, CopyAsHtml, context),
         ShortcutCommand::IncreaseHeadingLevel => {
             KeyBinding::new(key, IncreaseHeadingLevel, context)
         }

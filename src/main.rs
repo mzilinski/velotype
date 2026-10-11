@@ -19,6 +19,7 @@ use gpui::*;
 
 mod app_identity;
 mod app_menu;
+mod clipboard;
 mod components;
 mod config;
 mod editor;
