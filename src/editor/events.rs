@@ -581,6 +581,17 @@ impl Editor {
         cx.notify();
     }
 
+    fn jump_to_heading(&mut self, target: EntityId, cx: &mut Context<Self>) -> bool {
+        let Some(block) = self.document.block_entity_by_id(target) else {
+            return false;
+        };
+        if !matches!(block.read(cx).kind(), BlockKind::Heading { .. }) {
+            return false;
+        }
+        self.focus_block_range(&block, 0..0, cx);
+        true
+    }
+
     fn jump_to_footnote_definition(&mut self, id: &str, cx: &mut Context<Self>) -> bool {
         let Some(binding) = self.footnote_registry.binding(id) else {
             return false;
@@ -2119,6 +2130,10 @@ impl Editor {
                 let _ = self.jump_to_footnote_backref(id, cx);
                 cx.notify();
             }
+            BlockEvent::RequestJumpToHeading { target } => {
+                let _ = self.jump_to_heading(*target, cx);
+                cx.notify();
+            }
             BlockEvent::RequestAppendTableColumn => {
                 if block.read(cx).kind() == BlockKind::Table {
                     self.prepare_undo_capture(
@@ -2435,6 +2450,97 @@ mod tests {
             );
             assert_eq!(editor.pending_focus, Some(paragraph.entity_id()));
             assert_eq!(paragraph.read(cx).selected_range, expected_backref_range);
+        });
+    }
+
+    #[gpui::test]
+    async fn table_of_contents_lists_headings_and_jumps_to_them(cx: &mut TestAppContext) {
+        let markdown = "[TOC]\n\n# Intro\n\nText\n\n## Details\n\n- item".to_string();
+        let editor = cx.new(|cx| Editor::from_markdown(cx, markdown.clone(), None));
+
+        editor.update(cx, |editor, cx| {
+            let visible = editor.document.visible_blocks().to_vec();
+            let toc = visible[0].entity.clone();
+            assert_eq!(toc.read(cx).kind(), BlockKind::TableOfContents);
+            assert_eq!(editor.document.markdown_text(cx), markdown);
+
+            let entries = toc.read(cx).toc_entries().to_vec();
+            assert_eq!(
+                entries
+                    .iter()
+                    .map(|entry| (entry.level, entry.text.to_string()))
+                    .collect::<Vec<_>>(),
+                vec![(1, "Intro".to_string()), (2, "Details".to_string())]
+            );
+
+            let details = visible
+                .iter()
+                .find(|visible| visible.entity.read(cx).display_text() == "Details")
+                .expect("details heading")
+                .entity
+                .clone();
+            assert_eq!(entries[1].target, details.entity_id());
+
+            editor.on_block_event(
+                toc.clone(),
+                &BlockEvent::RequestJumpToHeading {
+                    target: entries[1].target,
+                },
+                cx,
+            );
+            assert_eq!(editor.pending_focus, Some(details.entity_id()));
+            assert_eq!(details.read(cx).selected_range, 0..0);
+        });
+    }
+
+    #[gpui::test]
+    async fn table_of_contents_follows_heading_edits(cx: &mut TestAppContext) {
+        let editor = cx.new(|cx| Editor::from_markdown(cx, "[toc]\n\n# Old".to_string(), None));
+
+        editor.update(cx, |editor, cx| {
+            let visible = editor.document.visible_blocks().to_vec();
+            let heading = visible[1].entity.clone();
+            heading.update(cx, |block, _cx| {
+                block
+                    .record
+                    .set_title(InlineTextTree::plain("New".to_string()));
+                block.sync_render_cache();
+            });
+            editor.on_block_event(heading, &BlockEvent::Changed, cx);
+
+            let toc = visible[0].entity.clone();
+            assert_eq!(toc.read(cx).toc_entries()[0].text.as_ref(), "New");
+            assert_eq!(editor.document.markdown_text(cx), "[toc]\n\n# New");
+        });
+    }
+
+    #[gpui::test]
+    async fn enter_after_toc_marker_creates_table_of_contents_block(cx: &mut TestAppContext) {
+        let cx = cx.add_empty_window();
+        let editor = cx.new(|cx| Editor::from_markdown(cx, "[TOC]x\n\n# Title".to_string(), None));
+
+        cx.update(|window, cx| {
+            editor.update(cx, |editor, cx| {
+                let paragraph = editor.document.visible_blocks()[0].entity.clone();
+                assert_eq!(paragraph.read(cx).kind(), BlockKind::Paragraph);
+                paragraph.update(cx, |block, block_cx| {
+                    let len = block.visible_len();
+                    block.replace_text_in_visible_range(len - 1..len, "", None, false, block_cx);
+                    block.move_to(block.visible_len(), block_cx);
+                    block.on_newline(&Newline, window, block_cx);
+                });
+            });
+        });
+
+        editor.update(cx, |editor, cx| {
+            let visible = editor.document.visible_blocks();
+            assert_eq!(
+                visible[0].entity.read(cx).kind(),
+                BlockKind::TableOfContents
+            );
+            assert_eq!(visible[1].entity.read(cx).kind(), BlockKind::Paragraph);
+            assert_eq!(visible[0].entity.read(cx).toc_entries().len(), 1);
+            assert!(editor.document.markdown_text(cx).starts_with("[TOC]\n\n"));
         });
     }
 

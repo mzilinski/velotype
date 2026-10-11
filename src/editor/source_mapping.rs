@@ -409,6 +409,7 @@ impl Editor {
                     | BlockKind::MermaidBlock
                     | BlockKind::RawMarkdown
                     | BlockKind::FrontMatter
+                    | BlockKind::TableOfContents
                     | BlockKind::Separator
             ))
             .then(|| block_ref.record.title.markdown_offset_map());
@@ -434,6 +435,7 @@ impl Editor {
             }
             BlockKind::RawMarkdown
             | BlockKind::FrontMatter
+            | BlockKind::TableOfContents
             | BlockKind::Comment
             | BlockKind::HtmlBlock
             | BlockKind::MathBlock

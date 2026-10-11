@@ -308,6 +308,8 @@ pub struct I18nStrings {
     pub image_loading_with_alt_template: String,
     /// Placeholder shown in the code-block language input when no language is set.
     pub code_language_placeholder: String,
+    /// Text shown by a `[TOC]` block when the document has no headings.
+    pub table_of_contents_empty: String,
     /// Label for the sidebar/files toggle button in the status bar.
     pub status_bar_files: String,
     /// Label for source mode in the status bar mode switch.
@@ -512,6 +514,7 @@ struct I18nStringsDe {
     image_loading_without_alt: Option<String>,
     image_loading_with_alt_template: Option<String>,
     code_language_placeholder: Option<String>,
+    table_of_contents_empty: Option<String>,
     status_bar_files: Option<String>,
     status_bar_mode_source: Option<String>,
     status_bar_mode_rendered: Option<String>,
@@ -704,6 +707,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "image_loading_without_alt",
     "image_loading_with_alt_template",
     "code_language_placeholder",
+    "table_of_contents_empty",
     "status_bar_files",
     "status_bar_mode_source",
     "status_bar_mode_rendered",
@@ -1200,6 +1204,9 @@ impl I18nStringsDe {
             code_language_placeholder: self
                 .code_language_placeholder
                 .unwrap_or(defaults.code_language_placeholder),
+            table_of_contents_empty: self
+                .table_of_contents_empty
+                .unwrap_or(defaults.table_of_contents_empty),
             status_bar_files: self.status_bar_files.unwrap_or(defaults.status_bar_files),
             status_bar_mode_source: self
                 .status_bar_mode_source
@@ -1423,6 +1430,7 @@ impl I18nStrings {
             image_loading_without_alt: "正在加载图片...".into(),
             image_loading_with_alt_template: "正在加载 {alt}".into(),
             code_language_placeholder: "语言".into(),
+            table_of_contents_empty: "目录：文档中还没有标题".into(),
             status_bar_files: "侧边栏".into(),
             status_bar_mode_source: "源码".into(),
             status_bar_mode_rendered: "渲染".into(),
@@ -1645,6 +1653,7 @@ impl I18nStrings {
             image_loading_without_alt: "Loading image...".into(),
             image_loading_with_alt_template: "Loading {alt}".into(),
             code_language_placeholder: "language".into(),
+            table_of_contents_empty: "Table of contents: no headings yet".into(),
             status_bar_files: "Sidebar".into(),
             status_bar_mode_source: "Source".into(),
             status_bar_mode_rendered: "Rendered".into(),

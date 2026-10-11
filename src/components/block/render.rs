@@ -510,6 +510,61 @@ impl Block {
         container.into_any_element()
     }
 
+    fn render_table_of_contents(
+        &self,
+        theme: &Theme,
+        strings: &I18nStrings,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let d = &theme.dimensions;
+        let t = &theme.typography;
+        let entries = self.toc_entries();
+        let container = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .text_size(px(t.text_size))
+            .line_height(rems(t.text_line_height));
+
+        if entries.is_empty() {
+            return container
+                .text_color(c.text_placeholder)
+                .child(SharedString::from(strings.table_of_contents_empty.clone()))
+                .into_any_element();
+        }
+
+        // Indent relative to the shallowest heading so a document without an
+        // H1 does not start every entry with an empty indent step.
+        let base_level = entries.iter().map(|entry| entry.level).min().unwrap_or(1);
+        let rows = entries
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| {
+                let target = entry.target;
+                let indent = (entry.level - base_level) as f32 * d.nested_block_indent;
+                div()
+                    .id(("toc-entry", index))
+                    .pl(px(indent))
+                    .text_color(c.text_link)
+                    .cursor_pointer()
+                    .hover(|this| this.underline())
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(Self::on_toc_entry_mouse_down),
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(move |this, _: &MouseUpEvent, _window, cx| {
+                            this.on_toc_entry_mouse_up(target, cx);
+                        }),
+                    )
+                    .child(entry.text.clone())
+            })
+            .collect::<Vec<_>>();
+        container.children(rows).into_any_element()
+    }
+
     fn render_math_content(&self, theme: &Theme) -> AnyElement {
         let c = &theme.colors;
         let d = &theme.dimensions;
@@ -1792,7 +1847,10 @@ impl Render for Block {
             && (focused
                 || !matches!(
                     self.kind(),
-                    BlockKind::HtmlBlock | BlockKind::MathBlock | BlockKind::MermaidBlock
+                    BlockKind::HtmlBlock
+                        | BlockKind::MathBlock
+                        | BlockKind::MermaidBlock
+                        | BlockKind::TableOfContents
                 ))
         {
             if focused && self.cursor_blink_task.is_none() {
@@ -2937,6 +2995,18 @@ impl Render for Block {
                     BlockTextElement::new(cx.entity(), is_placeholder).into_any_element()
                 } else {
                     self.render_math_content(&theme)
+                };
+                focused_base.w_full().child(child).into_any_element()
+            }
+            BlockKind::TableOfContents => {
+                if !focused {
+                    self.last_layout = None;
+                    self.last_bounds = None;
+                }
+                let child = if focused {
+                    BlockTextElement::new(cx.entity(), is_placeholder).into_any_element()
+                } else {
+                    self.render_table_of_contents(&theme, &strings, cx)
                 };
                 focused_base.w_full().child(child).into_any_element()
             }

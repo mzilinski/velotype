@@ -1084,6 +1084,15 @@ impl Editor {
                 continue;
             }
 
+            if BlockKind::parse_table_of_contents_line(line) {
+                roots.push(Self::new_block(
+                    cx,
+                    BlockRecord::table_of_contents(line.clone()),
+                ));
+                index += 1;
+                continue;
+            }
+
             if strip_indented_code_prefix(line).is_some() {
                 let Some((block, next_index)) = collect_indented_code_block(cx, lines, index)
                 else {

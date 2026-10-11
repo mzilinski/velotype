@@ -7,7 +7,7 @@
 use std::ops::Range;
 use std::path::PathBuf;
 
-use gpui::{Image, Pixels, Point, SharedString};
+use gpui::{EntityId, Image, Pixels, Point, SharedString};
 use uuid::Uuid;
 
 use crate::components::markdown::html::{HtmlDocument, parse_html_document};
@@ -140,6 +140,19 @@ pub enum BlockKind {
     RawMarkdown,
     /// Leading YAML front matter, kept verbatim and shown as source text.
     FrontMatter,
+    /// `[TOC]` placeholder rendered as a list of the document's headings.
+    TableOfContents,
+}
+
+/// One heading listed by a `[TOC]` block.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TableOfContentsEntry {
+    /// Heading level (1-6).
+    pub level: u8,
+    /// Visible heading text.
+    pub text: SharedString,
+    /// Heading block to focus when the entry is clicked.
+    pub target: EntityId,
 }
 
 /// Opening fence parsed from a fenced code block.
@@ -194,6 +207,7 @@ impl BlockKind {
                 | Self::Comment
                 | Self::RawMarkdown
                 | Self::FrontMatter
+                | Self::TableOfContents
         )
     }
 
@@ -217,6 +231,7 @@ impl BlockKind {
                 | Self::Comment
                 | Self::RawMarkdown
                 | Self::FrontMatter
+                | Self::TableOfContents
         )
     }
 
@@ -237,6 +252,7 @@ impl BlockKind {
                     | Self::Comment
                     | Self::RawMarkdown
                     | Self::FrontMatter
+                    | Self::TableOfContents
             )
     }
 
@@ -349,6 +365,11 @@ impl BlockKind {
         }
 
         Some((level as u8, content))
+    }
+
+    /// Returns true for a standalone `[TOC]` line (case-insensitive).
+    pub fn parse_table_of_contents_line(line: &str) -> bool {
+        line.trim().eq_ignore_ascii_case("[toc]")
     }
 
     pub fn parse_setext_underline(line: &str) -> Option<u8> {
@@ -536,6 +557,13 @@ impl BlockRecord {
         record
     }
 
+    pub fn table_of_contents(markdown: impl Into<String>) -> Self {
+        let markdown = markdown.into();
+        let mut record = Self::with_plain_text(BlockKind::TableOfContents, markdown.clone());
+        record.raw_fallback = Some(markdown);
+        record
+    }
+
     pub fn comment(markdown: impl Into<String>) -> Self {
         let markdown = markdown.into();
         let mut record = Self::with_plain_text(BlockKind::Comment, markdown.clone());
@@ -590,6 +618,7 @@ impl BlockRecord {
             self.kind,
             BlockKind::RawMarkdown
                 | BlockKind::FrontMatter
+                | BlockKind::TableOfContents
                 | BlockKind::Comment
                 | BlockKind::HtmlBlock
                 | BlockKind::MathBlock
@@ -646,6 +675,7 @@ impl BlockRecord {
             BlockKind::CodeBlock { .. } => title_markdown,
             BlockKind::RawMarkdown
             | BlockKind::FrontMatter
+            | BlockKind::TableOfContents
             | BlockKind::Comment
             | BlockKind::HtmlBlock
             | BlockKind::MathBlock
@@ -815,6 +845,8 @@ pub enum BlockEvent {
     RequestJumpToFootnoteDefinition { id: String },
     /// Jump from an in-place footnote definition back to its first reference.
     RequestJumpToFootnoteBackref { id: String },
+    /// Jump from a table-of-contents entry to its heading block.
+    RequestJumpToHeading { target: EntityId },
     /// Move focus horizontally across native table cells.
     RequestTableCellMoveHorizontal { delta: i32 },
     /// Move focus vertically across native table cells.
