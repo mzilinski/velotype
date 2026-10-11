@@ -29,6 +29,7 @@ mod document;
 mod events;
 mod export;
 mod file_drop;
+mod find;
 mod history;
 mod persistence;
 mod render;
@@ -111,6 +112,8 @@ pub struct Editor {
     status_bar: StatusBarState,
     context_menu: Option<ContextMenuState>,
     table_insert_dialog: Option<TableInsertDialogState>,
+    /// Open find & replace bar, if any.
+    find: Option<find::FindState>,
     context_menu_submenu_close_task: Option<Task<()>>,
     table_axis_preview: Option<TableAxisSelection>,
     table_axis_selection: Option<TableAxisSelection>,
@@ -347,6 +350,7 @@ impl Editor {
             status_bar: StatusBarState::default(),
             context_menu: None,
             table_insert_dialog: None,
+            find: None,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,
             table_axis_selection: None,

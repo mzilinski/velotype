@@ -78,6 +78,10 @@ actions!(
         DismissTransientUi,
         ToggleViewMode,
         ToggleWorkspace,
+        FindInDocument,
+        FindAndReplace,
+        FindNext,
+        FindPrevious,
     ]
 );
 
@@ -175,6 +179,10 @@ pub(crate) enum ShortcutCommand {
     DismissTransientUi,
     ToggleViewMode,
     ToggleWorkspace,
+    FindInDocument,
+    FindAndReplace,
+    FindNext,
+    FindPrevious,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -587,6 +595,34 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         default_keys: &["ctrl-w"],
         context: None,
     },
+    ShortcutDefinition {
+        command: ShortcutCommand::FindInDocument,
+        id: "find_in_document",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-f", "ctrl-f"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::FindAndReplace,
+        id: "find_and_replace",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-alt-f", "ctrl-h"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::FindNext,
+        id: "find_next",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-g", "f3"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::FindPrevious,
+        id: "find_previous",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-shift-g", "shift-f3"],
+        context: None,
+    },
 ];
 
 pub(crate) fn shortcut_definitions() -> &'static [ShortcutDefinition] {
@@ -803,6 +839,10 @@ fn key_binding_for(
         ShortcutCommand::DismissTransientUi => KeyBinding::new(key, DismissTransientUi, context),
         ShortcutCommand::ToggleViewMode => KeyBinding::new(key, ToggleViewMode, context),
         ShortcutCommand::ToggleWorkspace => KeyBinding::new(key, ToggleWorkspace, context),
+        ShortcutCommand::FindInDocument => KeyBinding::new(key, FindInDocument, context),
+        ShortcutCommand::FindAndReplace => KeyBinding::new(key, FindAndReplace, context),
+        ShortcutCommand::FindNext => KeyBinding::new(key, FindNext, context),
+        ShortcutCommand::FindPrevious => KeyBinding::new(key, FindPrevious, context),
     }
 }
 

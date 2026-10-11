@@ -253,10 +253,14 @@ impl Editor {
     pub(super) fn on_dismiss_transient_ui(
         &mut self,
         _: &DismissTransientUi,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let had_overlay = self.context_menu.is_some() || self.table_insert_dialog.is_some();
         self.dismiss_contextual_overlays(cx);
+        if !had_overlay {
+            self.close_find_bar(window, cx);
+        }
     }
 
     pub(super) fn on_context_menu_insert_hover(

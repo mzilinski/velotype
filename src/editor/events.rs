@@ -1574,6 +1574,10 @@ impl Editor {
             return;
         }
 
+        if matches!(event, BlockEvent::Changed) && self.find.is_some() {
+            self.refresh_find_matches(cx);
+        }
+
         if let BlockEvent::RequestReplaceCrossBlockSelection {
             text,
             selected_range_relative,
