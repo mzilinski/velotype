@@ -6,6 +6,7 @@ pub(crate) mod latex;
 pub(crate) mod markdown;
 pub(crate) mod mermaid;
 pub(crate) mod single_line_input;
+pub(crate) mod svg_cache;
 pub(crate) mod switch;
 
 pub use crate::editor::Editor;
