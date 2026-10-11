@@ -170,9 +170,29 @@ impl Editor {
         cx.notify();
     }
 
-    fn select_outline_node(&mut self, id: String, cx: &mut Context<Self>) {
+    fn select_outline_node(&mut self, id: String, line: usize, cx: &mut Context<Self>) {
         self.workspace.selected = Some(WorkspaceSelection::Outline(id));
+        self.jump_to_source_line(line, cx);
         cx.notify();
+    }
+
+    /// Focuses the block that renders `line` of the serialized document and
+    /// scrolls it into view, placing the caret at the start of its content.
+    pub(super) fn jump_to_source_line(&mut self, line: usize, cx: &mut Context<Self>) -> bool {
+        let source = self.current_document_source(cx);
+        let Some(offset) = source_line_start(&source, line) else {
+            return false;
+        };
+        let mappings = self.build_source_target_mappings(cx);
+        let Some(endpoint) = self.endpoint_for_source_offset(offset, &mappings, cx) else {
+            return false;
+        };
+        let Some(block) = self.focusable_entity_by_id(endpoint.entity_id) else {
+            return false;
+        };
+        self.cross_block_selection = None;
+        self.focus_block_range(&block, endpoint.offset..endpoint.offset, cx);
+        true
     }
 
     fn open_workspace_file(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
@@ -504,7 +524,9 @@ impl Editor {
                     WorkspaceTreeKind::MarkdownFile(path) => {
                         editor.open_workspace_file(path, window, cx);
                     }
-                    WorkspaceTreeKind::Heading { .. } => editor.select_outline_node(node_id, cx),
+                    WorkspaceTreeKind::Heading { line, .. } => {
+                        editor.select_outline_node(node_id, line, cx)
+                    }
                 });
             })
             .into_any_element()
@@ -599,6 +621,18 @@ fn collect_node_ids(nodes: &[WorkspaceTreeNode], ids: &mut HashSet<String>) {
 
 fn is_outline_node_id(id: &str) -> bool {
     id.starts_with("outline:")
+}
+
+/// Byte offset where `line` starts, counting lines like [`str::lines`].
+fn source_line_start(source: &str, line: usize) -> Option<usize> {
+    if line == 0 {
+        return Some(0);
+    }
+    source
+        .match_indices('\n')
+        .nth(line - 1)
+        .map(|(index, _)| index + 1)
+        .filter(|offset| *offset <= source.len())
 }
 
 fn build_outline_tree(markdown: &str) -> Vec<WorkspaceTreeNode> {

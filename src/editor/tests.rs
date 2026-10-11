@@ -3478,3 +3478,31 @@ async fn toggle_view_mode_preserves_callout_table_cell_position(cx: &mut TestApp
         assert_eq!(editor.pending_focus, Some(restored_cell.entity_id()));
     });
 }
+
+#[gpui::test]
+async fn outline_jump_focuses_heading_block_for_source_line(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+    let markdown = "# One\n\nintro text\n\n## Two\n\nmore text\n\n### Three".to_string();
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    for (line, expected) in [(0, "One"), (4, "Two"), (8, "Three")] {
+        editor.update(cx, |editor, cx| {
+            assert!(editor.jump_to_source_line(line, cx));
+            let active = editor.active_entity_id.expect("active block");
+            let block = editor
+                .focusable_entity_by_id(active)
+                .expect("focused block");
+            let block = block.read(cx);
+            assert_eq!(block.display_text(), expected);
+            assert!(matches!(
+                block.kind(),
+                crate::components::BlockKind::Heading { .. }
+            ));
+            assert_eq!(block.selected_range, 0..0);
+        });
+    }
+
+    editor.update(cx, |editor, cx| {
+        assert!(!editor.jump_to_source_line(99, cx));
+    });
+}
