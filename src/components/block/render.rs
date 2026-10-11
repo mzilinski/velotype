@@ -11,12 +11,12 @@ const BLOCK_EDITOR_CONTEXT: &str = "BlockEditor";
 use super::element::{BlockTextElement, CodeLanguageInputElement};
 use super::{Block, BlockEvent, BlockKind, ImageResolvedSource, ImageRuntime};
 use crate::components::{
-    Editor, HtmlCssColor, HtmlDocument, HtmlNode, HtmlNodeKind, InlineScript, TableAxisHighlight,
-    TableAxisKind, TableAxisMarker, TableCellInlineImageSegment, TableColumnLayout, attr_value,
-    display_math_font_size, inline_math_font_size, parse_display_math_source,
-    parse_html_image_block, parse_mermaid_fence_source, parse_table_cell_inline_images,
-    render_display_math_svg, render_inline_math_svg, render_mermaid_svg_for_display,
-    resolve_image_source, style_for_node,
+    Editor, HtmlCssColor, HtmlDocument, HtmlImageSize, HtmlNode, HtmlNodeKind, InlineScript,
+    TableAxisHighlight, TableAxisKind, TableAxisMarker, TableCellInlineImageSegment,
+    TableColumnLayout, attr_value, display_math_font_size, inline_math_font_size,
+    parse_display_math_source, parse_html_image_block, parse_mermaid_fence_source,
+    parse_table_cell_inline_images, render_display_math_svg, render_inline_math_svg,
+    render_mermaid_svg_for_display, resolve_image_source, style_for_node,
 };
 use crate::fonts::FontSettings;
 use crate::i18n::{I18nManager, I18nStrings};
@@ -446,6 +446,28 @@ impl Block {
         theme: &Theme,
         strings: &I18nStrings,
     ) -> AnyElement {
+        self.render_sized_image_content(
+            runtime,
+            max_width,
+            max_height,
+            placeholder_height,
+            HtmlImageSize::default(),
+            theme,
+            strings,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_sized_image_content(
+        &self,
+        runtime: &ImageRuntime,
+        max_width: Length,
+        max_height: Pixels,
+        placeholder_height: Pixels,
+        size: HtmlImageSize,
+        theme: &Theme,
+        strings: &I18nStrings,
+    ) -> AnyElement {
         let c = &theme.colors;
         let d = &theme.dimensions;
         let t = &theme.typography;
@@ -457,31 +479,38 @@ impl Block {
         let runtime_for_fallback = runtime.clone();
         let runtime_for_loading = runtime.clone();
 
-        let image = match source {
+        let mut image = match source {
             ImageResolvedSource::Local(path) => img(path),
             ImageResolvedSource::Remote(uri) => img(uri),
+        };
+        if let Some(width) = size.width {
+            image = image.w(px(width));
         }
-        .max_w(max_width)
-        .max_h(max_height)
-        .object_fit(ObjectFit::Contain)
-        .with_fallback(move || {
-            render_image_placeholder(
-                &runtime_for_fallback,
-                max_width,
-                placeholder_height,
-                &placeholder_theme,
-                &placeholder_strings,
-            )
-        })
-        .with_loading(move || {
-            render_loading_placeholder(
-                &runtime_for_loading,
-                max_width,
-                placeholder_height,
-                &loading_theme,
-                &loading_strings,
-            )
-        });
+        if let Some(height) = size.height {
+            image = image.h(px(height));
+        }
+        let image = image
+            .max_w(max_width)
+            .max_h(max_height)
+            .object_fit(ObjectFit::Contain)
+            .with_fallback(move || {
+                render_image_placeholder(
+                    &runtime_for_fallback,
+                    max_width,
+                    placeholder_height,
+                    &placeholder_theme,
+                    &placeholder_strings,
+                )
+            })
+            .with_loading(move || {
+                render_loading_placeholder(
+                    &runtime_for_loading,
+                    max_width,
+                    placeholder_height,
+                    &loading_theme,
+                    &loading_strings,
+                )
+            });
 
         let mut container = div()
             .w_full()
@@ -1496,11 +1525,20 @@ impl Block {
             resolved_source: resolve_image_source(src, self.image_base_dir()),
         };
         let strings = cx.global::<I18nManager>().strings_arc();
-        let content = self.render_image_content(
+        let size = parsed_image
+            .as_ref()
+            .map(|image| HtmlImageSize::from_attrs(image.width, image.height, zoom))
+            .unwrap_or_default();
+        let mut max_height = theme.dimensions.image_root_max_height * zoom;
+        if let Some(height) = size.height {
+            max_height = max_height.max(height);
+        }
+        let content = self.render_sized_image_content(
             &runtime,
-            Length::Definite(relative(zoom)),
-            px(theme.dimensions.image_root_max_height * zoom),
+            Length::Definite(relative(size.max_width_fraction.unwrap_or(zoom))),
+            px(max_height),
             px(theme.dimensions.image_root_placeholder_height * zoom),
+            size,
             theme,
             &strings,
         );

@@ -2,9 +2,8 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
-use gpui::{SharedUri, http_client::Uri};
+use gpui::SharedUri;
 
 use crate::net;
 
@@ -104,15 +103,37 @@ pub(crate) fn resolve_image_source(source: &str, base_dir: Option<&Path>) -> Ima
         return ImageResolvedSource::Remote(SharedUri::from(source.to_string()));
     }
 
-    let path = Path::new(source);
-    if path.is_absolute() {
-        return ImageResolvedSource::Local(path.to_path_buf());
-    }
+    ImageResolvedSource::Local(resolve_local_image_path(source, base_dir))
+}
 
-    let resolved = base_dir
-        .map(|dir| dir.join(path))
-        .unwrap_or_else(|| path.to_path_buf());
-    ImageResolvedSource::Local(resolved)
+/// Resolves a local image destination against the document folder.
+///
+/// Destinations written by Typora (and by Velotype's own paste/drop) encode
+/// spaces as `%20`. When the destination contains a percent escape and the
+/// literal path does not exist, the percent-decoded path is used instead.
+pub(crate) fn resolve_local_image_path(source: &str, base_dir: Option<&Path>) -> PathBuf {
+    let resolve = |source: &str| {
+        let path = Path::new(source);
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            base_dir
+                .map(|dir| dir.join(path))
+                .unwrap_or_else(|| path.to_path_buf())
+        }
+    };
+
+    let literal = resolve(source);
+    if source.contains('%')
+        && !literal.exists()
+        && let Some(decoded) = percent_decode(source)
+    {
+        let decoded = resolve(&decoded);
+        if decoded.exists() {
+            return decoded;
+        }
+    }
+    literal
 }
 
 pub(crate) fn parse_standalone_image(markdown: &str) -> Option<ImageSyntax> {
@@ -645,16 +666,35 @@ fn find_open_title_quote(input: &str, close_quote: usize) -> Option<usize> {
     })
 }
 
+/// Decodes `%XX` escapes; `None` for malformed escapes or non-UTF-8 output.
+fn percent_decode(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = value.get(index + 1..index + 3)?;
+            decoded.push(u8::from_str_radix(hex, 16).ok()?);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8(decoded).ok()
+}
+
 fn normalize_image_source(source: &str) -> String {
     let source = unescape_ascii_punctuation(source);
-    if source.starts_with('<')
-        && source.ends_with('>')
-        && Uri::from_str(&source[1..source.len() - 1]).is_ok()
-    {
-        source[1..source.len() - 1].to_string()
-    } else {
-        source
+    if source.len() >= 2 && source.starts_with('<') && source.ends_with('>') {
+        let inner = &source[1..source.len() - 1];
+        // CommonMark `<...>` destinations may contain spaces, e.g. local
+        // paths like `<./my image.png>`, so they are not required to be URIs.
+        if !inner.contains(['<', '>', '\n']) {
+            return inner.to_string();
+        }
     }
+    source
 }
 
 fn unescape_ascii_punctuation(input: &str) -> String {
@@ -997,6 +1037,37 @@ mod tests {
             }
             other => panic!("expected remote source, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_angle_bracket_destinations_with_spaces() {
+        let parsed = parse_standalone_image("![alt](<./my shots/a b.png>)").expect("image syntax");
+        assert_eq!(
+            parsed.target,
+            ImageTarget::Direct {
+                src: "./my shots/a b.png".to_string(),
+                title: None,
+            }
+        );
+    }
+
+    #[test]
+    fn resolves_percent_encoded_local_sources_when_literal_path_is_missing() {
+        let root =
+            std::env::temp_dir().join(format!("velotype-image-decode-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("my shots")).expect("create temp dir");
+        std::fs::write(root.join("my shots").join("a b.png"), b"png").expect("write image");
+
+        assert_eq!(
+            resolve_image_source("./my%20shots/a%20b.png", Some(&root)),
+            ImageResolvedSource::Local(root.join("./my shots/a b.png"))
+        );
+        // Missing files keep the literal path so the placeholder shows it.
+        assert_eq!(
+            resolve_image_source("missing%20file.png", Some(&root)),
+            ImageResolvedSource::Local(root.join("missing%20file.png"))
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

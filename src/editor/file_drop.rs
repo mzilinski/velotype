@@ -1,8 +1,8 @@
-//! External Markdown file drops.
+//! External file drops.
 //!
 //! A tab-hosted editor asks its window to open every dropped Markdown file in a
 //! tab. A standalone editor replaces its document, prompting first when it has
-//! unsaved changes.
+//! unsaved changes. Dropped image files are inserted as image blocks.
 
 use std::path::{Path, PathBuf};
 
@@ -35,6 +35,13 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let image_paths: Vec<PathBuf> = paths
+            .paths()
+            .iter()
+            .filter(|path| super::images::is_droppable_image_path(path))
+            .cloned()
+            .collect();
+
         if self.is_tab_hosted() {
             let markdown_paths: Vec<PathBuf> = paths
                 .paths()
@@ -42,7 +49,13 @@ impl Editor {
                 .filter(|path| Self::is_markdown_file_path(path))
                 .cloned()
                 .collect();
+            if !image_paths.is_empty() {
+                self.insert_dropped_images(&image_paths, window, cx);
+            }
             if markdown_paths.is_empty() {
+                if !image_paths.is_empty() {
+                    return;
+                }
                 let strings = cx.global::<I18nManager>().strings().clone();
                 self.show_drop_open_failed_prompt(
                     strings.drop_no_markdown_file_message,
@@ -58,7 +71,13 @@ impl Editor {
             return;
         }
 
+        // A standalone window replaces its document with a dropped Markdown
+        // file, so images are only inserted when no Markdown file came along.
         let Some(path) = Self::first_dropped_markdown_path(paths.paths()) else {
+            if !image_paths.is_empty() {
+                self.insert_dropped_images(&image_paths, window, cx);
+                return;
+            }
             let strings = cx.global::<I18nManager>().strings().clone();
             self.show_drop_open_failed_prompt(strings.drop_no_markdown_file_message, window, cx);
             return;
