@@ -11,11 +11,12 @@ use pulldown_cmark::{
 };
 
 use crate::components::{
-    inline_math_font_size, is_mermaid_closing_fence, parse_display_math_source,
-    parse_html_image_block, parse_mermaid_fence_source, parse_mermaid_fence_start,
-    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter,
-    wiki_link_file_target,
+    CodeHighlightClass, code_highlight_color, highlight_code_block, inline_math_font_size,
+    is_mermaid_closing_fence, parse_display_math_source, parse_html_image_block,
+    parse_mermaid_fence_source, parse_mermaid_fence_start, render_latex_to_svg,
+    render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter, wiki_link_file_target,
 };
+use crate::export::options::PdfExportOptions;
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings};
 use crate::net;
 use crate::theme::{FontWeightDef, Theme};
@@ -52,13 +53,14 @@ pub(crate) fn render_chromium_pdf_html_with_base_dir_and_fonts(
     title: &str,
     base_dir: Option<&Path>,
     fonts: &FontSettings,
+    options: &PdfExportOptions,
 ) -> String {
     render_html_document(
         markdown,
         theme,
         title,
         base_dir,
-        &chromium_pdf_theme_css(theme, fonts),
+        &chromium_pdf_theme_css(theme, fonts, options),
     )
 }
 
@@ -107,35 +109,136 @@ fn render_browser_html_body(markdown: &str, theme: &Theme, base_dir: Option<&Pat
     let parser = Parser::new_ext(&rewritten, markdown_options())
         .map(|event| rewrite_local_image_event(event, base_dir))
         .map(rewrite_wiki_link_event);
+    let events = TextMergeStream::new(parser).collect::<Vec<_>>();
+    let events = highlight_code_blocks(events);
+    let (events, headings) = assign_heading_ids(events);
     let mut body = String::new();
-    html::push_html(&mut body, insert_table_of_contents(parser).into_iter());
+    html::push_html(
+        &mut body,
+        insert_table_of_contents(events, &headings).into_iter(),
+    );
     body
 }
 
-/// Replaces standalone `[TOC]` paragraphs with a nested list of links to the
-/// document's headings. Headings only receive slug ids when a table of
-/// contents is present, so exports without one keep their exact markup.
-fn insert_table_of_contents<'a>(events: impl Iterator<Item = Event<'a>>) -> Vec<Event<'a>> {
-    let mut events = TextMergeStream::new(events).collect::<Vec<_>>();
-    let toc_positions = events
-        .windows(3)
-        .enumerate()
-        .filter(|(_, window)| {
-            matches!(
-                window,
-                [
-                    Event::Start(Tag::Paragraph),
-                    Event::Text(text),
-                    Event::End(TagEnd::Paragraph),
-                ] if text.trim().eq_ignore_ascii_case("[toc]")
-            )
-        })
-        .map(|(index, _)| index)
-        .collect::<Vec<_>>();
-    if toc_positions.is_empty() {
-        return events;
+/// Replaces fenced code blocks in a supported language with markup whose
+/// tokens carry `vlt-syn-*` classes coloured by the theme. Unknown languages,
+/// plain-text fences and builds without tree-sitter grammars keep
+/// pulldown-cmark's plain `<pre><code>` output.
+fn highlight_code_blocks(events: Vec<Event<'_>>) -> Vec<Event<'_>> {
+    let mut output = Vec::with_capacity(events.len());
+    let mut events = events.into_iter();
+    while let Some(event) = events.next() {
+        let Event::Start(Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(info))) = event
+        else {
+            output.push(event);
+            continue;
+        };
+
+        let mut block = vec![Event::Start(Tag::CodeBlock(
+            pulldown_cmark::CodeBlockKind::Fenced(info.clone()),
+        ))];
+        let mut source = String::new();
+        for inner in events.by_ref() {
+            let is_end = matches!(inner, Event::End(TagEnd::CodeBlock));
+            if let Event::Text(text) = &inner {
+                source.push_str(text);
+            }
+            block.push(inner);
+            if is_end {
+                break;
+            }
+        }
+
+        let language = info.split(' ').next().unwrap_or_default();
+        match highlighted_code_block_html(language, &source) {
+            Some(html) => output.push(Event::Html(CowStr::from(html))),
+            None => output.extend(block),
+        }
+    }
+    output
+}
+
+fn highlighted_code_block_html(language: &str, source: &str) -> Option<String> {
+    if language.is_empty() {
+        return None;
+    }
+    let result = highlight_code_block(Some(language), source)?;
+    if result.spans.is_empty() {
+        return None;
     }
 
+    let mut html = format!("<pre><code class=\"language-{}\">", escape_html(language));
+    let mut cursor = 0usize;
+    for span in &result.spans {
+        let (Some(gap), Some(token)) = (
+            source.get(cursor..span.range.start),
+            source.get(span.range.clone()),
+        ) else {
+            continue;
+        };
+        html.push_str(&escape_html(gap));
+        html.push_str(&format!(
+            "<span class=\"vlt-syn-{}\">{}</span>",
+            syntax_class_name(span.class),
+            escape_html(token)
+        ));
+        cursor = span.range.end;
+    }
+    html.push_str(&escape_html(source.get(cursor..).unwrap_or_default()));
+    html.push_str("</code></pre>\n");
+    Some(html)
+}
+
+const SYNTAX_CLASSES: [CodeHighlightClass; 11] = [
+    CodeHighlightClass::Comment,
+    CodeHighlightClass::Keyword,
+    CodeHighlightClass::String,
+    CodeHighlightClass::Number,
+    CodeHighlightClass::Type,
+    CodeHighlightClass::Function,
+    CodeHighlightClass::Constant,
+    CodeHighlightClass::Variable,
+    CodeHighlightClass::Property,
+    CodeHighlightClass::Operator,
+    CodeHighlightClass::Punctuation,
+];
+
+fn syntax_class_name(class: CodeHighlightClass) -> &'static str {
+    match class {
+        CodeHighlightClass::Comment => "comment",
+        CodeHighlightClass::Keyword => "keyword",
+        CodeHighlightClass::String => "string",
+        CodeHighlightClass::Number => "number",
+        CodeHighlightClass::Type => "type",
+        CodeHighlightClass::Function => "function",
+        CodeHighlightClass::Constant => "constant",
+        CodeHighlightClass::Variable => "variable",
+        CodeHighlightClass::Property => "property",
+        CodeHighlightClass::Operator => "operator",
+        CodeHighlightClass::Punctuation => "punctuation",
+    }
+}
+
+/// Token colours for highlighted code, taken from the same theme slots the
+/// editor uses for its code blocks.
+fn syntax_highlight_css(theme: &Theme) -> String {
+    let mut css = String::new();
+    for class in SYNTAX_CLASSES {
+        css.push_str(&format!(
+            ".vlt-syn-{} {{ color: {}; }}\n",
+            syntax_class_name(class),
+            css_color(code_highlight_color(&theme.colors, class))
+        ));
+    }
+    css
+}
+
+/// Heading level, plain text and the anchor id assigned to it.
+type HeadingAnchor = (u8, String, String);
+
+/// Gives every heading a GitHub-style slug id (duplicates get `-1`, `-2`, …)
+/// so in-document `[link](#heading)` references resolve in the export.
+fn assign_heading_ids(mut events: Vec<Event<'_>>) -> (Vec<Event<'_>>, Vec<HeadingAnchor>) {
     let mut headings = Vec::new();
     let mut used_slugs = HashMap::<String, usize>::new();
     for index in 0..events.len() {
@@ -164,8 +267,35 @@ fn insert_table_of_contents<'a>(events: impl Iterator<Item = Event<'a>>) -> Vec<
             headings.push((level, text, anchor));
         }
     }
+    (events, headings)
+}
 
-    let toc_html = table_of_contents_html(&headings);
+/// Replaces standalone `[TOC]` paragraphs with a nested list of links to the
+/// headings, reusing the ids from [`assign_heading_ids`].
+fn insert_table_of_contents<'a>(
+    mut events: Vec<Event<'a>>,
+    headings: &[HeadingAnchor],
+) -> Vec<Event<'a>> {
+    let toc_positions = events
+        .windows(3)
+        .enumerate()
+        .filter(|(_, window)| {
+            matches!(
+                window,
+                [
+                    Event::Start(Tag::Paragraph),
+                    Event::Text(text),
+                    Event::End(TagEnd::Paragraph),
+                ] if text.trim().eq_ignore_ascii_case("[toc]")
+            )
+        })
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    if toc_positions.is_empty() {
+        return events;
+    }
+
+    let toc_html = table_of_contents_html(headings);
     for position in toc_positions.into_iter().rev() {
         events.splice(
             position..position + 3,
@@ -188,17 +318,27 @@ fn unique_heading_slug(text: &str, used: &mut HashMap<String, usize>) -> String 
         slug.push_str("section");
     }
 
-    let count = used.entry(slug.clone()).or_insert(0);
-    let unique = if *count == 0 {
-        slug
-    } else {
-        format!("{slug}-{count}")
+    // `used` holds every emitted id, mapped to the next suffix to try when the
+    // same base slug comes up again. Checking emitted ids keeps a literal
+    // "Intro 1" heading from colliding with the second "Intro".
+    let mut suffix = used.get(&slug).copied().unwrap_or(0);
+    let unique = loop {
+        let candidate = if suffix == 0 {
+            slug.clone()
+        } else {
+            format!("{slug}-{suffix}")
+        };
+        if !used.contains_key(&candidate) {
+            break candidate;
+        }
+        suffix += 1;
     };
-    *count += 1;
+    used.insert(slug, suffix + 1);
+    used.entry(unique.clone()).or_insert(1);
     unique
 }
 
-fn table_of_contents_html(headings: &[(u8, String, String)]) -> String {
+fn table_of_contents_html(headings: &[HeadingAnchor]) -> String {
     let mut html = String::from("<nav class=\"vlt-toc\">\n");
     let base_level = headings.iter().map(|(level, ..)| *level).min().unwrap_or(1);
     let mut open_lists = 0usize;
@@ -894,7 +1034,7 @@ fn theme_css(theme: &Theme, fonts: &FontSettings) -> String {
     };
     let pre_overflow = "overflow: auto;";
     let media_overflow = "overflow-x: auto;";
-    format!(
+    let mut css = format!(
         r#":root {{
   color-scheme: {};
   --vlt-bg: {};
@@ -1106,22 +1246,25 @@ hr {{ border: 0; border-top: 1px solid; border-color: var(--vlt-border); }}
         d.code_bg_radius,
         media_overflow,
         media_overflow
-    )
+    );
+    css.push_str(&syntax_highlight_css(theme));
+    css
 }
 
-fn chromium_pdf_theme_css(theme: &Theme, fonts: &FontSettings) -> String {
+fn chromium_pdf_theme_css(
+    theme: &Theme,
+    fonts: &FontSettings,
+    options: &PdfExportOptions,
+) -> String {
     let mut css = theme_css(theme, fonts);
     css = css.replace(
         document_layout_css(),
         ".vlt-document {\n  width: auto;\n  max-width: none;\n  margin: 0;\n  padding: 0;\n}",
     );
+    css.push_str("\n\n");
+    css.push_str(&options.page_css());
     css.push_str(
         r#"
-
-@page {
-  size: A4;
-  margin: 15mm;
-}
 
 @media print {
   html,
@@ -1188,7 +1331,7 @@ fn contains_tibetan_text(text: &str) -> bool {
         .any(|ch| ('\u{0f00}'..='\u{0fff}').contains(&ch))
 }
 
-fn css_color(color: Hsla) -> String {
+pub(super) fn css_color(color: Hsla) -> String {
     let color = Rgba::from(color);
     format!(
         "rgba({},{},{},{:.3})",
@@ -1216,7 +1359,7 @@ fn css_font_weight(weight: &FontWeightDef) -> u16 {
     }
 }
 
-fn escape_html(input: &str) -> String {
+pub(super) fn escape_html(input: &str) -> String {
     let mut escaped = String::with_capacity(input.len());
     for ch in input.chars() {
         match ch {
@@ -1252,7 +1395,7 @@ mod tests {
         assert!(html.contains("<style>"));
         assert!(html.contains("--vlt-bg:"));
         assert!(html.contains("<main class=\"vlt-document\">"));
-        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("<h1 id=\"title\">Title</h1>"));
         assert!(html.contains("<p>text</p>"));
     }
 
@@ -1340,6 +1483,7 @@ mod tests {
             "Doc",
             None,
             &fonts,
+            &crate::export::PdfExportOptions::default(),
         );
 
         assert!(html.contains("color-scheme: light;"));
@@ -1425,7 +1569,7 @@ mod tests {
         let html = render_html("# A & B", &Theme::default_theme(), "A & <B>");
 
         assert!(html.contains("<title>A &amp; &lt;B&gt;</title>"));
-        assert!(html.contains("<h1>A &amp; B</h1>"));
+        assert!(html.contains("<h1 id=\"a--b\">A &amp; B</h1>"));
     }
 
     #[test]
@@ -1558,15 +1702,86 @@ mod tests {
     }
 
     #[test]
-    fn export_without_toc_keeps_plain_headings() {
+    fn export_without_toc_still_anchors_headings() {
         let html = render_html(
-            "# Intro\n\nText [toc] inline",
+            "# Intro\n\nText [toc] inline, see [setup](#setup-guide).\n\n## Setup `guide`",
             &Theme::default_theme(),
             "Doc",
         );
 
-        assert!(html.contains("<h1>Intro</h1>"));
+        assert!(html.contains("<h1 id=\"intro\">Intro</h1>"));
+        assert!(html.contains("<h2 id=\"setup-guide\">"));
+        assert!(html.contains("<a href=\"#setup-guide\">setup</a>"));
         assert!(html.contains("Text [toc] inline"));
+        assert!(!html.contains("vlt-toc"));
+    }
+
+    #[test]
+    fn heading_slugs_are_github_style_and_unique() {
+        let html = render_html(
+            "# Hello, World!\n\n# Hello World\n\n# Intro\n\n# Intro\n\n# Intro 1\n\n# Ünïcode Straße\n\n# ???",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<h1 id=\"hello-world\">"));
+        assert!(html.contains("<h1 id=\"hello-world-1\">"));
+        assert!(html.contains("<h1 id=\"intro\">"));
+        assert!(html.contains("<h1 id=\"intro-1\">Intro</h1>"));
+        assert!(html.contains("<h1 id=\"intro-1-1\">Intro 1</h1>"));
+        assert!(html.contains("<h1 id=\"ünïcode-straße\">"));
+        assert!(html.contains("<h1 id=\"section\">"));
+    }
+
+    #[cfg(all(feature = "code-highlight-core", feature = "code-highlight-official"))]
+    #[test]
+    fn exports_fenced_code_with_syntax_highlighting() {
+        let theme = Theme::default_theme();
+        let html = render_html(
+            "```rust\nfn main() { let s = \"<b>\"; }\n```",
+            &theme,
+            "Doc",
+        );
+
+        assert!(html.contains("<pre><code class=\"language-rust\">"));
+        assert!(html.contains("<span class=\"vlt-syn-keyword\">fn</span>"));
+        assert!(html.contains("<span class=\"vlt-syn-string\">&quot;&lt;b&gt;&quot;</span>"));
+        assert!(!html.contains("<b>"));
+        let keyword = super::css_color(theme.colors.code_syntax_keyword);
+        assert!(html.contains(&format!(".vlt-syn-keyword {{ color: {keyword}; }}")));
+    }
+
+    #[test]
+    fn unknown_or_plain_code_languages_stay_plain() {
+        let html = render_html(
+            "```klingon\nqapla' <x>\n```\n\n```text\nfn main() {}\n```\n\n```\nfn main() {}\n```",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(
+            html.contains(
+                "<pre><code class=\"language-klingon\">qapla&#39; &lt;x&gt;\n</code></pre>"
+            ) || html
+                .contains("<pre><code class=\"language-klingon\">qapla' &lt;x&gt;\n</code></pre>")
+        );
+        assert!(html.contains("<pre><code class=\"language-text\">fn main() {}\n</code></pre>"));
+        assert!(html.contains("<pre><code>fn main() {}\n</code></pre>"));
+        assert!(!html.contains("<span class=\"vlt-syn-"));
+    }
+
+    #[test]
+    fn highlighted_code_html_escapes_gaps_and_tokens() {
+        let Some(html) = super::highlighted_code_block_html("js", "a < b && c > \"d\";\n") else {
+            // Builds without grammars fall back to pulldown-cmark's output.
+            return;
+        };
+
+        assert!(html.starts_with("<pre><code class=\"language-js\">"));
+        assert!(html.ends_with("</code></pre>\n"));
+        assert!(!html.contains(" < "));
+        assert!(html.contains("&lt;"));
+        assert!(html.contains("&amp;&amp;"));
     }
 
     #[test]
@@ -1591,7 +1806,7 @@ mod tests {
 
         assert!(!html.contains("Secret"));
         assert!(!html.contains("<hr"));
-        assert!(html.contains("<h1>Body</h1>"));
+        assert!(html.contains("<h1 id=\"body\">Body</h1>"));
     }
 
     #[test]
@@ -1605,7 +1820,7 @@ mod tests {
         assert!(html.contains("<mark>marked <strong>bold</strong></mark>"));
         assert!(html.contains("<code>==code==</code>"));
         assert!(html.contains("x == y"));
-        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("<h1 id=\"title\">Title</h1>"));
         assert!(html.contains("mark { background-color: var(--vlt-highlight-bg);"));
     }
 

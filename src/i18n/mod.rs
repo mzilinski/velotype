@@ -153,6 +153,21 @@ pub struct I18nStrings {
     pub add_theme_config_prompt: String,
     /// Title of the open-file failure prompt.
     pub open_failed_title: String,
+    pub export_succeeded_title: String,
+    pub export_succeeded_message_template: String,
+    pub export_open_file: String,
+    pub export_close: String,
+    pub export_pdf_browser_missing_title: String,
+    pub export_pdf_browser_missing_message: String,
+    pub export_as_html_instead: String,
+    pub export_cancel: String,
+    pub preferences_nav_export: String,
+    pub preferences_pdf_paper_size: String,
+    pub preferences_pdf_orientation: String,
+    pub preferences_pdf_orientation_portrait: String,
+    pub preferences_pdf_orientation_landscape: String,
+    pub preferences_pdf_margin: String,
+    pub preferences_pdf_page_numbers: String,
     /// Title shown when a recent file path no longer exists.
     pub recent_file_missing_title: String,
     /// Message template for missing recent files. Supports `{path}`.
@@ -467,6 +482,21 @@ struct I18nStringsDe {
     add_language_config_prompt: Option<String>,
     add_theme_config_prompt: Option<String>,
     open_failed_title: Option<String>,
+    export_succeeded_title: Option<String>,
+    export_succeeded_message_template: Option<String>,
+    export_open_file: Option<String>,
+    export_close: Option<String>,
+    export_pdf_browser_missing_title: Option<String>,
+    export_pdf_browser_missing_message: Option<String>,
+    export_as_html_instead: Option<String>,
+    export_cancel: Option<String>,
+    preferences_nav_export: Option<String>,
+    preferences_pdf_paper_size: Option<String>,
+    preferences_pdf_orientation: Option<String>,
+    preferences_pdf_orientation_portrait: Option<String>,
+    preferences_pdf_orientation_landscape: Option<String>,
+    preferences_pdf_margin: Option<String>,
+    preferences_pdf_page_numbers: Option<String>,
     recent_file_missing_title: Option<String>,
     recent_file_missing_message_template: Option<String>,
     save_failed_title: Option<String>,
@@ -701,6 +731,21 @@ const I18N_STRING_KEYS: &[&str] = &[
     "add_language_config_prompt",
     "add_theme_config_prompt",
     "open_failed_title",
+    "export_succeeded_title",
+    "export_succeeded_message_template",
+    "export_open_file",
+    "export_close",
+    "export_pdf_browser_missing_title",
+    "export_pdf_browser_missing_message",
+    "export_as_html_instead",
+    "export_cancel",
+    "preferences_nav_export",
+    "preferences_pdf_paper_size",
+    "preferences_pdf_orientation",
+    "preferences_pdf_orientation_portrait",
+    "preferences_pdf_orientation_landscape",
+    "preferences_pdf_margin",
+    "preferences_pdf_page_numbers",
     "recent_file_missing_title",
     "recent_file_missing_message_template",
     "save_failed_title",
@@ -1029,6 +1074,45 @@ impl I18nStringsDe {
                 .add_theme_config_prompt
                 .unwrap_or(defaults.add_theme_config_prompt),
             open_failed_title: self.open_failed_title.unwrap_or(defaults.open_failed_title),
+            export_succeeded_title: self
+                .export_succeeded_title
+                .unwrap_or(defaults.export_succeeded_title),
+            export_succeeded_message_template: self
+                .export_succeeded_message_template
+                .unwrap_or(defaults.export_succeeded_message_template),
+            export_open_file: self.export_open_file.unwrap_or(defaults.export_open_file),
+            export_close: self.export_close.unwrap_or(defaults.export_close),
+            export_pdf_browser_missing_title: self
+                .export_pdf_browser_missing_title
+                .unwrap_or(defaults.export_pdf_browser_missing_title),
+            export_pdf_browser_missing_message: self
+                .export_pdf_browser_missing_message
+                .unwrap_or(defaults.export_pdf_browser_missing_message),
+            export_as_html_instead: self
+                .export_as_html_instead
+                .unwrap_or(defaults.export_as_html_instead),
+            export_cancel: self.export_cancel.unwrap_or(defaults.export_cancel),
+            preferences_nav_export: self
+                .preferences_nav_export
+                .unwrap_or(defaults.preferences_nav_export),
+            preferences_pdf_paper_size: self
+                .preferences_pdf_paper_size
+                .unwrap_or(defaults.preferences_pdf_paper_size),
+            preferences_pdf_orientation: self
+                .preferences_pdf_orientation
+                .unwrap_or(defaults.preferences_pdf_orientation),
+            preferences_pdf_orientation_portrait: self
+                .preferences_pdf_orientation_portrait
+                .unwrap_or(defaults.preferences_pdf_orientation_portrait),
+            preferences_pdf_orientation_landscape: self
+                .preferences_pdf_orientation_landscape
+                .unwrap_or(defaults.preferences_pdf_orientation_landscape),
+            preferences_pdf_margin: self
+                .preferences_pdf_margin
+                .unwrap_or(defaults.preferences_pdf_margin),
+            preferences_pdf_page_numbers: self
+                .preferences_pdf_page_numbers
+                .unwrap_or(defaults.preferences_pdf_page_numbers),
             recent_file_missing_title: self
                 .recent_file_missing_title
                 .unwrap_or(defaults.recent_file_missing_title),
@@ -1563,6 +1647,21 @@ impl I18nStrings {
             add_language_config_prompt: "选择语言配置文件".into(),
             add_theme_config_prompt: "选择主题配置文件".into(),
             open_failed_title: "打开失败".into(),
+            export_succeeded_title: "导出完成".into(),
+            export_succeeded_message_template: "文档已保存到：\n{path}".into(),
+            export_open_file: "打开".into(),
+            export_close: "关闭".into(),
+            export_pdf_browser_missing_title: "PDF 导出需要浏览器".into(),
+            export_pdf_browser_missing_message: "Velotype 使用 Google Chrome、Microsoft Edge 或 Chromium 生成 PDF，但未找到其中任何一个。\n\n请安装其中一个浏览器，或将 CHROME 环境变量设置为浏览器可执行文件的路径，然后重试。你也可以改为将文档导出为 HTML。".into(),
+            export_as_html_instead: "导出为 HTML".into(),
+            export_cancel: "取消".into(),
+            preferences_nav_export: "导出".into(),
+            preferences_pdf_paper_size: "PDF 纸张大小".into(),
+            preferences_pdf_orientation: "方向".into(),
+            preferences_pdf_orientation_portrait: "纵向".into(),
+            preferences_pdf_orientation_landscape: "横向".into(),
+            preferences_pdf_margin: "页边距".into(),
+            preferences_pdf_page_numbers: "在页脚显示页码".into(),
             recent_file_missing_title: "最近文件不存在".into(),
             recent_file_missing_message_template: "此最近文件已经不存在，已从记录中移除：\n{path}"
                 .into(),
@@ -1815,6 +1914,21 @@ impl I18nStrings {
             add_language_config_prompt: "Choose Language Config".into(),
             add_theme_config_prompt: "Choose Theme Config".into(),
             open_failed_title: "Open Failed".into(),
+            export_succeeded_title: "Export Complete".into(),
+            export_succeeded_message_template: "The document was saved to:\n{path}".into(),
+            export_open_file: "Open".into(),
+            export_close: "Close".into(),
+            export_pdf_browser_missing_title: "PDF Export Needs a Browser".into(),
+            export_pdf_browser_missing_message: "Velotype prints PDFs with Google Chrome, Microsoft Edge or Chromium, but none of them was found.\n\nInstall one of these browsers, or set the CHROME environment variable to the path of the browser executable, and try again. You can export the document as HTML instead.".into(),
+            export_as_html_instead: "Export as HTML".into(),
+            export_cancel: "Cancel".into(),
+            preferences_nav_export: "Export".into(),
+            preferences_pdf_paper_size: "PDF Paper Size".into(),
+            preferences_pdf_orientation: "Orientation".into(),
+            preferences_pdf_orientation_portrait: "Portrait".into(),
+            preferences_pdf_orientation_landscape: "Landscape".into(),
+            preferences_pdf_margin: "Page Margin".into(),
+            preferences_pdf_page_numbers: "Page numbers in footer".into(),
             recent_file_missing_title: "Recent File Missing".into(),
             recent_file_missing_message_template:
                 "This recent file no longer exists and has been removed:\n{path}".into(),
@@ -2069,6 +2183,21 @@ impl I18nStrings {
             add_language_config_prompt: "Sprachdatei auswählen".into(),
             add_theme_config_prompt: "Design-Datei auswählen".into(),
             open_failed_title: "Öffnen fehlgeschlagen".into(),
+            export_succeeded_title: "Export abgeschlossen".into(),
+            export_succeeded_message_template: "Das Dokument wurde gespeichert unter:\n{path}".into(),
+            export_open_file: "Öffnen".into(),
+            export_close: "Schließen".into(),
+            export_pdf_browser_missing_title: "PDF-Export benötigt einen Browser".into(),
+            export_pdf_browser_missing_message: "Velotype erstellt PDFs mit Google Chrome, Microsoft Edge oder Chromium, aber keiner dieser Browser wurde gefunden.\n\nInstallieren Sie einen dieser Browser oder setzen Sie die Umgebungsvariable CHROME auf den Pfad der Browser-Programmdatei und versuchen Sie es erneut. Sie können das Dokument stattdessen als HTML exportieren.".into(),
+            export_as_html_instead: "Als HTML exportieren".into(),
+            export_cancel: "Abbrechen".into(),
+            preferences_nav_export: "Export".into(),
+            preferences_pdf_paper_size: "PDF-Papierformat".into(),
+            preferences_pdf_orientation: "Ausrichtung".into(),
+            preferences_pdf_orientation_portrait: "Hochformat".into(),
+            preferences_pdf_orientation_landscape: "Querformat".into(),
+            preferences_pdf_margin: "Seitenrand".into(),
+            preferences_pdf_page_numbers: "Seitenzahlen in der Fußzeile".into(),
             recent_file_missing_title: "Datei nicht gefunden".into(),
             recent_file_missing_message_template:
                 "Diese zuletzt geöffnete Datei existiert nicht mehr und wurde aus der Liste entfernt:\n{path}"

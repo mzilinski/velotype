@@ -8,7 +8,8 @@ use futures::channel::oneshot;
 use gpui::*;
 
 use super::Editor;
-use crate::export::{self as document_export, ExportFormat};
+use crate::config::read_app_preferences;
+use crate::export::{self as document_export, ExportFormat, PdfExportOptions};
 use crate::fonts::FontSettings;
 use crate::i18n::I18nManager;
 use crate::theme::{Theme, ThemeManager};
@@ -51,6 +52,7 @@ impl Editor {
         title: &str,
         source_base_dir: Option<&Path>,
         fonts: &FontSettings,
+        pdf_options: &PdfExportOptions,
     ) -> anyhow::Result<Vec<u8>> {
         match format {
             ExportFormat::Html => Ok(document_export::render_html_with_base_dir_and_fonts(
@@ -67,6 +69,7 @@ impl Editor {
                 title,
                 source_base_dir,
                 fonts,
+                pdf_options,
             ),
         }
     }
@@ -79,9 +82,17 @@ impl Editor {
         path: &Path,
         source_base_dir: Option<&Path>,
         fonts: &FontSettings,
+        pdf_options: &PdfExportOptions,
     ) -> anyhow::Result<()> {
-        let bytes =
-            Self::render_export_bytes(format, markdown, theme, title, source_base_dir, fonts)?;
+        let bytes = Self::render_export_bytes(
+            format,
+            markdown,
+            theme,
+            title,
+            source_base_dir,
+            fonts,
+            pdf_options,
+        )?;
         std::fs::write(path, bytes).with_context(|| format!("failed to write '{}'", path.display()))
     }
 
@@ -105,6 +116,7 @@ impl Editor {
             path,
             source_base_dir,
             &fonts,
+            &PdfExportOptions::default(),
         )
     }
 
@@ -114,10 +126,23 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // Check for a browser before the save dialog so users without one are
+        // not asked for a file name only to see the export fail afterwards.
+        if format == ExportFormat::Pdf && document_export::find_chromium_executable().is_none() {
+            self.show_pdf_browser_missing_prompt(window, cx);
+            return;
+        }
+
         let markdown = self.serialized_document_text(cx);
         let theme = cx.global::<ThemeManager>().current().clone();
         let title = self.export_title();
         let fonts = FontSettings::current(cx);
+        let pdf_options = match format {
+            ExportFormat::Pdf => read_app_preferences()
+                .map(|preferences| preferences.pdf_export)
+                .unwrap_or_default(),
+            ExportFormat::Html => PdfExportOptions::default(),
+        };
         let source_base_dir = self
             .file_path
             .as_ref()
@@ -148,6 +173,7 @@ impl Editor {
             }
 
             let (sender, receiver) = oneshot::channel();
+            let output_path = path.clone();
             let spawn_result = thread::Builder::new()
                 .name("velotype-export".to_string())
                 .spawn(move || {
@@ -159,6 +185,7 @@ impl Editor {
                         &path,
                         source_base_dir.as_deref(),
                         &fonts,
+                        &pdf_options,
                     )
                     .map_err(|err| err.to_string());
                     let _ = sender.send(result);
@@ -178,17 +205,78 @@ impl Editor {
             let result = receiver
                 .await
                 .unwrap_or_else(|_| Err("export task stopped before reporting a result".into()));
-            if let Err(detail) = result {
-                let _ = cx.update_window(
-                    window_handle,
-                    move |_view: AnyView, window: &mut Window, cx: &mut App| {
-                        show_export_error(window, cx, &detail);
-                    },
-                );
-            }
+            let _ = cx.update_window(
+                window_handle,
+                move |_view: AnyView, window: &mut Window, cx: &mut App| match result {
+                    Ok(()) => show_export_succeeded(window, cx, output_path),
+                    Err(detail) => show_export_error(window, cx, &detail),
+                },
+            );
         })
         .detach();
     }
+
+    /// Explains that PDF export needs a Chromium-family browser and offers an
+    /// HTML export instead.
+    fn show_pdf_browser_missing_prompt(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let strings = cx.global::<I18nManager>().strings().clone();
+        let buttons = [
+            strings.export_as_html_instead.as_str(),
+            strings.export_cancel.as_str(),
+        ];
+        let prompt = window.prompt(
+            PromptLevel::Warning,
+            &strings.export_pdf_browser_missing_title,
+            Some(&strings.export_pdf_browser_missing_message),
+            &buttons,
+            cx,
+        );
+        let window_handle = window.window_handle();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            if prompt.await != Ok(0) {
+                return;
+            }
+            let _ = cx.update_window(
+                window_handle,
+                move |_view: AnyView, window: &mut Window, cx: &mut App| {
+                    let _ = this.update(cx, |editor, cx| {
+                        editor.export_document_via_prompt(ExportFormat::Html, window, cx);
+                    });
+                },
+            );
+        })
+        .detach();
+    }
+}
+
+/// Confirms a finished export and offers to open the file with the system's
+/// default application.
+fn show_export_succeeded(window: &mut Window, cx: &mut App, path: PathBuf) {
+    let strings = cx.global::<I18nManager>().strings().clone();
+    let detail = strings
+        .export_succeeded_message_template
+        .replace("{path}", &path.display().to_string());
+    let buttons = [
+        strings.export_open_file.as_str(),
+        strings.export_close.as_str(),
+    ];
+    let prompt = window.prompt(
+        PromptLevel::Info,
+        &strings.export_succeeded_title,
+        Some(&detail),
+        &buttons,
+        cx,
+    );
+    let window_handle = window.window_handle();
+    cx.spawn(async move |cx| {
+        if prompt.await != Ok(0) {
+            return;
+        }
+        let _ = cx.update_window(window_handle, move |_view: AnyView, _window, cx| {
+            cx.open_with_system(&path);
+        });
+    })
+    .detach();
 }
 
 fn show_export_error(window: &mut Window, cx: &mut App, detail: &str) {

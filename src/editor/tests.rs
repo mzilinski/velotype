@@ -516,7 +516,7 @@ async fn export_html_writes_rendered_document_without_changing_editor_state(
     });
 
     let html = fs::read_to_string(&export_path).expect("read exported html");
-    assert!(html.contains("<h1>Title</h1>"));
+    assert!(html.contains("<h1 id=\"title\">Title</h1>"));
     assert!(html.contains("<p>body</p>"));
 }
 
@@ -552,7 +552,7 @@ async fn export_html_uses_source_mode_raw_text(cx: &mut TestAppContext) {
     });
 
     let html = fs::read_to_string(&export_path).expect("read exported html");
-    assert!(html.contains("<h1>Source</h1>"));
+    assert!(html.contains("<h1 id=\"source\">Source</h1>"));
     assert!(html.contains("class=\"vlt-comment\""));
     assert!(html.contains("&lt;strong&gt;visible&lt;/strong&gt;"));
 }
