@@ -3571,3 +3571,46 @@ async fn insert_table_row_and_column_in_the_middle(cx: &mut TestAppContext) {
         );
     });
 }
+
+#[gpui::test]
+async fn paragraph_and_format_menu_commands_reach_the_focused_block(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+
+    let (editor, cx) = cx.add_window_view(|_window, cx| {
+        Editor::from_markdown(cx, "first line\n\nsecond".to_string(), None)
+    });
+    activate_visual_window(cx);
+    editor.update(cx, |editor, cx| {
+        let block = editor.document.first_root().cloned().expect("first block");
+        editor.focus_block_range(&block, 0..5, cx);
+    });
+    cx.run_until_parked();
+
+    // Editor-level source command (Quote) through the in-window menu route.
+    cx.update(|window, cx| {
+        let weak = editor.downgrade();
+        crate::app_menu::dispatch_menu_action_for_editor(
+            &crate::components::ToggleQuote,
+            &weak,
+            window,
+            cx,
+        );
+    });
+    cx.run_until_parked();
+    let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
+    assert_eq!(source, "> first line\n\nsecond");
+
+    // Block-level style (Strike) on the restored selection "first".
+    cx.update(|window, cx| {
+        let weak = editor.downgrade();
+        crate::app_menu::dispatch_menu_action_for_editor(
+            &crate::components::StrikethroughSelection,
+            &weak,
+            window,
+            cx,
+        );
+    });
+    cx.run_until_parked();
+    let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
+    assert_eq!(source, "> ~~first~~ line\n\nsecond");
+}

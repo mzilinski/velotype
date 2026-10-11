@@ -2054,6 +2054,18 @@ impl Render for Editor {
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Undo>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Redo>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<BoldSelection>))
+            .capture_action(cx.listener(
+                Self::swallow_edit_when_read_only::<crate::components::StrikethroughSelection>,
+            ))
+            .capture_action(cx.listener(
+                Self::swallow_edit_when_read_only::<crate::components::HighlightSelection>,
+            ))
+            .capture_action(cx.listener(
+                Self::swallow_edit_when_read_only::<crate::components::SuperscriptSelection>,
+            ))
+            .capture_action(cx.listener(
+                Self::swallow_edit_when_read_only::<crate::components::SubscriptSelection>,
+            ))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<ItalicSelection>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<UnderlineSelection>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<CodeSelection>))
@@ -2086,6 +2098,26 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_and_replace))
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
+            .on_action(cx.listener(Self::on_increase_heading_level))
+            .on_action(cx.listener(Self::on_decrease_heading_level))
+            .on_action(cx.listener(Self::on_toggle_quote))
+            .on_action(cx.listener(Self::on_toggle_ordered_list))
+            .on_action(cx.listener(Self::on_toggle_bullet_list))
+            .on_action(cx.listener(Self::on_toggle_task_list))
+            .on_action(cx.listener(Self::on_toggle_task_status))
+            .on_action(cx.listener(Self::on_insert_table))
+            .on_action(cx.listener(Self::on_insert_code_block))
+            .on_action(cx.listener(Self::on_insert_math_block))
+            .on_action(cx.listener(Self::on_insert_horizontal_rule))
+            .on_action(cx.listener(Self::on_insert_table_of_contents))
+            .on_action(cx.listener(Self::on_insert_link_reference))
+            .on_action(cx.listener(Self::on_insert_footnote))
+            .on_action(cx.listener(Self::on_insert_front_matter))
+            .on_action(cx.listener(Self::on_insert_callout))
+            .on_action(cx.listener(Self::on_inline_math_selection))
+            .on_action(cx.listener(Self::on_comment_selection))
+            .on_action(cx.listener(Self::on_insert_link))
+            .on_action(cx.listener(Self::on_clear_format))
             .on_action(cx.listener(Self::on_open_folder))
             .on_action(cx.listener(Self::on_close_folder))
             .on_action(cx.listener(Self::on_quick_open))

@@ -21,6 +21,9 @@ use crate::components::{
     SetHeading5, SetHeading6, SetParagraph, UnderlineSelection, WordDeleteBack, WordDeleteForward,
     WordMoveLeft, WordMoveRight, WordSelectLeft, WordSelectRight,
 };
+use crate::components::{
+    HighlightSelection, StrikethroughSelection, SubscriptSelection, SuperscriptSelection,
+};
 
 impl Block {
     fn pasted_image_source_from_clipboard(item: &ClipboardItem) -> Option<PastedImageSource> {
@@ -1731,6 +1734,42 @@ impl Block {
         cx: &mut Context<Self>,
     ) {
         self.toggle_inline_format(InlineFormat::Code, cx);
+    }
+
+    pub(crate) fn on_strikethrough_selection(
+        &mut self,
+        _: &StrikethroughSelection,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_inline_format(InlineFormat::Strikethrough, cx);
+    }
+
+    pub(crate) fn on_highlight_selection(
+        &mut self,
+        _: &HighlightSelection,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_inline_format(InlineFormat::Highlight, cx);
+    }
+
+    pub(crate) fn on_superscript_selection(
+        &mut self,
+        _: &SuperscriptSelection,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_inline_format(InlineFormat::Superscript, cx);
+    }
+
+    pub(crate) fn on_subscript_selection(
+        &mut self,
+        _: &SubscriptSelection,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_inline_format(InlineFormat::Subscript, cx);
     }
 
     pub(crate) fn on_set_paragraph(

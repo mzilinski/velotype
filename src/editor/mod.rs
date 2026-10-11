@@ -33,6 +33,8 @@ mod file_drop;
 mod find;
 mod history;
 mod images;
+mod markdown_commands;
+mod paragraph_format;
 mod persistence;
 mod render;
 mod runtime_context;

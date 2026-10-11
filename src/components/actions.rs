@@ -49,6 +49,29 @@ actions!(
         ItalicSelection,
         UnderlineSelection,
         CodeSelection,
+        IncreaseHeadingLevel,
+        DecreaseHeadingLevel,
+        ToggleQuote,
+        ToggleOrderedList,
+        ToggleBulletList,
+        ToggleTaskList,
+        ToggleTaskStatus,
+        InsertTable,
+        InsertCodeBlock,
+        InsertMathBlock,
+        InsertHorizontalRule,
+        InsertTableOfContents,
+        InsertFootnote,
+        InsertLinkReference,
+        InsertFrontMatter,
+        StrikethroughSelection,
+        HighlightSelection,
+        SuperscriptSelection,
+        SubscriptSelection,
+        InlineMathSelection,
+        CommentSelection,
+        InsertLink,
+        ClearFormat,
         SetParagraph,
         SetHeading1,
         SetHeading2,
@@ -98,6 +121,15 @@ actions!(
         PrevTab,
     ]
 );
+
+/// Inserts a GitHub-style alert block (`> [!NOTE]` and friends).
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+#[action(namespace = velotype)]
+#[serde(deny_unknown_fields)]
+pub struct InsertCallout {
+    /// Alert type: note, tip, important, warning or caution.
+    pub kind: String,
+}
 
 /// Selects a theme from the app-level theme registry.
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
@@ -183,6 +215,29 @@ pub(crate) enum ShortcutCommand {
     ItalicSelection,
     UnderlineSelection,
     CodeSelection,
+    IncreaseHeadingLevel,
+    DecreaseHeadingLevel,
+    ToggleQuote,
+    ToggleOrderedList,
+    ToggleBulletList,
+    ToggleTaskList,
+    ToggleTaskStatus,
+    InsertTable,
+    InsertCodeBlock,
+    InsertMathBlock,
+    InsertHorizontalRule,
+    InsertTableOfContents,
+    InsertFootnote,
+    InsertLinkReference,
+    InsertFrontMatter,
+    StrikethroughSelection,
+    HighlightSelection,
+    SuperscriptSelection,
+    SubscriptSelection,
+    InlineMathSelection,
+    CommentSelection,
+    InsertLink,
+    ClearFormat,
     SetParagraph,
     SetHeading1,
     SetHeading2,
@@ -504,6 +559,167 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         id: "code_selection",
         category: ShortcutCategory::Formatting,
         default_keys: &["cmd-`", "ctrl-`"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::IncreaseHeadingLevel,
+        id: "increase_heading_level",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-=", "ctrl-="],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::DecreaseHeadingLevel,
+        id: "decrease_heading_level",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd--", "ctrl--"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleQuote,
+        id: "toggle_quote",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-q", "ctrl-shift-q"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleOrderedList,
+        id: "toggle_ordered_list",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-o", "ctrl-shift-["],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleBulletList,
+        id: "toggle_bullet_list",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-u", "ctrl-shift-]"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleTaskList,
+        id: "toggle_task_list",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-x", "ctrl-shift-x"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleTaskStatus,
+        id: "toggle_task_status",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertTable,
+        id: "insert_table",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-t"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertCodeBlock,
+        id: "insert_code_block",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-c", "ctrl-shift-k"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertMathBlock,
+        id: "insert_math_block",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-b", "ctrl-shift-m"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertHorizontalRule,
+        id: "insert_horizontal_rule",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertTableOfContents,
+        id: "insert_table_of_contents",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertFootnote,
+        id: "insert_footnote",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertLinkReference,
+        id: "insert_link_reference",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertFrontMatter,
+        id: "insert_front_matter",
+        category: ShortcutCategory::Block,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::StrikethroughSelection,
+        id: "strikethrough_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &["ctrl-shift-`", "alt-shift-5"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::HighlightSelection,
+        id: "highlight_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::SuperscriptSelection,
+        id: "superscript_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::SubscriptSelection,
+        id: "subscript_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InlineMathSelection,
+        id: "inline_math_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::CommentSelection,
+        id: "comment_selection",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertLink,
+        id: "insert_link",
+        category: ShortcutCategory::Formatting,
+        default_keys: &["cmd-k", "ctrl-k"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ClearFormat,
+        id: "clear_format",
+        category: ShortcutCategory::Formatting,
+        default_keys: &["cmd-\\", "ctrl-\\"],
         context: BLOCK_CONTEXT,
     },
     ShortcutDefinition {
@@ -957,6 +1173,41 @@ fn key_binding_for(
         ShortcutCommand::ItalicSelection => KeyBinding::new(key, ItalicSelection, context),
         ShortcutCommand::UnderlineSelection => KeyBinding::new(key, UnderlineSelection, context),
         ShortcutCommand::CodeSelection => KeyBinding::new(key, CodeSelection, context),
+        ShortcutCommand::IncreaseHeadingLevel => {
+            KeyBinding::new(key, IncreaseHeadingLevel, context)
+        }
+        ShortcutCommand::DecreaseHeadingLevel => {
+            KeyBinding::new(key, DecreaseHeadingLevel, context)
+        }
+        ShortcutCommand::ToggleQuote => KeyBinding::new(key, ToggleQuote, context),
+        ShortcutCommand::ToggleOrderedList => KeyBinding::new(key, ToggleOrderedList, context),
+        ShortcutCommand::ToggleBulletList => KeyBinding::new(key, ToggleBulletList, context),
+        ShortcutCommand::ToggleTaskList => KeyBinding::new(key, ToggleTaskList, context),
+        ShortcutCommand::ToggleTaskStatus => KeyBinding::new(key, ToggleTaskStatus, context),
+        ShortcutCommand::InsertTable => KeyBinding::new(key, InsertTable, context),
+        ShortcutCommand::InsertCodeBlock => KeyBinding::new(key, InsertCodeBlock, context),
+        ShortcutCommand::InsertMathBlock => KeyBinding::new(key, InsertMathBlock, context),
+        ShortcutCommand::InsertHorizontalRule => {
+            KeyBinding::new(key, InsertHorizontalRule, context)
+        }
+        ShortcutCommand::InsertTableOfContents => {
+            KeyBinding::new(key, InsertTableOfContents, context)
+        }
+        ShortcutCommand::InsertFootnote => KeyBinding::new(key, InsertFootnote, context),
+        ShortcutCommand::InsertLinkReference => KeyBinding::new(key, InsertLinkReference, context),
+        ShortcutCommand::InsertFrontMatter => KeyBinding::new(key, InsertFrontMatter, context),
+        ShortcutCommand::StrikethroughSelection => {
+            KeyBinding::new(key, StrikethroughSelection, context)
+        }
+        ShortcutCommand::HighlightSelection => KeyBinding::new(key, HighlightSelection, context),
+        ShortcutCommand::SuperscriptSelection => {
+            KeyBinding::new(key, SuperscriptSelection, context)
+        }
+        ShortcutCommand::SubscriptSelection => KeyBinding::new(key, SubscriptSelection, context),
+        ShortcutCommand::InlineMathSelection => KeyBinding::new(key, InlineMathSelection, context),
+        ShortcutCommand::CommentSelection => KeyBinding::new(key, CommentSelection, context),
+        ShortcutCommand::InsertLink => KeyBinding::new(key, InsertLink, context),
+        ShortcutCommand::ClearFormat => KeyBinding::new(key, ClearFormat, context),
         ShortcutCommand::SetParagraph => KeyBinding::new(key, SetParagraph, context),
         ShortcutCommand::SetHeading1 => KeyBinding::new(key, SetHeading1, context),
         ShortcutCommand::SetHeading2 => KeyBinding::new(key, SetHeading2, context),

@@ -1092,14 +1092,20 @@ impl InlineTextTree {
         self.toggle_style(range, StyleFlag::Underline)
     }
 
-    #[allow(dead_code)]
     pub fn toggle_strikethrough(&mut self, range: Range<usize>) -> bool {
         self.toggle_style(range, StyleFlag::Strikethrough)
     }
 
-    #[allow(dead_code)]
     pub fn toggle_highlight(&mut self, range: Range<usize>) -> bool {
         self.toggle_style(range, StyleFlag::Highlight)
+    }
+
+    pub fn toggle_superscript(&mut self, range: Range<usize>) -> bool {
+        self.toggle_style(range, StyleFlag::Superscript)
+    }
+
+    pub fn toggle_subscript(&mut self, range: Range<usize>) -> bool {
+        self.toggle_style(range, StyleFlag::Subscript)
     }
 
     pub fn toggle_code(&mut self, range: Range<usize>) -> bool {
