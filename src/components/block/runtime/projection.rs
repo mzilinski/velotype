@@ -113,6 +113,9 @@ impl ExpandedInlineKind {
 /// Display role of one projected inline segment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ExpandedInlineSegmentKind {
+    /// Block-level Markdown prefix such as `## ` shown before a focused
+    /// heading's text. It maps to clean offset 0 and has no fragment.
+    BlockPrefix,
     /// Text with no projected inline syntax.
     PlainText,
     /// Text carrying projected style.
@@ -253,18 +256,22 @@ impl ExpandedInlineProjection {
     // Projection is a temporary editing view over clean inline fragments. It
     // exposes delimiters only for the fragment touched by the caret, selection,
     // or IME marked range, while preserving maps back to clean text offsets.
+    // A `block_prefix` (e.g. `## ` for a focused heading) is shown first and
+    // always produces a projection.
     pub(super) fn build(
         fragments: &[InlineFragment],
         clean_selected: Range<usize>,
         clean_marked: Option<Range<usize>>,
+        block_prefix: Option<&str>,
     ) -> Option<Self> {
         let clean_len = fragments
             .iter()
             .map(|fragment| fragment.text.len())
             .sum::<usize>();
+        let prefix_len = block_prefix.map_or(0, str::len);
         let mut projected_fragments = Vec::new();
         let mut segments = Vec::new();
-        let mut clean_to_display_cursor = vec![0; clean_len + 1];
+        let mut clean_to_display_cursor = vec![prefix_len; clean_len + 1];
         let mut display_to_clean = vec![0];
         let mut link_runs = Vec::new();
         let mut footnote_runs = Vec::new();
@@ -272,6 +279,27 @@ impl ExpandedInlineProjection {
         let mut display_cursor = 0usize;
         let mut any_expanded = false;
         let mut fragment_index = 0usize;
+
+        if let Some(prefix) = block_prefix.filter(|prefix| !prefix.is_empty()) {
+            any_expanded = true;
+            projected_fragments.push(InlineFragment {
+                text: prefix.to_string(),
+                style: InlineStyle::default(),
+                html_style: None,
+                link: None,
+                footnote: None,
+                math: None,
+            });
+            segments.push(ExpandedInlineSegment {
+                display_range: 0..prefix_len,
+                clean_range: 0..0,
+                fragment_index: 0,
+                link_group: None,
+                kind: ExpandedInlineSegmentKind::BlockPrefix,
+            });
+            display_to_clean.extend(std::iter::repeat_n(0, prefix_len));
+            display_cursor = prefix_len;
+        }
 
         while fragment_index < fragments.len() {
             let fragment = &fragments[fragment_index];

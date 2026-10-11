@@ -849,12 +849,85 @@ impl Block {
             clean_selected.clone(),
             clean_marked.clone(),
         ));
+        let block_prefix = self.block_prefix();
         self.projection = ExpandedInlineProjection::build(
             &self.record.title.fragments,
             clean_selected,
             clean_marked,
+            block_prefix.as_deref(),
         );
         self.refresh_cached_display_text();
+    }
+
+    /// Markdown prefix revealed before a focused heading's text (`## `), so the
+    /// level can be read and edited in place like in Typora.
+    fn block_prefix(&self) -> Option<String> {
+        if self.is_table_cell() || !self.edit_mode.supports_inline_projection() {
+            return None;
+        }
+        match self.kind() {
+            BlockKind::Heading { level } => Some(format!("{} ", "#".repeat(level as usize))),
+            _ => None,
+        }
+    }
+
+    /// Display length of the revealed block prefix, if one is shown.
+    pub(crate) fn block_prefix_display_len(&self) -> Option<usize> {
+        self.projection_segments()
+            .first()
+            .filter(|segment| segment.kind == ExpandedInlineSegmentKind::BlockPrefix)
+            .map(|segment| segment.display_range.end)
+    }
+
+    /// Parses an edited block prefix: `#`..`######` followed by one space.
+    fn parse_heading_prefix(prefix: &str) -> Option<u8> {
+        let hashes = prefix.strip_suffix(' ')?;
+        (!hashes.is_empty() && hashes.len() <= 6 && hashes.bytes().all(|byte| byte == b'#'))
+            .then_some(hashes.len() as u8)
+    }
+
+    /// Applies an edit that starts inside the revealed block prefix. A still
+    /// valid prefix changes the heading level; anything else turns the block
+    /// into a paragraph whose text starts with the leftover prefix characters
+    /// (so `## ` + Backspace gives `##Title`, as in Typora).
+    fn apply_block_prefix_edit(
+        &mut self,
+        prefix_len: usize,
+        visible_range: Range<usize>,
+        new_text: &str,
+        cx: &mut Context<Self>,
+    ) {
+        let prefix = self.display_text()[..prefix_len].to_string();
+        let mut edited = String::with_capacity(prefix_len + new_text.len());
+        edited.push_str(&prefix[..visible_range.start]);
+        edited.push_str(new_text);
+        edited.push_str(&prefix[visible_range.end.min(prefix_len)..]);
+        let caret_in_edited = visible_range.start + new_text.len();
+
+        let mut title = self.record.title.clone();
+        if visible_range.end > prefix_len {
+            title.remove_visible_prefix(self.current_to_clean_offset(visible_range.end));
+        }
+
+        self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+        let caret = if let Some(level) = Self::parse_heading_prefix(&edited) {
+            self.record.kind = BlockKind::Heading { level };
+            0
+        } else {
+            self.record.kind = BlockKind::Paragraph;
+            if !edited.is_empty() {
+                title = title
+                    .replace_visible_range_with_link_references(
+                        0..0,
+                        &edited,
+                        InlineInsertionAttributes::default(),
+                        &self.link_reference_definitions,
+                    )
+                    .tree;
+            }
+            caret_in_edited
+        };
+        self.apply_title_edit(title, caret, None, None, None, false, cx);
     }
 
     fn projection_segments(&self) -> &[ExpandedInlineSegment] {
@@ -1632,6 +1705,13 @@ impl Block {
         cx: &mut Context<Self>,
     ) {
         if self.kind().is_separator() && !self.uses_raw_text_editing() {
+            return;
+        }
+
+        if let Some(prefix_len) = self.block_prefix_display_len()
+            && visible_range.start < prefix_len
+        {
+            self.apply_block_prefix_edit(prefix_len, visible_range, new_text, cx);
             return;
         }
 
