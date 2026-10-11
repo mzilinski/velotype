@@ -534,7 +534,7 @@ impl Render for EditorWindow {
 
 /// Compares two document paths, falling back to a literal comparison when
 /// either cannot be canonicalized (e.g. the file was deleted).
-fn same_file(left: &Path, right: &Path) -> bool {
+pub(super) fn same_file(left: &Path, right: &Path) -> bool {
     if left == right {
         return true;
     }

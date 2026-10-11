@@ -640,7 +640,7 @@ impl Editor {
     }
 }
 
-struct FindTooltip(SharedString);
+pub(super) struct FindTooltip(pub(super) SharedString);
 
 impl Render for FindTooltip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

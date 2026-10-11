@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use gpui::{ClickEvent, Context, Entity, TestAppContext, Window, WindowHandle};
+use gpui::{AppContext as _, ClickEvent, Context, Entity, TestAppContext, Window, WindowHandle};
 
 use super::{EditorTabEvent, EditorWindow};
 use crate::components::{CloseTab, CloseWindow, NewTab, NextTab, PrevTab};
@@ -629,4 +629,52 @@ async fn opened_folder_is_shared_by_all_tabs_and_new_ones(cx: &mut TestAppContex
     assert_eq!(host_folder, None);
     let editor = editor_at(&handle, 2, cx);
     cx.update(|cx| assert_eq!(editor.read(cx).workspace_root(), None));
+}
+
+#[gpui::test]
+async fn replace_in_files_reloads_clean_tabs_and_skips_dirty_ones(cx: &mut TestAppContext) {
+    use crate::editor::workspace_search::{SearchOptions, build_matcher};
+
+    init_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-tab-replace-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&root).unwrap();
+    let clean = root.join("clean.md");
+    let dirty = root.join("dirty.md");
+    let closed = root.join("closed.md");
+    for path in [&clean, &dirty, &closed] {
+        fs::write(path, "old text\n").unwrap();
+    }
+
+    let handle = open_tab_window(cx, "");
+    let paths = vec![clean.clone(), dirty.clone()];
+    with_host(&handle, cx, |host, window, cx| {
+        host.open_paths(paths, false, window, cx)
+    });
+    let clean_editor = editor_at(&handle, 0, cx);
+    let dirty_editor = editor_at(&handle, 1, cx);
+    dirty_editor.update(cx, |editor, _| editor.document_dirty = true);
+
+    let matcher = build_matcher("old", SearchOptions::default()).unwrap();
+    let root_for_replace = root.clone();
+    // Called the way the confirmation prompt calls it: outside a host update.
+    cx.update_window(handle.into(), |_root, window, cx| {
+        clean_editor.update(cx, |editor, cx| {
+            editor.replace_in_files(&root_for_replace, &matcher, "new", false, window, cx)
+        })
+    })
+    .unwrap();
+    cx.run_until_parked();
+
+    assert_eq!(fs::read_to_string(&clean).unwrap(), "new text\n");
+    assert_eq!(fs::read_to_string(&closed).unwrap(), "new text\n");
+    assert_eq!(
+        fs::read_to_string(&dirty).unwrap(),
+        "old text\n",
+        "dirty tab skipped"
+    );
+    cx.update(|cx| {
+        let source = clean_editor.update(cx, |editor, cx| editor.serialized_document_text(cx));
+        assert!(source.contains("new text"), "clean tab reloaded: {source}");
+    });
+    let _ = fs::remove_dir_all(root);
 }

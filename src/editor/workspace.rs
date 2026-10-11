@@ -55,6 +55,8 @@ pub(super) struct WorkspaceState {
     /// Folder opened with Open Folder; shared by all tabs of a window. Without
     /// one the workspace is the folder of the current file.
     pub(super) folder: Option<PathBuf>,
+    /// Options of Search in Folder, kept between palette openings.
+    pub(super) search_options: super::workspace_search::SearchOptions,
     root: Option<PathBuf>,
     file_tree: Option<WorkspaceTreeNode>,
     file_error: Option<String>,
@@ -695,13 +697,6 @@ impl Editor {
     }
 }
 
-fn is_markdown_file(path: &Path) -> bool {
-    path.extension().is_some_and(|extension| {
-        let extension = extension.to_string_lossy();
-        extension.eq_ignore_ascii_case("md") || extension.eq_ignore_ascii_case("markdown")
-    })
-}
-
 fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
     let mut children = Vec::new();
     for entry in
@@ -721,7 +716,7 @@ fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
             {
                 children.push(child);
             }
-        } else if file_type.is_file() && is_markdown_file(&entry_path) {
+        } else if file_type.is_file() && super::workspace_search::is_document_path(&entry_path) {
             children.push(WorkspaceTreeNode {
                 id: file_node_id(&entry_path),
                 label: file_label(&entry_path),
