@@ -132,6 +132,8 @@ pub struct I18nStrings {
     pub context_spelling_add: String,
     pub context_spelling_ignore: String,
     pub context_spelling_no_suggestions: String,
+    /// Error title when a spell-check dictionary cannot be downloaded.
+    pub spelling_download_failed_title: String,
     /// Native file-dialog prompt for opening Markdown files.
     pub open_markdown_files_prompt: String,
     /// Native file-dialog prompt for importing a language pack.
@@ -406,6 +408,7 @@ struct I18nStringsDe {
     context_spelling_add: Option<String>,
     context_spelling_ignore: Option<String>,
     context_spelling_no_suggestions: Option<String>,
+    spelling_download_failed_title: Option<String>,
     open_markdown_files_prompt: Option<String>,
     add_language_config_prompt: Option<String>,
     add_theme_config_prompt: Option<String>,
@@ -609,6 +612,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_add",
     "context_spelling_ignore",
     "context_spelling_no_suggestions",
+    "spelling_download_failed_title",
     "open_markdown_files_prompt",
     "add_language_config_prompt",
     "add_theme_config_prompt",
@@ -888,6 +892,9 @@ impl I18nStringsDe {
             context_spelling_no_suggestions: self
                 .context_spelling_no_suggestions
                 .unwrap_or(defaults.context_spelling_no_suggestions),
+            spelling_download_failed_title: self
+                .spelling_download_failed_title
+                .unwrap_or(defaults.spelling_download_failed_title),
             open_markdown_files_prompt: self
                 .open_markdown_files_prompt
                 .unwrap_or(defaults.open_markdown_files_prompt),
@@ -1365,6 +1372,7 @@ impl I18nStrings {
             context_spelling_add: "添加到词典".into(),
             context_spelling_ignore: "忽略".into(),
             context_spelling_no_suggestions: "无建议".into(),
+            spelling_download_failed_title: "词典下载失败".into(),
             open_markdown_files_prompt: "打开 Markdown 文件".into(),
             add_language_config_prompt: "选择语言配置文件".into(),
             add_theme_config_prompt: "选择主题配置文件".into(),
@@ -1586,6 +1594,7 @@ impl I18nStrings {
             context_spelling_add: "Add to Dictionary".into(),
             context_spelling_ignore: "Ignore".into(),
             context_spelling_no_suggestions: "No Suggestions".into(),
+            spelling_download_failed_title: "Dictionary Download Failed".into(),
             open_markdown_files_prompt: "Open Markdown Files".into(),
             add_language_config_prompt: "Choose Language Config".into(),
             add_theme_config_prompt: "Choose Theme Config".into(),

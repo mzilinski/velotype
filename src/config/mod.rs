@@ -47,6 +47,10 @@ impl VelotypeConfigDirs {
         self.root.join("languages")
     }
 
+    pub(crate) fn dictionaries_dir(&self) -> PathBuf {
+        self.root.join("dictionaries")
+    }
+
     pub(crate) fn themes_dir(&self) -> PathBuf {
         self.root.join("themes")
     }

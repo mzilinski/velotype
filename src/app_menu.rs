@@ -545,9 +545,24 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
     } else if action.as_any().is::<ToggleSpellcheck>() {
         toggle_writing_aid(cx, |writing| writing.spellcheck = !writing.spellcheck);
     } else if let Some(action) = action.as_any().downcast_ref::<SelectSpellcheckLanguage>() {
-        crate::spellcheck::SpellChecker::set_language(cx, &action.language);
-        let language = action.language.clone();
-        toggle_writing_aid(cx, move |writing| writing.spellcheck_language = language);
+        let failed_title = cx
+            .global::<I18nManager>()
+            .strings()
+            .spelling_download_failed_title
+            .clone();
+        crate::spellcheck::SpellChecker::toggle_language(
+            cx,
+            action.language.clone(),
+            move |cx, result| match result {
+                Ok(languages) => {
+                    let joined = languages.join(",");
+                    toggle_writing_aid(cx, move |writing| writing.spellcheck_language = joined);
+                }
+                Err(err) => {
+                    show_window_prompt(cx.active_window(), &failed_title, &err.to_string(), cx)
+                }
+            },
+        );
     } else if action.as_any().is::<ToggleReadOnly>() {
         let _ = with_active_editor(cx, |editor, _window, cx| editor.toggle_read_only(cx));
     } else if let Some(action) = action.as_any().downcast_ref::<SelectTheme>() {
@@ -677,8 +692,7 @@ fn build_menus(
     i18n_manager: &I18nManager,
     recent_files: &[PathBuf],
     writing: crate::config::WritingPreferences,
-    spell_languages: &[String],
-    spell_language: Option<&str>,
+    active_spell_languages: &[String],
 ) -> Vec<Menu> {
     let current_theme_id = theme_manager.current_theme_id().to_string();
     let current_language_id = i18n_manager.current_language_id().to_string();
@@ -891,13 +905,23 @@ fn build_menus(
                     ),
                     MenuItem::submenu(Menu {
                         name: strings.menu_spellcheck_language.clone().into(),
-                        items: spell_languages
+                        // Every downloadable dictionary; ✓ marks active ones and ⤓
+                        // ones that are downloaded when first picked.
+                        items: crate::spellcheck::hunspell::KNOWN_DICTIONARIES
                             .iter()
-                            .map(|language| {
+                            .map(|(tag, _, name)| {
+                                let active = active_spell_languages.iter().any(|lang| lang == tag);
+                                let label = if active {
+                                    format!("\u{2713} {name}")
+                                } else if crate::spellcheck::hunspell::is_installed(tag) {
+                                    name.to_string()
+                                } else {
+                                    format!("\u{2913} {name}")
+                                };
                                 MenuItem::action(
-                                    checked(language, spell_language == Some(language.as_str())),
+                                    label,
                                     SelectSpellcheckLanguage {
-                                        language: language.clone(),
+                                        language: tag.to_string(),
                                     },
                                 )
                             })
@@ -923,8 +947,7 @@ pub(crate) fn install_menus(cx: &mut App) {
         cx.global::<I18nManager>(),
         &recent_files,
         crate::config::EditorSettings::writing(cx),
-        &crate::spellcheck::SpellChecker::available_languages(),
-        crate::spellcheck::SpellChecker::language(cx).as_deref(),
+        &crate::spellcheck::SpellChecker::languages(cx),
     );
     cx.set_menus(menus);
 }
@@ -1247,14 +1270,7 @@ mod tests {
     fn build_menus_uses_english_fallback_by_default() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         let menu_names = menus
             .iter()
@@ -1336,14 +1352,7 @@ mod tests {
     fn build_menus_uses_chinese_language_when_selected() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::new_with_language_id("zh-CN");
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         #[cfg(target_os = "macos")]
         assert_eq!(
@@ -1399,14 +1408,7 @@ mod tests {
     fn export_menu_items_dispatch_export_actions() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         match &menus[EXPORT_IDX].items[0] {
             MenuItem::Action { action, .. } => {
@@ -1427,14 +1429,7 @@ mod tests {
     fn language_menu_items_dispatch_select_language_actions() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         match &menus[LANGUAGE_IDX].items[0] {
             MenuItem::Action { action, .. } => {
@@ -1452,14 +1447,7 @@ mod tests {
     fn recent_files_submenu_uses_empty_state_when_history_is_empty() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         // On macOS: File menu is index 1, Open Recent is item 3 within it.
         // On other platforms: File menu is index 0, Open Recent is item 3.
@@ -1493,7 +1481,6 @@ mod tests {
             &recent_files,
             Default::default(),
             &[],
-            None,
         );
 
         #[cfg(target_os = "macos")]
@@ -1541,14 +1528,7 @@ mod tests {
     fn config_import_items_are_bottom_menu_actions() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
 
         let language_items = &menus[LANGUAGE_IDX].items;
         assert!(matches!(
@@ -1596,14 +1576,7 @@ mod tests {
         let mut theme_manager = ThemeManager::default();
         assert!(theme_manager.set_theme_by_id("velotype-light"));
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let theme_items = &menus[THEME_IDX].items;
 
         assert_eq!(action_name(&theme_items[0]), "Velotype");
@@ -1624,14 +1597,7 @@ mod tests {
     fn help_menu_first_item_is_check_for_updates() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
         match &help_items[0] {
@@ -1648,14 +1614,7 @@ mod tests {
     fn help_menu_contains_update_and_about_only() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
         assert_eq!(help_items.len(), 3);
@@ -1672,14 +1631,7 @@ mod tests {
     fn help_menu_contains_cli_and_about_on_macos() {
         let theme_manager = ThemeManager::default();
         let i18n_manager = I18nManager::default();
-        let menus = build_menus(
-            &theme_manager,
-            &i18n_manager,
-            &[],
-            Default::default(),
-            &[],
-            None,
-        );
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
         // CheckForUpdates, separator, Install/Uninstall CLI, separator, About
