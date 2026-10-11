@@ -42,6 +42,15 @@ pub(crate) fn find_chromium_executable() -> Option<PathBuf> {
         })
 }
 
+/// The first file named `name` in a directory of `PATH`.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn find_in_path(name: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|dir| dir.join(name))
+        .find(|candidate| candidate.is_file())
+}
+
 fn extra_browser_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
     #[cfg(windows)]
@@ -80,7 +89,7 @@ fn extra_browser_paths() -> Vec<PathBuf> {
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         for name in ["brave-browser", "brave", "vivaldi", "vivaldi-stable"] {
-            if let Ok(path) = which::which(name) {
+            if let Some(path) = find_in_path(name) {
                 paths.push(path);
             }
         }
