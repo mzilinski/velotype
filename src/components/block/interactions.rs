@@ -80,7 +80,7 @@ impl Block {
         )
     }
 
-    fn paste_image_split(&self) -> (InlineTextTree, InlineTextTree) {
+    pub(crate) fn paste_image_split(&self) -> (InlineTextTree, InlineTextTree) {
         let clean_selected = self.selection_clean_range();
         let (leading, tail) = self.record.title.split_at(clean_selected.start);
         let (_, trailing) = tail.split_at(clean_selected.end.saturating_sub(clean_selected.start));

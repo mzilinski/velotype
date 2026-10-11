@@ -32,6 +32,7 @@ mod export;
 mod file_drop;
 mod find;
 mod history;
+mod images;
 mod persistence;
 mod render;
 mod runtime_context;

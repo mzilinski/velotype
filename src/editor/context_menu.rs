@@ -35,6 +35,11 @@ pub(super) enum ContextMenuState {
         position: Point<Pixels>,
         selection: TableAxisSelection,
     },
+    /// Zoom levels for a rendered standalone image block.
+    Image {
+        position: Point<Pixels>,
+        entity_id: EntityId,
+    },
 }
 
 /// State for the table insertion dialog opened from the context menu.
@@ -235,6 +240,16 @@ impl Editor {
         // Right-clicking inside a table cell, or any block where inserting a
         // table makes no sense (code, math, etc.), offers no insert menu.
         if self.table_cell_binding(entity_id).is_some() {
+            return;
+        }
+        if !self.read_only && self.zoomable_image(entity_id, cx).is_some() {
+            self.close_menu_bar(cx);
+            self.context_menu_submenu_close_task = None;
+            self.context_menu = Some(ContextMenuState::Image {
+                position: event.position,
+                entity_id,
+            });
+            cx.notify();
             return;
         }
         let allows_insert = self
@@ -909,6 +924,71 @@ impl Editor {
                 })
             }
             ContextMenuState::Spelling(_) => None,
+            ContextMenuState::Image {
+                position,
+                entity_id,
+            } => {
+                let entity_id = *entity_id;
+                let items = super::images::IMAGE_ZOOM_LEVELS.map(|percent| {
+                    div()
+                        .id(("image-zoom-menu-item", percent as usize))
+                        .h(px(d.menu_item_height))
+                        .px(px(d.menu_item_padding_x))
+                        .flex()
+                        .items_center()
+                        .rounded(px(d.menu_item_radius))
+                        .bg(c.dialog_surface)
+                        .text_size(px(d.menu_text_size))
+                        .font_weight(t.dialog_body_weight.to_font_weight())
+                        .text_color(c.dialog_secondary_button_text)
+                        .child(
+                            s.context_menu_image_zoom
+                                .replace("{percent}", &percent.to_string()),
+                        )
+                        .hover(|this| this.bg(c.dialog_secondary_button_hover))
+                        .cursor_pointer()
+                        .on_click(cx.listener(move |this, _event, _window, cx| {
+                            this.close_context_menu(cx);
+                            this.apply_image_zoom(entity_id, percent, cx);
+                        }))
+                });
+                Some(
+                    div()
+                        .id("image-context-menu-overlay")
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .bottom_0()
+                        .occlude()
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(Self::on_dismiss_context_menu_overlay),
+                        )
+                        .child(
+                            div()
+                                .id("image-context-menu-panel")
+                                .absolute()
+                                .left(position.x)
+                                .top(position.y)
+                                .w(px(d.context_menu_panel_width))
+                                .p(px(d.menu_panel_padding))
+                                .flex()
+                                .flex_col()
+                                .gap(px(d.menu_panel_gap))
+                                .bg(c.dialog_surface)
+                                .border(px(d.dialog_border_width))
+                                .border_color(c.dialog_border)
+                                .rounded(px(d.menu_panel_radius))
+                                .shadow_lg()
+                                .on_mouse_down(MouseButton::Left, |_event, _window, cx| {
+                                    cx.stop_propagation()
+                                })
+                                .children(items),
+                        )
+                        .into_any_element(),
+                )
+            }
             ContextMenuState::TableAxis {
                 position,
                 selection,

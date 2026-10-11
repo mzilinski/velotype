@@ -307,6 +307,7 @@ pub struct I18nStrings {
     pub find_no_results: String,
     /// Find bar match counter; `{current}` and `{total}` are substituted.
     pub find_match_count: String,
+    pub context_menu_image_zoom: String,
     /// Tooltip for the find bar case-sensitivity toggle.
     pub find_match_case: String,
     pub preferences_shortcut_toggle_workspace: String,
@@ -630,6 +631,7 @@ struct I18nStringsDe {
     find_replace_all: Option<String>,
     find_no_results: Option<String>,
     find_match_count: Option<String>,
+    context_menu_image_zoom: Option<String>,
     find_match_case: Option<String>,
     preferences_shortcut_toggle_workspace: Option<String>,
     preferences_shortcut_set_paragraph: Option<String>,
@@ -897,6 +899,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "find_replace_all",
     "find_no_results",
     "find_match_count",
+    "context_menu_image_zoom",
     "find_match_case",
     "preferences_shortcut_toggle_workspace",
     "preferences_shortcut_set_paragraph",
@@ -1492,6 +1495,9 @@ impl I18nStringsDe {
             find_replace_all: self.find_replace_all.unwrap_or(defaults.find_replace_all),
             find_no_results: self.find_no_results.unwrap_or(defaults.find_no_results),
             find_match_count: self.find_match_count.unwrap_or(defaults.find_match_count),
+            context_menu_image_zoom: self
+                .context_menu_image_zoom
+                .unwrap_or(defaults.context_menu_image_zoom),
             find_match_case: self.find_match_case.unwrap_or(defaults.find_match_case),
             preferences_shortcut_toggle_workspace: self
                 .preferences_shortcut_toggle_workspace
@@ -1875,6 +1881,7 @@ impl I18nStrings {
             find_replace_all: "全部替换".into(),
             find_no_results: "无结果".into(),
             find_match_count: "第 {current} 项，共 {total} 项".into(),
+            context_menu_image_zoom: "缩放 {percent}%".into(),
             find_match_case: "区分大小写".into(),
             preferences_shortcut_toggle_workspace: "切换工作区".into(),
             preferences_shortcut_set_paragraph: "段落".into(),
@@ -2171,6 +2178,7 @@ impl I18nStrings {
             find_replace_all: "Replace All".into(),
             find_no_results: "No results".into(),
             find_match_count: "{current} of {total}".into(),
+            context_menu_image_zoom: "Zoom {percent}%".into(),
             find_match_case: "Match Case".into(),
             preferences_shortcut_toggle_workspace: "Toggle Workspace".into(),
             preferences_shortcut_set_paragraph: "Paragraph".into(),
@@ -2460,6 +2468,7 @@ impl I18nStrings {
             find_replace_all: "Alle ersetzen".into(),
             find_no_results: "Keine Treffer".into(),
             find_match_count: "{current} von {total}".into(),
+            context_menu_image_zoom: "Zoom {percent} %".into(),
             find_match_case: "Groß-/Kleinschreibung beachten".into(),
             preferences_shortcut_toggle_workspace: "Arbeitsbereich ein-/ausblenden".into(),
             preferences_shortcut_set_paragraph: "Absatz".into(),

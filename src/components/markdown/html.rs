@@ -100,6 +100,82 @@ pub(crate) struct HtmlImageBlock {
     pub(crate) src: String,
     pub(crate) alt: String,
     pub(crate) zoom: f32,
+    /// `width` attribute, when it is a valid pixel or percentage length.
+    pub(crate) width: Option<HtmlImageLength>,
+    /// `height` attribute, when it is a valid pixel or percentage length.
+    pub(crate) height: Option<HtmlImageLength>,
+}
+
+/// Length from an `<img>` `width`/`height` attribute.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum HtmlImageLength {
+    /// CSS pixels (`300` or `300px`).
+    Px(f32),
+    /// Percentage of the containing block (`50%`), stored as a fraction.
+    Fraction(f32),
+}
+
+impl HtmlImageLength {
+    fn parse(value: &str) -> Option<Self> {
+        let value = value.trim();
+        if let Some(percent) = value.strip_suffix('%') {
+            let percent = parse_non_negative_css_number(percent.trim())?;
+            return (percent > 0.0).then(|| Self::Fraction((percent / 100.0).min(1.0)));
+        }
+        let pixels = value
+            .strip_suffix("px")
+            .or_else(|| value.strip_suffix("PX"))
+            .unwrap_or(value);
+        let pixels = parse_non_negative_css_number(pixels.trim())?;
+        (pixels > 0.0).then_some(Self::Px(pixels))
+    }
+
+    fn to_attr(self) -> String {
+        match self {
+            Self::Px(pixels) => css_number(pixels),
+            Self::Fraction(fraction) => format!("{}%", css_number(fraction * 100.0)),
+        }
+    }
+}
+
+/// Editor layout size derived from an `<img>`'s `width`, `height` and zoom.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct HtmlImageSize {
+    /// Explicit width in pixels.
+    pub(crate) width: Option<f32>,
+    /// Explicit height in pixels.
+    pub(crate) height: Option<f32>,
+    /// Maximum width as a fraction of the column, replacing the zoom cap.
+    pub(crate) max_width_fraction: Option<f32>,
+}
+
+impl HtmlImageSize {
+    /// Pixel lengths are scaled by `zoom`. A percentage width caps the image
+    /// at that share of the column (like zoom does) instead of stretching it;
+    /// percentage heights have no definite reference and are ignored. Pixel
+    /// widths stay capped at the column width.
+    pub(crate) fn from_attrs(
+        width: Option<HtmlImageLength>,
+        height: Option<HtmlImageLength>,
+        zoom: f32,
+    ) -> Self {
+        let mut size = Self::default();
+        match width {
+            Some(HtmlImageLength::Px(pixels)) => {
+                size.width = Some(pixels * zoom);
+                size.max_width_fraction = Some(1.0);
+            }
+            Some(HtmlImageLength::Fraction(fraction)) => {
+                size.max_width_fraction = Some((fraction * zoom).clamp(0.01, 1.0));
+            }
+            None => {}
+        }
+        if let Some(HtmlImageLength::Px(pixels)) = height {
+            size.height = Some(pixels * zoom);
+            size.max_width_fraction.get_or_insert(1.0);
+        }
+        size
+    }
 }
 
 impl HtmlImageBlock {
@@ -113,6 +189,11 @@ impl HtmlImageBlock {
             html.push_str(" alt=\"");
             html.push_str(&escape_html_attr(&self.alt));
             html.push('"');
+        }
+        for (name, length) in [("width", self.width), ("height", self.height)] {
+            if let Some(length) = length {
+                html.push_str(&format!(" {name}=\"{}\"", length.to_attr()));
+            }
         }
         if (self.zoom_factor() - 1.0).abs() > f32::EPSILON {
             html.push_str(" style=\"zoom: ");
@@ -802,8 +883,16 @@ pub(crate) fn parse_html_image_block(raw_source: &str) -> Option<HtmlImageBlock>
     let zoom = attr_value_in_attrs(&token.attrs, "style")
         .and_then(parse_html_zoom)
         .unwrap_or(1.0);
+    let width = attr_value_in_attrs(&token.attrs, "width").and_then(HtmlImageLength::parse);
+    let height = attr_value_in_attrs(&token.attrs, "height").and_then(HtmlImageLength::parse);
 
-    Some(HtmlImageBlock { src, alt, zoom })
+    Some(HtmlImageBlock {
+        src,
+        alt,
+        zoom,
+        width,
+        height,
+    })
 }
 
 fn attr_value_in_attrs<'a>(attrs: &'a [HtmlAttr], name: &str) -> Option<&'a str> {
@@ -1209,6 +1298,66 @@ mod tests {
         assert_eq!(
             image.to_sanitized_html_with_src("a.png"),
             "<img src=\"a.png\" alt=\"a\" style=\"zoom: 120%;\">"
+        );
+    }
+
+    #[test]
+    fn html_image_parses_width_and_height_attributes() {
+        let image = parse_html_image_block(
+            "<img src=\"a.png\" alt=\"a\" width=\"300\" height=\"120px\" style=\"zoom:50%\" />",
+        )
+        .expect("html image");
+        assert_eq!(image.width, Some(HtmlImageLength::Px(300.0)));
+        assert_eq!(image.height, Some(HtmlImageLength::Px(120.0)));
+        assert_eq!(
+            image.to_sanitized_html_with_src("a.png"),
+            "<img src=\"a.png\" alt=\"a\" width=\"300\" height=\"120\" style=\"zoom: 50%;\">"
+        );
+
+        let percent =
+            parse_html_image_block("<img src=\"a.png\" width=\"50%\">").expect("html image");
+        assert_eq!(percent.width, Some(HtmlImageLength::Fraction(0.5)));
+        assert_eq!(percent.height, None);
+        assert_eq!(
+            percent.to_sanitized_html_with_src("a.png"),
+            "<img src=\"a.png\" width=\"50%\">"
+        );
+
+        let invalid = parse_html_image_block("<img src=\"a.png\" width=\"auto\" height=\"-4\">")
+            .expect("html image");
+        assert_eq!(invalid.width, None);
+        assert_eq!(invalid.height, None);
+    }
+
+    #[test]
+    fn html_image_size_scales_pixels_and_caps_percentages() {
+        assert_eq!(
+            HtmlImageSize::from_attrs(
+                Some(HtmlImageLength::Px(300.0)),
+                Some(HtmlImageLength::Px(100.0)),
+                0.5
+            ),
+            HtmlImageSize {
+                width: Some(150.0),
+                height: Some(50.0),
+                max_width_fraction: Some(1.0),
+            }
+        );
+        assert_eq!(
+            HtmlImageSize::from_attrs(
+                Some(HtmlImageLength::Fraction(0.5)),
+                Some(HtmlImageLength::Fraction(0.5)),
+                1.0
+            ),
+            HtmlImageSize {
+                width: None,
+                height: None,
+                max_width_fraction: Some(0.5),
+            }
+        );
+        assert_eq!(
+            HtmlImageSize::from_attrs(None, None, 0.8),
+            HtmlImageSize::default()
         );
     }
 

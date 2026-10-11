@@ -14,8 +14,8 @@ use crate::components::{
     CodeHighlightClass, MermaidPalette, code_highlight_color, highlight_code_block,
     inline_math_font_size, is_mermaid_closing_fence, parse_display_math_source,
     parse_html_image_block, parse_mermaid_fence_source, parse_mermaid_fence_start,
-    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter,
-    wiki_link_file_target,
+    render_latex_to_svg, render_mermaid_to_svg, resolve_local_image_path, sanitize_html_for_export,
+    strip_front_matter, wiki_link_file_target,
 };
 use crate::export::options::PdfExportOptions;
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings};
@@ -877,12 +877,10 @@ fn local_image_data_uri(source: &str, base_dir: Option<&Path>) -> Option<String>
         return None;
     }
 
-    let path = Path::new(source);
-    let resolved = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        base_dir?.join(path)
-    };
+    if base_dir.is_none() && !Path::new(source).is_absolute() {
+        return None;
+    }
+    let resolved = resolve_local_image_path(source, base_dir);
     let mime = image_mime_from_path(&resolved)?;
     let bytes = fs::read(&resolved).ok()?;
     Some(data_uri_for_bytes(mime, &bytes))
@@ -1638,6 +1636,25 @@ mod tests {
         assert!(html.contains("style=\"zoom: 80%;\""));
         assert!(!html.contains("color:red"));
         assert!(!html.contains("width:10px"));
+    }
+
+    #[test]
+    fn exports_html_image_width_height_and_percent_encoded_source() {
+        let root = std::env::temp_dir().join(format!("velotype-html-export-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create temp export dir");
+        fs::write(root.join("my diagram.png"), [137, 80, 78, 71]).expect("write local image");
+
+        let html = render_html_with_base_dir(
+            "<img src=\"my%20diagram.png\" width=\"320\" height=\"50%\" />\n\n![b](my%20diagram.png)",
+            &Theme::default_theme(),
+            "Doc",
+            Some(&root),
+        );
+        let _ = fs::remove_dir_all(&root);
+
+        assert!(html.contains("width=\"320\" height=\"50%\""));
+        assert!(!html.contains("my%20diagram.png"));
+        assert_eq!(html.matches("data:image/png;base64,").count(), 2);
     }
 
     #[test]
