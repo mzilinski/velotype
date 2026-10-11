@@ -102,25 +102,25 @@ pub(crate) fn markdown_to_plain_text(markdown: &str) -> String {
             }
             Event::Start(Tag::Item)
             | Event::Start(Tag::TableRow)
-            | Event::Start(Tag::TableHead) => {
-                if !out.is_empty() && pending_break.is_empty() {
-                    pending_break = "\n";
-                }
+            | Event::Start(Tag::TableHead)
+                if !out.is_empty() && pending_break.is_empty() =>
+            {
+                pending_break = "\n";
             }
-            Event::Start(Tag::TableCell) => {
-                if !out.is_empty() && !out.ends_with('\n') && pending_break.is_empty() {
-                    pending_break = "\t";
-                }
+            Event::Start(Tag::TableCell)
+                if !out.is_empty() && !out.ends_with('\n') && pending_break.is_empty() =>
+            {
+                pending_break = "\t";
             }
             Event::End(TagEnd::Paragraph)
             | Event::End(TagEnd::Heading(_))
             | Event::End(TagEnd::CodeBlock)
             | Event::End(TagEnd::BlockQuote(_))
             | Event::End(TagEnd::List(_))
-            | Event::End(TagEnd::Table) => {
-                if !out.is_empty() {
-                    pending_break = "\n\n";
-                }
+            | Event::End(TagEnd::Table)
+                if !out.is_empty() =>
+            {
+                pending_break = "\n\n";
             }
             _ => {}
         }
