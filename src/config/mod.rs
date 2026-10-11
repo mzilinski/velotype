@@ -69,6 +69,53 @@ impl VelotypeConfigDirs {
     pub(crate) fn drafts_dir(&self) -> PathBuf {
         self.root.join("drafts")
     }
+
+    pub(crate) fn workspace_folder_file(&self) -> PathBuf {
+        self.root.join(".workspace")
+    }
+}
+
+/// The folder last opened with Open Folder, if it still exists.
+pub(crate) fn read_last_workspace_folder() -> Option<PathBuf> {
+    // Tests must not pick up or change the real user config.
+    if cfg!(test) {
+        return None;
+    }
+    read_last_workspace_folder_with_dirs(&VelotypeConfigDirs::from_system().ok()?)
+}
+
+pub(crate) fn read_last_workspace_folder_with_dirs(dirs: &VelotypeConfigDirs) -> Option<PathBuf> {
+    let text = std::fs::read_to_string(dirs.workspace_folder_file()).ok()?;
+    let path = PathBuf::from(text.trim());
+    (!text.trim().is_empty() && path.is_dir()).then_some(path)
+}
+
+/// Remembers `folder` as the opened workspace folder; `None` forgets it.
+pub(crate) fn write_last_workspace_folder(folder: Option<&Path>) -> anyhow::Result<()> {
+    if cfg!(test) {
+        return Ok(());
+    }
+    write_last_workspace_folder_with_dirs(folder, &VelotypeConfigDirs::from_system()?)
+}
+
+pub(crate) fn write_last_workspace_folder_with_dirs(
+    folder: Option<&Path>,
+    dirs: &VelotypeConfigDirs,
+) -> anyhow::Result<()> {
+    let file = dirs.workspace_folder_file();
+    match folder {
+        Some(folder) => {
+            if let Some(parent) = file.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&file, folder.to_string_lossy().as_bytes())
+                .with_context(|| format!("failed to write '{}'", file.display()))
+        }
+        None => match std::fs::remove_file(&file) {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err.into()),
+            _ => Ok(()),
+        },
+    }
 }
 
 pub(crate) fn read_recent_files() -> anyhow::Result<Vec<PathBuf>> {
@@ -422,6 +469,30 @@ mod tests {
     };
     use serde_json::json;
     use std::path::{Path, PathBuf};
+
+    #[test]
+    fn last_workspace_folder_round_trips_and_is_forgotten() {
+        let root =
+            std::env::temp_dir().join(format!("velotype-ws-folder-{}", uuid::Uuid::new_v4()));
+        let dirs = VelotypeConfigDirs::from_root(root.join("config"));
+        let folder = root.join("notes");
+        std::fs::create_dir_all(&folder).unwrap();
+
+        assert_eq!(super::read_last_workspace_folder_with_dirs(&dirs), None);
+        super::write_last_workspace_folder_with_dirs(Some(&folder), &dirs).unwrap();
+        assert_eq!(
+            super::read_last_workspace_folder_with_dirs(&dirs),
+            Some(folder.clone())
+        );
+        // A folder that no longer exists is not restored.
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(super::read_last_workspace_folder_with_dirs(&dirs), None);
+        super::write_last_workspace_folder_with_dirs(None, &dirs).unwrap();
+        assert!(!dirs.workspace_folder_file().exists());
+        super::write_last_workspace_folder_with_dirs(None, &dirs).unwrap();
+
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     #[test]
     fn jsonc_comments_are_stripped_without_touching_strings() {

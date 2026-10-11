@@ -10,12 +10,12 @@ use anyhow::Context as _;
 use gpui::*;
 
 use crate::components::{
-    AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseTab, CloseWindow, ExportHtml,
-    ExportPdf, InstallCliTool, NewTab, NewWindow, NextTab, NoRecentFiles, OpenFile,
-    OpenPreferences, OpenRecentFile, PrevTab, QuitApplication, SaveDocument, SaveDocumentAs,
-    SelectLanguage, SelectSpellcheckLanguage, SelectTheme, ShowAbout, ToggleAutoPair,
-    ToggleFocusMode, ToggleReadOnly, ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace,
-    UninstallCliTool,
+    AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseFolder, CloseTab, CloseWindow,
+    ExportHtml, ExportPdf, InstallCliTool, NewTab, NewWindow, NextTab, NoRecentFiles, OpenFile,
+    OpenFolder, OpenPreferences, OpenRecentFile, PrevTab, QuitApplication, SaveDocument,
+    SaveDocumentAs, SelectLanguage, SelectSpellcheckLanguage, SelectTheme, ShowAbout,
+    ToggleAutoPair, ToggleFocusMode, ToggleReadOnly, ToggleSpellcheck, ToggleTypewriterMode,
+    ToggleWorkspace, UninstallCliTool,
 };
 use crate::config::{
     SessionDrafts, apply_configured_language, apply_configured_theme,
@@ -64,6 +64,20 @@ pub(crate) fn open_editor_window(
 ) -> WindowHandle<EditorWindow> {
     let bounds = Bounds::centered(None, size(px(1080.), px(720.)), cx);
     let title = window_title(file_path.as_deref());
+    // The first editor window reopens the last opened folder, unless it was
+    // started for a file outside of it.
+    let first_window = !cx
+        .windows()
+        .iter()
+        .any(|window| window.downcast::<EditorWindow>().is_some());
+    let restored_folder = first_window
+        .then(crate::config::read_last_workspace_folder)
+        .flatten()
+        .filter(|folder| {
+            file_path
+                .as_deref()
+                .is_none_or(|path| path.starts_with(folder))
+        });
     let handle = cx
         .open_window(velotype_window_options(title, bounds), move |window, cx| {
             let editor = cx.new(move |cx| Editor::from_markdown(cx, markdown, file_path));
@@ -75,6 +89,9 @@ pub(crate) fn open_editor_window(
         .update(cx, |host, window, cx| {
             window.activate_window();
             host.force_install_close_guard(window, cx);
+            if restored_folder.is_some() {
+                host.set_workspace_folder(restored_folder, cx);
+            }
         })
         .expect("newly opened editor window should be updateable");
 
@@ -487,6 +504,8 @@ fn is_editor_scoped_menu_action(action: &dyn Action) -> bool {
         || action.as_any().is::<InstallCliTool>()
         || action.as_any().is::<UninstallCliTool>()
         || action.as_any().is::<ToggleWorkspace>()
+        || action.as_any().is::<OpenFolder>()
+        || action.as_any().is::<CloseFolder>()
 }
 
 fn is_window_context_menu_action(action: &dyn Action) -> bool {
@@ -711,6 +730,10 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         let _ = with_active_editor(cx, |editor, window, cx| {
             editor.toggle_workspace_drawer(window, cx);
         });
+    } else if action.as_any().is::<OpenFolder>() {
+        let _ = with_active_editor(cx, |editor, _, cx| editor.prompt_open_folder(cx));
+    } else if action.as_any().is::<CloseFolder>() {
+        let _ = with_active_editor(cx, |editor, _, cx| editor.apply_workspace_folder(None, cx));
     } else if action.as_any().is::<QuitApplication>() {
         request_quit_application(cx);
     } else if action.as_any().is::<CloseWindow>() {
@@ -803,6 +826,10 @@ pub(crate) fn dispatch_menu_action_for_editor(
         let _ = target.update(cx, |editor, cx| {
             editor.toggle_workspace_drawer(window, cx);
         });
+    } else if action.as_any().is::<OpenFolder>() {
+        let _ = target.update(cx, |editor, cx| editor.prompt_open_folder(cx));
+    } else if action.as_any().is::<CloseFolder>() {
+        let _ = target.update(cx, |editor, cx| editor.apply_workspace_folder(None, cx));
     }
 }
 
@@ -902,6 +929,8 @@ fn build_menus(
                     MenuItem::action(strings.menu_new_window.clone(), NewWindow),
                     MenuItem::action(strings.menu_close_window.clone(), CloseWindow),
                     MenuItem::action(strings.menu_open_file.clone(), OpenFile),
+                    MenuItem::action(strings.menu_open_folder.clone(), OpenFolder),
+                    MenuItem::action(strings.menu_close_folder.clone(), CloseFolder),
                     MenuItem::submenu(Menu {
                         name: strings.menu_open_recent_file.clone().into(),
                         items: recent_items,
@@ -925,6 +954,8 @@ fn build_menus(
                 MenuItem::action(strings.menu_new_window.clone(), NewWindow),
                 MenuItem::action(strings.menu_close_window.clone(), CloseWindow),
                 MenuItem::action(strings.menu_open_file.clone(), OpenFile),
+                MenuItem::action(strings.menu_open_folder.clone(), OpenFolder),
+                MenuItem::action(strings.menu_close_folder.clone(), CloseFolder),
                 MenuItem::submenu(Menu {
                     name: strings.menu_open_recent_file.clone().into(),
                     items: recent_items,
@@ -1306,6 +1337,8 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &ToggleWorkspace, cx| {
         dispatch_menu_action(&ToggleWorkspace, cx);
     });
+    cx.on_action(|_: &OpenFolder, cx| dispatch_menu_action(&OpenFolder, cx));
+    cx.on_action(|_: &CloseFolder, cx| dispatch_menu_action(&CloseFolder, cx));
     cx.on_action(|_: &ToggleAutoPair, cx| dispatch_menu_action(&ToggleAutoPair, cx));
     cx.on_action(|_: &ToggleFocusMode, cx| dispatch_menu_action(&ToggleFocusMode, cx));
     cx.on_action(|_: &ToggleTypewriterMode, cx| dispatch_menu_action(&ToggleTypewriterMode, cx));
@@ -1451,12 +1484,12 @@ mod tests {
         // Open Recent File submenu location differs by platform.
         #[cfg(target_os = "macos")]
         assert_eq!(
-            submenu(&menus[1].items[3]).name.to_string(),
+            submenu(&menus[1].items[5]).name.to_string(),
             "Open Recent File"
         );
         #[cfg(not(target_os = "macos"))]
         assert_eq!(
-            submenu(&menus[0].items[3]).name.to_string(),
+            submenu(&menus[0].items[5]).name.to_string(),
             "Open Recent File"
         );
 
@@ -1470,7 +1503,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         assert_eq!(action_name(&menus[0].items[0]), "Preferences");
         #[cfg(not(target_os = "macos"))]
-        assert_eq!(action_name(&menus[0].items[4]), "Preferences");
+        assert_eq!(action_name(&menus[0].items[6]), "Preferences");
 
         assert_eq!(action_name(&menus[EXPORT_IDX].items[0]), "HTML");
         assert_eq!(action_name(&menus[EXPORT_IDX].items[1]), "PDF");
@@ -1493,12 +1526,12 @@ mod tests {
 
         #[cfg(target_os = "macos")]
         assert_eq!(
-            submenu(&menus[1].items[3]).name.to_string(),
+            submenu(&menus[1].items[5]).name.to_string(),
             i18n_manager.strings().menu_open_recent_file.as_str()
         );
         #[cfg(not(target_os = "macos"))]
         assert_eq!(
-            submenu(&menus[0].items[3]).name.to_string(),
+            submenu(&menus[0].items[5]).name.to_string(),
             i18n_manager.strings().menu_open_recent_file.as_str()
         );
 
@@ -1589,9 +1622,9 @@ mod tests {
         // On macOS: File menu is index 1, Open Recent is item 3 within it.
         // On other platforms: File menu is index 0, Open Recent is item 3.
         #[cfg(target_os = "macos")]
-        let recent_menu = submenu(&menus[1].items[3]);
+        let recent_menu = submenu(&menus[1].items[5]);
         #[cfg(not(target_os = "macos"))]
-        let recent_menu = submenu(&menus[0].items[3]);
+        let recent_menu = submenu(&menus[0].items[5]);
 
         assert_eq!(recent_menu.name.to_string(), "Open Recent File");
         assert_eq!(recent_menu.items.len(), 1);
@@ -1621,9 +1654,9 @@ mod tests {
         );
 
         #[cfg(target_os = "macos")]
-        let recent_menu = submenu(&menus[1].items[3]);
+        let recent_menu = submenu(&menus[1].items[5]);
         #[cfg(not(target_os = "macos"))]
-        let recent_menu = submenu(&menus[0].items[3]);
+        let recent_menu = submenu(&menus[0].items[5]);
 
         assert_eq!(recent_menu.items.len(), 2);
         assert_eq!(action_name(&recent_menu.items[0]), r"C:\docs\one.md");

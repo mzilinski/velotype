@@ -2086,6 +2086,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_and_replace))
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
+            .on_action(cx.listener(Self::on_open_folder))
+            .on_action(cx.listener(Self::on_close_folder))
             .on_action(cx.listener(Self::on_quick_open))
             .on_action(cx.listener(Self::on_search_in_workspace))
             .on_action(cx.listener(Self::on_install_cli_tool))
