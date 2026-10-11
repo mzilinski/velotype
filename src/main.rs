@@ -41,6 +41,11 @@ use theme::ThemeManager;
 struct VelotypeAssets;
 
 fn open_startup_window(cx: &mut App, startup_open: config::StartupOpenPreference) {
+    open_startup_document(cx, startup_open);
+    app_menu::restore_session_drafts(cx);
+}
+
+fn open_startup_document(cx: &mut App, startup_open: config::StartupOpenPreference) {
     if startup_open == config::StartupOpenPreference::LastOpenedFile
         && let Some(path) = config::first_existing_recent_markdown_file()
     {
@@ -193,6 +198,7 @@ fn main() {
         ThemeManager::init_with_theme_id(cx, &preferences.default_theme_id);
         fonts::FontSettings::init(cx, preferences.fonts.clone());
         config::EditorSettings::init(cx, preferences.show_table_headers);
+        config::SessionDrafts::init(cx);
         net::install_http_client(cx);
         init_editor(cx, &preferences.keybindings);
         init_app_menu(cx);
@@ -268,6 +274,7 @@ fn main() {
                 }
             }
         }
+        app_menu::restore_session_drafts(cx);
         app_menu::install_menus(cx);
         cx.refresh_windows();
     });

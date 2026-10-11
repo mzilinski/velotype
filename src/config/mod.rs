@@ -6,7 +6,10 @@ use anyhow::{Context as _, bail};
 use directories::ProjectDirs;
 use serde_json::{Map, Value};
 
+pub(crate) mod drafts;
 pub(crate) mod preferences;
+
+pub(crate) use drafts::SessionDrafts;
 
 pub(crate) use preferences::{
     EditorSettings, ImagePasteBehavior, StartupOpenPreference, apply_configured_language,
@@ -57,6 +60,10 @@ impl VelotypeConfigDirs {
 
     pub(crate) fn app_config_file(&self) -> PathBuf {
         self.root.join("config.toml")
+    }
+
+    pub(crate) fn drafts_dir(&self) -> PathBuf {
+        self.root.join("drafts")
     }
 }
 

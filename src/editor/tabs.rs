@@ -10,7 +10,10 @@
 //!   own),
 //! - switching, opening and closing tabs,
 //! - the close-window flow, which walks dirty tabs one at a time through each
-//!   tab's existing unsaved-changes dialog.
+//!   tab's existing unsaved-changes dialog,
+//! - session drafts: when the window really closes, unsaved untitled tabs are
+//!   kept in [`SessionDrafts`] instead of prompting (an explicit tab close
+//!   still prompts), and are reopened on the next launch.
 //!
 //! Editors never reach into the host while they are being updated. They report
 //! close outcomes and open requests through [`EditorTabEvent`]; the host reacts
@@ -24,6 +27,7 @@ use gpui::{prelude::FluentBuilder, *};
 
 use super::Editor;
 use crate::components::{CloseTab, NewTab, NextTab, PrevTab};
+use crate::config::SessionDrafts;
 use crate::i18n::{I18nManager, I18nStrings};
 use crate::theme::Theme;
 
@@ -71,6 +75,9 @@ pub struct EditorWindow {
     active: usize,
     /// True while a close-window request is walking the dirty tabs.
     closing_window: bool,
+    /// Set when writing session drafts failed, so untitled tabs fall back to
+    /// the unsaved-changes prompt instead of being kept as drafts.
+    drafts_unavailable: bool,
     pub(crate) close_guard_installed: bool,
 }
 
@@ -81,6 +88,7 @@ impl EditorWindow {
             tabs: vec![tab],
             active: 0,
             closing_window: false,
+            drafts_unavailable: false,
             close_guard_installed: false,
         }
     }
@@ -290,7 +298,10 @@ impl EditorWindow {
         if index >= self.tabs.len() {
             return;
         }
-        self.tabs.remove(index);
+        let removed = self.tabs.remove(index);
+        removed
+            .editor
+            .update(cx, |editor, cx| editor.discard_session_draft(cx));
         if self.tabs.is_empty() {
             window.remove_window();
             return;
@@ -314,19 +325,44 @@ impl EditorWindow {
         }
     }
 
-    /// Returns true when every tab is clean. Otherwise focuses the first dirty
-    /// tab, shows its unsaved-changes dialog and returns false; confirming that
-    /// dialog closes the tab and continues with the next dirty one.
+    /// Whether untitled tabs are kept as session drafts on close instead of
+    /// prompting.
+    fn keeps_drafts(&self, cx: &App) -> bool {
+        !self.drafts_unavailable && SessionDrafts::get(cx).is_some()
+    }
+
+    /// First tab whose unsaved changes need the user's decision before the
+    /// window may close. Untitled tabs are exempt while drafts are kept.
+    fn first_tab_needing_prompt(&self, cx: &App) -> Option<usize> {
+        let keeps_drafts = self.keeps_drafts(cx);
+        self.tabs.iter().position(|tab| {
+            let editor = tab.editor.read(cx);
+            editor.document_dirty && !(keeps_drafts && editor.file_path.is_none())
+        })
+    }
+
+    /// True when closing this window would show an unsaved-changes dialog.
+    pub(crate) fn needs_close_prompt(&self, cx: &App) -> bool {
+        self.first_tab_needing_prompt(cx).is_some()
+    }
+
+    /// Returns true when the window may close: every tab is clean or an
+    /// untitled draft that was just kept in the session draft store.
+    /// Otherwise focuses the first tab needing a decision, shows its
+    /// unsaved-changes dialog and returns false; confirming that dialog closes
+    /// the tab and continues with the next one.
     pub(crate) fn on_window_should_close(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        let Some(index) = self
-            .tabs
-            .iter()
-            .position(|tab| tab.editor.read(cx).document_dirty)
-        else {
+        let Some(index) = self.first_tab_needing_prompt(cx) else {
+            if let Err(err) = self.keep_session_drafts(cx) {
+                // Without a draft store the untitled tabs need a decision too.
+                eprintln!("failed to keep unsaved drafts: {err:#}");
+                self.drafts_unavailable = true;
+                return self.on_window_should_close(window, cx);
+            }
             self.closing_window = false;
             return true;
         };
@@ -337,6 +373,30 @@ impl EditorWindow {
         }
         let editor = self.tabs[index].editor.clone();
         editor.update(cx, |editor, cx| editor.on_window_should_close(window, cx))
+    }
+
+    /// Writes every unsaved untitled tab to the session draft store.
+    fn keep_session_drafts(&mut self, cx: &mut Context<Self>) -> anyhow::Result<()> {
+        let Some(store) = SessionDrafts::get(cx).filter(|_| !self.drafts_unavailable) else {
+            return Ok(());
+        };
+        for tab in &self.tabs {
+            tab.editor
+                .update(cx, |editor, cx| editor.keep_session_draft(&store, cx))?;
+        }
+        Ok(())
+    }
+
+    /// Reopens a restored session draft as an unsaved untitled tab.
+    pub(crate) fn open_draft(
+        &mut self,
+        markdown: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let editor = self.open_document(markdown, None, window, cx);
+        editor.update(cx, |editor, cx| editor.mark_dirty(cx));
+        window.set_window_edited(true);
     }
 
     fn on_editor_event(
@@ -460,6 +520,33 @@ impl Editor {
             cx.emit(EditorTabEvent::CloseConfirmed);
         } else {
             window.remove_window();
+        }
+    }
+
+    /// Stores this document as a session draft when it is untitled with
+    /// unsaved content; otherwise drops any draft it had.
+    fn keep_session_draft(&mut self, store: &SessionDrafts, cx: &App) -> anyhow::Result<()> {
+        if self.file_path.is_some() || !self.document_dirty {
+            self.discard_session_draft(cx);
+            return Ok(());
+        }
+        let markdown = self.serialized_document_text(cx);
+        if markdown.trim().is_empty() {
+            self.discard_session_draft(cx);
+            return Ok(());
+        }
+        let id = self
+            .draft_id
+            .get_or_insert_with(SessionDrafts::new_draft_id);
+        store.write(id, &markdown)
+    }
+
+    /// Forgets this document's session draft (saved, discarded or closed).
+    pub(super) fn discard_session_draft(&mut self, cx: &App) {
+        if let Some(id) = self.draft_id.take()
+            && let Some(store) = SessionDrafts::get(cx)
+        {
+            store.remove(&id);
         }
     }
 

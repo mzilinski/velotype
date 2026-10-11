@@ -154,6 +154,9 @@ pub struct Editor {
     /// Window that shows this editor as one of its tabs. `None` for a
     /// standalone editor that owns its window directly.
     tab_host: Option<WeakEntity<EditorWindow>>,
+    /// Id of this untitled document in the session draft store, once it has
+    /// been kept there while its window closed.
+    draft_id: Option<String>,
 }
 
 /// Runtime binding between a table block and one cell editor.
@@ -382,6 +385,7 @@ impl Editor {
             link_reference_definitions: Arc::default(),
             footnote_registry: Arc::default(),
             tab_host: None,
+            draft_id: None,
         };
         editor.rebuild_table_runtimes(cx);
         editor.rebuild_image_runtimes(cx);

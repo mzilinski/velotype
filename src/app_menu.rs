@@ -16,9 +16,9 @@ use crate::components::{
     SelectLanguage, SelectTheme, ShowAbout, ToggleWorkspace, UninstallCliTool,
 };
 use crate::config::{
-    apply_configured_language, apply_configured_theme, import_language_config_and_select,
-    import_theme_config_and_select, open_preferences_window, read_recent_files, record_recent_file,
-    remove_recent_file,
+    SessionDrafts, apply_configured_language, apply_configured_theme,
+    import_language_config_and_select, import_theme_config_and_select, open_preferences_window,
+    read_recent_files, record_recent_file, remove_recent_file,
 };
 use crate::editor::{Editor, EditorWindow, InfoDialogKind};
 use crate::export::ExportFormat;
@@ -106,6 +106,28 @@ pub(crate) fn open_markdown_in_current_window(
     if let Some((markdown, file_path)) = document {
         open_editor_window(cx, markdown, file_path);
     }
+}
+
+/// Reopens the untitled drafts kept when the previous session closed as
+/// unsaved tabs of the current editor window (opening one if needed).
+pub(crate) fn restore_session_drafts(cx: &mut App) {
+    let Some(store) = SessionDrafts::get(cx) else {
+        return;
+    };
+    let drafts = store.take_all();
+    if drafts.is_empty() {
+        return;
+    }
+
+    let handle = match current_editor_window(cx) {
+        Some(handle) => handle,
+        None => open_editor_window(cx, String::new(), None),
+    };
+    let _ = handle.update(cx, |host, window, cx| {
+        for markdown in drafts {
+            host.open_draft(markdown, window, cx);
+        }
+    });
 }
 
 /// Reads `path` and opens it in a tab of the current editor window.
@@ -533,6 +555,24 @@ pub(crate) fn request_quit_application(cx: &mut App) {
     if candidates.is_empty() {
         cx.quit();
         return;
+    }
+
+    // Ask for unsaved-changes decisions before any window keeps its drafts,
+    // so an aborted quit never leaves drafts stored for windows still open.
+    for window in &candidates {
+        let Some(host) = window.downcast::<EditorWindow>() else {
+            continue;
+        };
+        let needs_prompt = host
+            .update(cx, |host, _window, cx| host.needs_close_prompt(cx))
+            .unwrap_or(false);
+        if needs_prompt {
+            let _ = host.update(cx, |host, window, cx| {
+                window.activate_window();
+                host.on_window_should_close(window, cx)
+            });
+            return;
+        }
     }
 
     for window in candidates {

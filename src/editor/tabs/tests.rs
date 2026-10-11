@@ -1,5 +1,6 @@
 //! Tab host behaviour: opening, switching, closing and the unsaved-changes
-//! walk when a window with several tabs closes.
+//! walk when a window with several tabs closes, and session drafts kept for
+//! untitled tabs.
 
 use std::fs;
 use std::path::PathBuf;
@@ -9,6 +10,7 @@ use gpui::{ClickEvent, Context, Entity, TestAppContext, Window, WindowHandle};
 
 use super::{EditorTabEvent, EditorWindow};
 use crate::components::{CloseTab, CloseWindow, NewTab, NextTab, PrevTab};
+use crate::config::SessionDrafts;
 use crate::editor::Editor;
 use crate::i18n::I18nManager;
 use crate::theme::ThemeManager;
@@ -414,4 +416,182 @@ async fn hosted_editor_routes_close_window_to_its_tab_host(cx: &mut TestAppConte
         editor.request_close_current_window(window, cx);
     });
     assert!(!window_is_open(&handle, cx));
+}
+
+// ---------------------------------------------------------------------------
+// Session drafts
+// ---------------------------------------------------------------------------
+
+fn install_temp_drafts(cx: &mut TestAppContext) -> SessionDrafts {
+    let store = SessionDrafts::new(
+        std::env::temp_dir().join(format!("velotype-tab-drafts-{}", uuid::Uuid::new_v4())),
+    );
+    let global = store.clone();
+    cx.update(move |cx| cx.set_global(global));
+    store
+}
+
+fn open_file_tab(
+    handle: &WindowHandle<EditorWindow>,
+    cx: &mut TestAppContext,
+    test_name: &str,
+    markdown: &str,
+) -> PathBuf {
+    let path = temp_markdown_path(test_name);
+    fs::write(&path, markdown).expect("write tab markdown");
+    let opened = path.clone();
+    let markdown = markdown.to_string();
+    with_host(handle, cx, move |host, window, cx| {
+        host.open_document(markdown, Some(opened), window, cx);
+    });
+    path
+}
+
+#[gpui::test]
+async fn closing_window_keeps_untitled_drafts_without_prompting(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let store = install_temp_drafts(cx);
+    let handle = open_tab_window(cx, "scratch note");
+    with_tab_editor(&handle, 0, cx, |editor, _window, cx| editor.mark_dirty(cx));
+    // A dirty but empty untitled tab has nothing worth keeping.
+    with_host(&handle, cx, |host, window, cx| host.new_tab(window, cx));
+    with_tab_editor(&handle, 1, cx, |editor, _window, cx| editor.mark_dirty(cx));
+
+    cx.update(|cx| crate::app_menu::dispatch_menu_action(&CloseWindow, cx));
+    cx.run_until_parked();
+
+    assert!(
+        !window_is_open(&handle, cx),
+        "no dialog held the window open"
+    );
+    assert_eq!(store.take_all(), vec!["scratch note".to_string()]);
+    let _ = fs::remove_dir_all(store.dir());
+}
+
+#[gpui::test]
+async fn explicit_tab_close_still_prompts_for_untitled_drafts(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let store = install_temp_drafts(cx);
+    let handle = open_tab_window(cx, "scratch note");
+    with_host(&handle, cx, |host, window, cx| host.new_tab(window, cx));
+    with_tab_editor(&handle, 0, cx, |editor, _window, cx| editor.mark_dirty(cx));
+
+    with_host(&handle, cx, |host, window, cx| {
+        host.request_close_tab(0, window, cx)
+    });
+    assert_eq!(tab_state(&handle, cx), (2, 0));
+    assert!(with_tab_editor(&handle, 0, cx, |editor, _window, _cx| {
+        editor.show_unsaved_changes_dialog
+    }));
+    with_tab_editor(&handle, 0, cx, |editor, window, cx| {
+        editor.on_discard_and_close(&ClickEvent::default(), window, cx)
+    });
+    assert_eq!(tab_state(&handle, cx), (1, 0));
+    assert!(store.take_all().is_empty());
+    let _ = fs::remove_dir_all(store.dir());
+}
+
+#[gpui::test]
+async fn dirty_file_tabs_prompt_before_drafts_are_kept(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let store = install_temp_drafts(cx);
+    let handle = open_tab_window(cx, "scratch note");
+    with_tab_editor(&handle, 0, cx, |editor, _window, cx| editor.mark_dirty(cx));
+    let path = open_file_tab(&handle, cx, "tab-drafts-file", "file note");
+    with_tab_editor(&handle, 1, cx, |editor, _window, cx| editor.mark_dirty(cx));
+    with_host(&handle, cx, |host, window, cx| {
+        host.activate_tab(0, window, cx)
+    });
+
+    assert!(!with_host(&handle, cx, |host, window, cx| {
+        host.on_window_should_close(window, cx)
+    }));
+    assert_eq!(tab_state(&handle, cx), (2, 1), "the file tab asks first");
+    assert!(
+        store.take_all().is_empty(),
+        "drafts wait until the window really closes"
+    );
+
+    with_tab_editor(&handle, 1, cx, |editor, window, cx| {
+        editor.on_discard_and_close(&ClickEvent::default(), window, cx)
+    });
+    assert!(!window_is_open(&handle, cx));
+    assert_eq!(store.take_all(), vec!["scratch note".to_string()]);
+
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_dir_all(store.dir());
+}
+
+#[gpui::test]
+async fn quit_prompts_before_any_window_keeps_drafts(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let store = install_temp_drafts(cx);
+    let draft_window = open_tab_window(cx, "scratch note");
+    with_tab_editor(&draft_window, 0, cx, |editor, _window, cx| {
+        editor.mark_dirty(cx)
+    });
+    let file_window = open_tab_window(cx, "");
+    let path = open_file_tab(&file_window, cx, "tab-drafts-quit", "file note");
+    with_tab_editor(&file_window, 0, cx, |editor, _window, cx| {
+        editor.mark_dirty(cx)
+    });
+
+    cx.update(crate::app_menu::request_quit_application);
+    cx.run_until_parked();
+
+    assert!(window_is_open(&draft_window, cx));
+    assert!(with_tab_editor(
+        &file_window,
+        0,
+        cx,
+        |editor, _window, _cx| { editor.show_unsaved_changes_dialog }
+    ));
+    assert!(store.take_all().is_empty());
+
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_dir_all(store.dir());
+}
+
+#[gpui::test]
+async fn restored_drafts_open_as_unsaved_untitled_tabs(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let store = install_temp_drafts(cx);
+    store
+        .write(&SessionDrafts::new_draft_id(), "first draft")
+        .unwrap();
+    store
+        .write(&SessionDrafts::new_draft_id(), "second draft")
+        .unwrap();
+
+    let handle = open_tab_window(cx, "");
+    cx.update(crate::app_menu::restore_session_drafts);
+    cx.run_until_parked();
+
+    assert_eq!(
+        tab_state(&handle, cx),
+        (2, 1),
+        "the empty startup tab is replaced"
+    );
+    for (index, expected) in ["first draft", "second draft"].into_iter().enumerate() {
+        let (text, dirty, untitled) = with_tab_editor(&handle, index, cx, |editor, _window, cx| {
+            (
+                editor.serialized_document_text(cx),
+                editor.document_dirty,
+                editor.file_path.is_none(),
+            )
+        });
+        assert_eq!(text.trim(), expected);
+        assert!(dirty && untitled);
+    }
+    assert!(store.take_all().is_empty(), "restoring consumes the drafts");
+
+    // Closing the window again keeps both drafts for the next launch.
+    cx.update(|cx| crate::app_menu::dispatch_menu_action(&CloseWindow, cx));
+    cx.run_until_parked();
+    assert!(!window_is_open(&handle, cx));
+    assert_eq!(
+        store.take_all(),
+        vec!["first draft".to_string(), "second draft".to_string()]
+    );
+    let _ = fs::remove_dir_all(store.dir());
 }
