@@ -847,6 +847,8 @@ pub enum BlockEvent {
     RequestJumpToFootnoteBackref { id: String },
     /// Jump from a table-of-contents entry to its heading block.
     RequestJumpToHeading { target: EntityId },
+    /// Open the Markdown file named by a `[[wiki]]` link in this window.
+    RequestOpenWikiLink { target: String },
     /// Move focus horizontally across native table cells.
     RequestTableCellMoveHorizontal { delta: i32 },
     /// Move focus vertically across native table cells.

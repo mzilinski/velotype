@@ -6,12 +6,15 @@ use std::path::Path;
 
 use base64::{Engine as _, engine::general_purpose};
 use gpui::{Hsla, Rgba};
-use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, TagEnd, TextMergeStream, html};
+use pulldown_cmark::{
+    CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, TextMergeStream, html,
+};
 
 use crate::components::{
     inline_math_font_size, is_mermaid_closing_fence, parse_display_math_source,
     parse_html_image_block, parse_mermaid_fence_source, parse_mermaid_fence_start,
     render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter,
+    wiki_link_file_target,
 };
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings};
 use crate::net;
@@ -89,6 +92,7 @@ fn markdown_options() -> Options {
     options.insert(Options::ENABLE_TASKLISTS);
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_GFM);
+    options.insert(Options::ENABLE_WIKILINKS);
     options
 }
 
@@ -101,7 +105,8 @@ fn render_browser_html_body(markdown: &str, theme: &Theme, base_dir: Option<&Pat
     let rewritten = rewrite_inline_math(&rewritten, theme);
     let rewritten = rewrite_mermaid_blocks(&rewritten);
     let parser = Parser::new_ext(&rewritten, markdown_options())
-        .map(|event| rewrite_local_image_event(event, base_dir));
+        .map(|event| rewrite_local_image_event(event, base_dir))
+        .map(rewrite_wiki_link_event);
     let mut body = String::new();
     html::push_html(&mut body, insert_table_of_contents(parser).into_iter());
     body
@@ -684,6 +689,33 @@ fn rewrite_local_image_event<'a>(event: Event<'a>, base_dir: Option<&Path>) -> E
                 .map(CowStr::from)
                 .unwrap_or(dest_url);
             Event::Start(Tag::Image {
+                link_type,
+                dest_url,
+                title,
+                id,
+            })
+        }
+        event => event,
+    }
+}
+
+/// Points `[[wiki]]` links at the Markdown file they name, matching how the
+/// editor opens them.
+fn rewrite_wiki_link_event(event: Event<'_>) -> Event<'_> {
+    match event {
+        Event::Start(Tag::Link {
+            link_type: link_type @ LinkType::WikiLink { .. },
+            dest_url,
+            title,
+            id,
+        }) => {
+            let dest_url = wiki_link_file_target(&dest_url)
+                .map(|(file, anchor)| match anchor {
+                    Some(anchor) => CowStr::from(format!("{file}#{anchor}")),
+                    None => CowStr::from(file),
+                })
+                .unwrap_or(dest_url);
+            Event::Start(Tag::Link {
                 link_type,
                 dest_url,
                 title,
@@ -1535,6 +1567,18 @@ mod tests {
 
         assert!(html.contains("<h1>Intro</h1>"));
         assert!(html.contains("Text [toc] inline"));
+    }
+
+    #[test]
+    fn exports_wiki_links_to_markdown_files() {
+        let html = render_html(
+            "See [[Other Note]] and [[dir/Spec.md#Setup|the spec]].",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<a href=\"Other%20Note.md\">Other Note</a>"));
+        assert!(html.contains("<a href=\"dir/Spec.md#Setup\">the spec</a>"));
     }
 
     #[test]

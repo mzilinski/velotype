@@ -153,6 +153,12 @@ pub enum InlineLink {
     Reference { label: String, destination: String },
     /// Autolink target from `<scheme:target>` or email-like syntax.
     Autolink { target: String },
+    /// Wiki link from `[[Target]]` or `[[Target|Label]]`. Without a label the
+    /// visible text is the target itself.
+    Wiki {
+        target: String,
+        label: Option<String>,
+    },
 }
 
 /// Link target pair used by hit-testing and open-link prompts.
@@ -160,13 +166,15 @@ pub enum InlineLink {
 pub struct InlineLinkHit {
     pub prompt_target: String,
     pub open_target: String,
+    /// Wiki links open a sibling Markdown file instead of an external URL.
+    pub wiki: bool,
 }
 
 impl InlineLink {
     pub fn open_target(&self) -> &str {
         match self {
             Self::Inline { destination, .. } | Self::Reference { destination, .. } => destination,
-            Self::Autolink { target } => target,
+            Self::Autolink { target } | Self::Wiki { target, .. } => target,
         }
     }
 
@@ -174,7 +182,7 @@ impl InlineLink {
         match self {
             Self::Inline { destination, .. } => destination,
             Self::Reference { label, .. } => label,
-            Self::Autolink { target } => target,
+            Self::Autolink { target } | Self::Wiki { target, .. } => target,
         }
     }
 
@@ -182,17 +190,22 @@ impl InlineLink {
         InlineLinkHit {
             prompt_target: self.raw_target().to_string(),
             open_target: self.open_target().to_string(),
+            wiki: matches!(self, Self::Wiki { .. }),
         }
     }
 
     pub(crate) fn is_source_preserving(&self) -> bool {
-        matches!(self, Self::Reference { .. } | Self::Autolink { .. })
+        matches!(
+            self,
+            Self::Reference { .. } | Self::Autolink { .. } | Self::Wiki { .. }
+        )
     }
 
     pub(crate) fn open_marker(&self) -> &'static str {
         match self {
             Self::Autolink { .. } => "<",
             Self::Inline { .. } | Self::Reference { .. } => "[",
+            Self::Wiki { .. } => "[[",
         }
     }
 
@@ -200,7 +213,9 @@ impl InlineLink {
         match self {
             Self::Inline { .. } => Some("]("),
             Self::Reference { .. } => Some("]["),
-            Self::Autolink { .. } => None,
+            // The wiki target precedes its label in source, so the projection
+            // only reveals the brackets; the target stays editable in source mode.
+            Self::Autolink { .. } | Self::Wiki { .. } => None,
         }
     }
 
@@ -210,7 +225,7 @@ impl InlineLink {
                 Some(format_inline_link_target(destination, title.as_deref()))
             }
             Self::Reference { label, .. } => Some(label.clone()),
-            Self::Autolink { .. } => None,
+            Self::Autolink { .. } | Self::Wiki { .. } => None,
         }
     }
 
@@ -219,6 +234,7 @@ impl InlineLink {
             Self::Inline { .. } => ")",
             Self::Reference { .. } => "]",
             Self::Autolink { .. } => ">",
+            Self::Wiki { .. } => "]]",
         }
     }
 }
@@ -658,10 +674,13 @@ impl InlineTextTree {
                 continue;
             }
 
-            let link = self.fragments[index].link.clone();
+            // Wiki links serialize inside the surrounding style run (see
+            // `wiki_link_text_with_offset_map`) so emphasis around them keeps
+            // a single set of markers.
+            let link = run_link(&self.fragments[index]);
             let mut end = index + 1;
             while end < self.fragments.len()
-                && self.fragments[end].link == link
+                && run_link(&self.fragments[end]) == link
                 && self.fragments[end].footnote.is_none()
                 && self.fragments[end].math.is_none()
             {
@@ -741,6 +760,40 @@ impl InlineTextTree {
     }
 }
 
+fn run_link(fragment: &InlineFragment) -> Option<InlineLink> {
+    fragment
+        .link
+        .clone()
+        .filter(|link| !matches!(link, InlineLink::Wiki { .. }))
+}
+
+/// Raw `[[Target|Label]]` source for a wiki-link fragment. The visible text is
+/// the label (or the target when unlabeled) and maps 1:1 into the brackets.
+fn wiki_link_text_with_offset_map(
+    fragment: &InlineFragment,
+    target: &str,
+    label: Option<&str>,
+) -> InlineMarkdownOffsetMap {
+    let head = match label {
+        Some(_) => format!("[[{target}|"),
+        None => "[[".to_string(),
+    };
+    let markdown = format!("{head}{}]]", fragment.text);
+    let label_start = head.len();
+    let label_end = label_start + fragment.text.len();
+    let visible_to_markdown = (0..=fragment.text.len())
+        .map(|visible| label_start + visible)
+        .collect();
+    let markdown_to_visible = (0..=markdown.len())
+        .map(|offset| offset.clamp(label_start, label_end) - label_start)
+        .collect();
+    InlineMarkdownOffsetMap {
+        markdown,
+        visible_to_markdown,
+        markdown_to_visible,
+    }
+}
+
 fn serialize_fragment_run_markdown_with_offset_map(
     fragments: &[InlineFragment],
 ) -> InlineMarkdownOffsetMap {
@@ -806,6 +859,8 @@ fn serialize_fragment_run_markdown_with_offset_map(
 
         let escaped = if let Some(math) = fragment.math.as_ref() {
             identity_text_with_offset_map(&math.source)
+        } else if let Some(InlineLink::Wiki { target, label }) = fragment.link.as_ref() {
+            wiki_link_text_with_offset_map(fragment, target, label.as_deref())
         } else if fragment.style.code {
             escape_code_span_text_with_offset_map(&fragment.text)
         } else {
@@ -1598,6 +1653,14 @@ fn parse_until(
         if !inside_code {
             if tokens[index].ch == '['
                 && let Some(next_index) =
+                    parse_wiki_link(tokens, index, extra_style, extra_html_style, builder)
+            {
+                index = next_index;
+                continue;
+            }
+
+            if tokens[index].ch == '['
+                && let Some(next_index) =
                     parse_footnote_reference(tokens, index, extra_style, extra_html_style, builder)
             {
                 index = next_index;
@@ -1947,6 +2010,78 @@ fn parse_inline_link(
     }
 
     Some(located.end_index + 1)
+}
+
+/// Parses `[[Target]]` or `[[Target|Label]]` into one source-preserving link
+/// fragment. The body may not span lines or contain brackets, and `[[x]](url)`
+/// is left to the inline link parser.
+fn parse_wiki_link(
+    tokens: &[CharToken],
+    index: usize,
+    extra_style: InlineStyle,
+    extra_html_style: Option<HtmlInlineStyle>,
+    builder: &mut NormalizeBuilder,
+) -> Option<usize> {
+    if !matches_sequence(tokens, index, "[[") {
+        return None;
+    }
+
+    let body_start = index + 2;
+    let mut close = body_start;
+    while close < tokens.len() && !matches_sequence(tokens, close, "]]") {
+        if matches!(tokens[close].ch, '[' | ']' | '\n' | '\r') {
+            return None;
+        }
+        close += 1;
+    }
+    if close >= tokens.len() || tokens.get(close + 2).is_some_and(|token| token.ch == '(') {
+        return None;
+    }
+
+    let body = tokens_to_string(&tokens[body_start..close]);
+    let (target, label) = match body.split_once('|') {
+        Some((target, label)) => (target.to_string(), Some(label.to_string())),
+        None => (body.clone(), None),
+    };
+    if target.trim().is_empty() || label.as_deref().is_some_and(|label| label.is_empty()) {
+        return None;
+    }
+
+    let visible = label.clone().unwrap_or_else(|| target.clone());
+    let visible_tokens_start = match label {
+        Some(_) => body_start + target.chars().count() + 1,
+        None => body_start,
+    };
+    let normalized_start = builder.normalized_len;
+    for token in &tokens[index..visible_tokens_start] {
+        for boundary in token.source_range.start..=token.source_range.end {
+            builder.visible_to_normalized[boundary] = normalized_start;
+        }
+    }
+    for token in &tokens[visible_tokens_start..close] {
+        for boundary in token.source_range.start..=token.source_range.end {
+            builder.visible_to_normalized[boundary] =
+                normalized_start + (boundary - tokens[visible_tokens_start].source_range.start);
+        }
+    }
+    let normalized_end = normalized_start + visible.len();
+    for token in &tokens[close..close + 2] {
+        for boundary in token.source_range.start..=token.source_range.end {
+            builder.visible_to_normalized[boundary] = normalized_end;
+        }
+    }
+
+    builder.normalized_len = normalized_end;
+    builder.fragments.push(InlineFragment {
+        text: visible,
+        style: extra_style,
+        html_style: extra_html_style,
+        link: Some(InlineLink::Wiki { target, label }),
+        footnote: None,
+        math: None,
+    });
+
+    Some(close + 2)
 }
 
 fn parse_autolink(
@@ -3029,7 +3164,10 @@ fn stack_variants(
     previous_fragment: Option<&InlineFragment>,
 ) -> Vec<Vec<Delimiter>> {
     let style = fragment.style;
-    let code_run_len = style.code.then(|| code_delimiter_run_len(&fragment.text));
+    // A code span around a wiki link would turn it into literal text.
+    let is_wiki_link = matches!(fragment.link, Some(InlineLink::Wiki { .. }));
+    let code_run_len =
+        (style.code && !is_wiki_link).then(|| code_delimiter_run_len(&fragment.text));
     let mut markdown_stack = Vec::new();
     if style.bold {
         markdown_stack.push(Delimiter::BoldMarkdown { marker: '*' });
@@ -3330,7 +3468,7 @@ fn can_close_emphasis(tokens: &[CharToken], index: usize) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        InlineFragment, InlineInsertionAttributes, InlineLinkHit, InlineMathDelimiter,
+        InlineFragment, InlineInsertionAttributes, InlineLink, InlineLinkHit, InlineMathDelimiter,
         InlineScript, InlineStyle, InlineTextTree, LinkReferenceDefinitions, StyleFlag,
     };
     use crate::components::HtmlCssColor;
@@ -3585,6 +3723,79 @@ mod tests {
         assert_eq!(tree.visible_text(), "text");
         assert!(cache.style_at(0).strikethrough);
         assert_eq!(tree.serialize_markdown(), "~~text~~");
+    }
+
+    #[test]
+    fn parses_wiki_links_and_preserves_source() {
+        let markdown = "See [[Other_Note]] and [[dir/Spec*v2*|the *spec*]] now";
+        let tree = InlineTextTree::from_markdown(markdown);
+        let cache = tree.render_cache();
+
+        assert_eq!(tree.visible_text(), "See Other_Note and the *spec* now");
+        assert_eq!(
+            cache.link_hit_at(4),
+            Some(&InlineLinkHit {
+                prompt_target: "Other_Note".to_string(),
+                open_target: "Other_Note".to_string(),
+                wiki: true,
+            })
+        );
+        let label_offset = "See Other_Note and ".len();
+        assert_eq!(cache.link_at(label_offset), Some("dir/Spec*v2*"));
+        assert!(!cache.style_at(label_offset + 4).italic);
+        assert_eq!(tree.serialize_markdown(), markdown);
+    }
+
+    #[test]
+    fn wiki_link_offset_map_points_into_label() {
+        let tree = InlineTextTree::from_markdown("a [[Target|Label]] b");
+        let map = tree.markdown_offset_map();
+
+        assert_eq!(map.visible_to_markdown_offset(2), "a [[Target|".len());
+        assert_eq!(map.visible_to_markdown_offset(6), "a [[Target|Labe".len());
+        assert_eq!(map.markdown_to_visible_offset("a [[Tar".len()), 2);
+        assert_eq!(map.markdown_to_visible_offset("a [[Target|Lab".len()), 5);
+    }
+
+    #[test]
+    fn wiki_link_keeps_surrounding_emphasis_outside_brackets() {
+        for markdown in ["**[[Note]]**", "*see [[Note|it]]*", "~~[[Gone]]~~"] {
+            let tree = InlineTextTree::from_markdown(markdown);
+            assert!(
+                tree.fragments
+                    .iter()
+                    .any(|fragment| matches!(fragment.link, Some(InlineLink::Wiki { .. }))),
+                "{markdown}"
+            );
+            assert_eq!(tree.serialize_markdown(), markdown);
+        }
+    }
+
+    #[test]
+    fn rejects_non_wiki_bracket_shapes() {
+        for markdown in [
+            "\\[[Note]]",
+            "[[]]",
+            "[[ ]]",
+            "[[a|]]",
+            "[[a\nb]]",
+            "[[open",
+            "`[[code]]`",
+        ] {
+            let tree = InlineTextTree::from_markdown(markdown);
+            assert!(
+                tree.fragments
+                    .iter()
+                    .all(|fragment| !matches!(fragment.link, Some(InlineLink::Wiki { .. }))),
+                "{markdown:?}"
+            );
+        }
+
+        let tree = InlineTextTree::from_markdown("[[x]](https://example.com)");
+        assert!(matches!(
+            tree.fragments[0].link,
+            Some(InlineLink::Inline { .. })
+        ));
     }
 
     #[test]
@@ -3876,6 +4087,7 @@ mod tests {
             Some(&InlineLinkHit {
                 prompt_target: "https://abc.com".to_string(),
                 open_target: "https://abc.com".to_string(),
+                wiki: false,
             })
         );
         assert_eq!(tree.serialize_markdown(), markdown);
@@ -3960,6 +4172,7 @@ mod tests {
             Some(&InlineLinkHit {
                 prompt_target: "Ref   Links".to_string(),
                 open_target: "https://example.com".to_string(),
+                wiki: false,
             })
         );
         assert_eq!(tree.serialize_markdown(), markdown);
@@ -4098,6 +4311,7 @@ mod tests {
             Some(&InlineLinkHit {
                 prompt_target: "ref2".to_string(),
                 open_target: "ref2".to_string(),
+                wiki: false,
             })
         );
         assert_eq!(tree.serialize_markdown(), markdown);

@@ -1325,6 +1325,9 @@ impl Editor {
             BlockEvent::RequestJumpToFootnoteBackref { id } => {
                 let _ = self.jump_to_footnote_backref(id, cx);
             }
+            BlockEvent::RequestOpenWikiLink { target } => {
+                self.request_open_wiki_link(target, cx);
+            }
             BlockEvent::RequestTableCellMoveHorizontal { delta } => {
                 self.focus_table_cell_horizontal_neighbor(
                     &binding.table_block,
@@ -2134,6 +2137,9 @@ impl Editor {
                 let _ = self.jump_to_heading(*target, cx);
                 cx.notify();
             }
+            BlockEvent::RequestOpenWikiLink { target } => {
+                self.request_open_wiki_link(target, cx);
+            }
             BlockEvent::RequestAppendTableColumn => {
                 if block.read(cx).kind() == BlockKind::Table {
                     self.prepare_undo_capture(
@@ -2542,6 +2548,58 @@ mod tests {
             assert_eq!(visible[0].entity.read(cx).toc_entries().len(), 1);
             assert!(editor.document.markdown_text(cx).starts_with("[TOC]\n\n"));
         });
+    }
+
+    #[gpui::test]
+    async fn wiki_link_event_queues_sibling_markdown_file(cx: &mut TestAppContext) {
+        let root = std::env::temp_dir().join(format!("velotype-wiki-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).expect("create temp dir");
+        let current = root.join("current.md");
+        let other = root.join("Other Note.md");
+        std::fs::write(&other, "# Other\n\nBody").expect("write target note");
+
+        let editor = cx.new(|cx| {
+            Editor::from_markdown(cx, "See [[Other Note]]".to_string(), Some(current.clone()))
+        });
+
+        editor.update(cx, |editor, cx| {
+            let paragraph = editor.document.first_root().expect("paragraph").clone();
+            let hit = paragraph
+                .read(cx)
+                .record
+                .title
+                .render_cache()
+                .link_hit_at(4)
+                .cloned()
+                .expect("wiki link hit");
+            assert!(hit.wiki);
+
+            editor.on_block_event(
+                paragraph,
+                &BlockEvent::RequestOpenWikiLink {
+                    target: hit.open_target,
+                },
+                cx,
+            );
+            assert_eq!(editor.pending_open_markdown_path, Some(other.clone()));
+            assert_eq!(
+                editor.resolve_wiki_link_path("sub/Spec.md#Intro"),
+                Some(root.join("sub/Spec.md"))
+            );
+
+            let path = editor
+                .pending_open_markdown_path
+                .take()
+                .expect("queued path");
+            // The window-level flow (dirty prompt, recent files) needs app
+            // globals; the document swap itself is what the test checks.
+            let markdown = std::fs::read_to_string(&path).expect("read wiki target");
+            editor.replace_document_from_markdown(markdown, Some(path), cx);
+            assert_eq!(editor.file_path.as_deref(), Some(other.as_path()));
+            assert_eq!(editor.document.markdown_text(cx), "# Other\n\nBody");
+        });
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[gpui::test]

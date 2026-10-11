@@ -555,6 +555,26 @@ impl Editor {
         cx.notify();
     }
 
+    /// Queues the Markdown file named by a wiki link, resolved against the
+    /// current file's directory (or the working directory when untitled).
+    pub(crate) fn request_open_wiki_link(&mut self, target: &str, cx: &mut Context<Self>) {
+        let Some(path) = self.resolve_wiki_link_path(target) else {
+            return;
+        };
+        self.pending_open_markdown_path = Some(path);
+        cx.notify();
+    }
+
+    pub(super) fn resolve_wiki_link_path(&self, target: &str) -> Option<PathBuf> {
+        let (file, _anchor) = crate::components::wiki_link_file_target(target)?;
+        let base_dir = self
+            .file_path
+            .as_ref()
+            .and_then(|path| path.parent().map(Path::to_path_buf))
+            .or_else(|| std::env::current_dir().ok())?;
+        Some(base_dir.join(file))
+    }
+
     pub(crate) fn close_menu_bar(&mut self, cx: &mut Context<Self>) {
         let had_open_menu = self.menu_bar_open.take().is_some();
         let had_open_submenu = self.menu_submenu_open.take().is_some();

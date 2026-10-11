@@ -1471,6 +1471,12 @@ impl Block {
         cx: &mut Context<Self>,
     ) {
         cx.stop_propagation();
+        if link.wiki {
+            cx.emit(BlockEvent::RequestOpenWikiLink {
+                target: link.open_target.clone(),
+            });
+            return;
+        }
         cx.emit(BlockEvent::RequestOpenLink {
             prompt_target: link.prompt_target.clone(),
             open_target: link.open_target.clone(),
