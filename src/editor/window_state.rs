@@ -295,7 +295,9 @@ impl Editor {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        crate::app_menu::request_quit_application(cx);
+        // Quitting asks every window, including this one, whether it may
+        // close; defer until this editor and its window are no longer borrowed.
+        cx.defer(crate::app_menu::request_quit_application);
     }
 
     pub(crate) fn on_close_window(

@@ -177,7 +177,24 @@ impl Editor {
 
     fn open_workspace_file(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
         self.workspace.selected = Some(WorkspaceSelection::File(path.clone()));
+        if self.is_tab_hosted() {
+            cx.emit(super::EditorTabEvent::OpenPaths {
+                paths: vec![path],
+                open_workspace: true,
+            });
+            return;
+        }
         self.request_dropped_markdown_replace(path, window, cx);
+    }
+
+    /// Opens the drawer without toggling or window activation, used when a tab
+    /// opened from another tab's drawer should keep showing it.
+    pub(super) fn open_workspace_drawer(&mut self, cx: &mut Context<Self>) {
+        if !self.workspace.is_open {
+            self.workspace.is_open = true;
+            self.sync_workspace_models(cx);
+            cx.notify();
+        }
     }
 
     pub(super) fn render_workspace_panel(
