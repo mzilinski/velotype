@@ -1932,11 +1932,263 @@ impl I18nStrings {
         }
     }
 
+    pub fn de_de() -> Self {
+        Self {
+            dirty_title_marker: "\u{00B7}".into(),
+            unsaved_changes_title: "Ohne Speichern schließen?".into(),
+            unsaved_changes_message:
+                "Dieses Dokument enthält ungespeicherte Änderungen. Speichere vor dem Schließen, damit deine letzten Änderungen nicht verloren gehen."
+                    .into(),
+            unsaved_changes_save_and_close: "Speichern und schließen".into(),
+            unsaved_changes_discard_and_close: "Verwerfen und schließen".into(),
+            unsaved_changes_cancel: "Weiter bearbeiten".into(),
+            drop_replace_title: "Aktuelles Dokument ersetzen?".into(),
+            drop_replace_message:
+                "Dieses Dokument enthält ungespeicherte Änderungen. Speichere, bevor du es durch die abgelegte Datei ersetzt, damit nichts verloren geht."
+                    .into(),
+            drop_replace_save_and_replace: "Speichern und ersetzen".into(),
+            drop_replace_discard_and_replace: "Ohne Speichern ersetzen".into(),
+            drop_replace_cancel: "Abbrechen".into(),
+            drop_no_markdown_file_message:
+                "Lege eine Markdown-Datei (.md oder .markdown) ab, um sie in diesem Fenster zu öffnen."
+                    .into(),
+            info_dialog_ok: "OK".into(),
+            help_check_updates_title: "Nach Updates suchen".into(),
+            help_check_updates_message: "Neueste Velotype-Version wird geprüft …".into(),
+            update_available_title: "Update verfügbar".into(),
+            update_available_message_template:
+                "Aktuelle Version: {current}\nNeueste Version: {latest}\nGitHub Releases zum Herunterladen öffnen?"
+                    .into(),
+            update_up_to_date_title: "Velotype ist aktuell".into(),
+            update_up_to_date_message_template:
+                "Aktuelle Version: {current}\nVersion online: {latest}".into(),
+            update_failed_title: "Update-Prüfung fehlgeschlagen".into(),
+            update_failed_message_template:
+                "Die Online-Prüfung auf Updates konnte nicht abgeschlossen werden: {error}".into(),
+            update_open_release: "Releases öffnen".into(),
+            update_later: "Später".into(),
+            help_about_title: "Über Velotype".into(),
+            help_about_message: "Autoren: alle Mitwirkenden des Projekts".into(),
+            help_about_github_label: "GitHub".into(),
+            help_about_star_message:
+                "Wenn dir dieses Projekt hilft, gib ihm gern einen Stern ⭐. Danke!".into(),
+            menu_file: "Datei".into(),
+            menu_export: "Exportieren".into(),
+            menu_language: "Sprache".into(),
+            menu_theme: "Design".into(),
+            menu_workspace: "Arbeitsbereich".into(),
+            menu_help: "Hilfe".into(),
+            menu_add_language_config: "Sprachdatei hinzufügen".into(),
+            menu_add_theme_config: "Design-Datei hinzufügen".into(),
+            menu_new_window: "Neues Fenster".into(),
+            menu_close_window: "Fenster schließen".into(),
+            menu_new_tab: "Neuer Tab".into(),
+            menu_close_tab: "Tab schließen".into(),
+            tab_untitled: "Unbenannt".into(),
+            menu_open_file: "Datei öffnen".into(),
+            menu_open_recent_file: "Zuletzt geöffnet".into(),
+            menu_preferences: "Einstellungen".into(),
+            menu_no_recent_files: "Keine zuletzt geöffneten Dateien".into(),
+            menu_save: "Speichern".into(),
+            menu_save_as: "Speichern unter".into(),
+            menu_quit: "Beenden".into(),
+            menu_export_html: "HTML".into(),
+            menu_export_pdf: "PDF".into(),
+            menu_check_updates: "Nach Updates suchen".into(),
+            menu_about: "Über".into(),
+            menu_install_cli_tool: "Kommandozeilenbefehl installieren".into(),
+            menu_uninstall_cli_tool: "Kommandozeilenbefehl entfernen".into(),
+            menu_toggle_workspace: "Arbeitsbereich ein-/ausblenden".into(),
+            menu_view: "Ansicht".into(),
+            menu_auto_pair: "Klammern und Anführungszeichen automatisch schließen".into(),
+            menu_focus_mode: "Fokus-Modus".into(),
+            menu_typewriter_mode: "Schreibmaschinen-Modus".into(),
+            menu_read_only: "Schreibschutz".into(),
+            status_read_only: "Schreibgeschützt".into(),
+            menu_spellcheck: "Rechtschreibprüfung".into(),
+            menu_spellcheck_language: "Sprache der Rechtschreibprüfung".into(),
+            context_spelling_add: "Zum Wörterbuch hinzufügen".into(),
+            context_spelling_ignore: "Ignorieren".into(),
+            context_spelling_no_suggestions: "Keine Vorschläge".into(),
+            open_markdown_files_prompt: "Markdown-Dateien öffnen".into(),
+            add_language_config_prompt: "Sprachdatei auswählen".into(),
+            add_theme_config_prompt: "Design-Datei auswählen".into(),
+            open_failed_title: "Öffnen fehlgeschlagen".into(),
+            recent_file_missing_title: "Datei nicht gefunden".into(),
+            recent_file_missing_message_template:
+                "Diese zuletzt geöffnete Datei existiert nicht mehr und wurde aus der Liste entfernt:\n{path}"
+                    .into(),
+            save_failed_title: "Speichern fehlgeschlagen".into(),
+            export_failed_title: "Export fehlgeschlagen".into(),
+            image_paste_failed_title: "Bild konnte nicht eingefügt werden".into(),
+            config_import_failed_title: "Import fehlgeschlagen".into(),
+            preferences_window_title: "Einstellungen".into(),
+            preferences_nav_file: "Datei".into(),
+            preferences_nav_theme: "Design".into(),
+            preferences_nav_image: "Bilder".into(),
+            preferences_nav_shortcuts: "Tastenkürzel".into(),
+            preferences_startup_option: "Beim Start".into(),
+            preferences_startup_new_file: "Neue Markdown-Datei".into(),
+            preferences_startup_last_opened_file: "Zuletzt geöffnete Markdown-Datei".into(),
+            preferences_local_theme: "Lokales Design".into(),
+            preferences_font_body: "Schrift für Text".into(),
+            preferences_font_code: "Schrift für Code".into(),
+            preferences_font_ui: "Schrift der Oberfläche".into(),
+            preferences_font_help: "Installierte Schriftfamilien, durch Kommas getrennt. Anführungszeichen sind erlaubt; Änderungen gelten nach dem Speichern.".into(),
+            preferences_font_unavailable_template: "Keine der gewählten Schriften ist verfügbar. Die Standardschrift des Systems wird verwendet.".into(),
+            preferences_font_error_empty: "Gib mindestens eine Schriftfamilie an.".into(),
+            preferences_font_error_unterminated_quote: "Bei einer Schriftfamilie fehlt das schließende Anführungszeichen.".into(),
+            preferences_image_insert_behavior: "Beim Einfügen von Bildern …".into(),
+            preferences_image_paste_none: "Nichts weiter tun".into(),
+            preferences_image_paste_copy_to_document_folder:
+                "Bild in den Ordner ./ kopieren".into(),
+            preferences_image_paste_copy_to_assets_folder:
+                "Bild in den Ordner ./assets kopieren".into(),
+            preferences_image_paste_copy_to_named_assets_folder:
+                "Bild in den Ordner ./${filename}.assets kopieren".into(),
+            preferences_save: "Speichern".into(),
+            preferences_cancel: "Abbrechen".into(),
+            preferences_save_failed_title: "Einstellungen konnten nicht gespeichert werden".into(),
+            preferences_shortcuts_group_file: "Datei".into(),
+            preferences_shortcuts_group_edit: "Bearbeiten".into(),
+            preferences_shortcuts_group_navigation: "Bewegen und Auswählen".into(),
+            preferences_shortcuts_group_formatting: "Formatierung".into(),
+            preferences_shortcuts_group_block: "Blöcke".into(),
+            preferences_shortcuts_group_other: "Sonstiges".into(),
+            preferences_shortcut_record: "Aufnehmen".into(),
+            preferences_shortcut_reset: "Zurücksetzen".into(),
+            preferences_shortcut_recording: "Tastenkürzel drücken …".into(),
+            preferences_shortcut_conflict_template:
+                "Dieses Tastenkürzel ist bereits für {command} vergeben".into(),
+            preferences_shortcut_invalid_template:
+                "Das Tastenkürzel {shortcut} kann nicht verwendet werden".into(),
+            preferences_shortcut_newline: "Neue Zeile".into(),
+            preferences_shortcut_delete_back: "Rückwärts löschen".into(),
+            preferences_shortcut_delete: "Vorwärts löschen".into(),
+            preferences_shortcut_word_delete_back: "Wort rückwärts löschen".into(),
+            preferences_shortcut_word_delete_forward: "Wort vorwärts löschen".into(),
+            preferences_shortcut_focus_prev: "Nach oben".into(),
+            preferences_shortcut_focus_next: "Nach unten".into(),
+            preferences_shortcut_move_left: "Nach links".into(),
+            preferences_shortcut_move_right: "Nach rechts".into(),
+            preferences_shortcut_word_move_left: "Wort nach links".into(),
+            preferences_shortcut_word_move_right: "Wort nach rechts".into(),
+            preferences_shortcut_home: "Zeilenanfang".into(),
+            preferences_shortcut_end: "Zeilenende".into(),
+            preferences_shortcut_block_up: "Block nach oben".into(),
+            preferences_shortcut_block_down: "Block nach unten".into(),
+            preferences_shortcut_page_up: "Seite nach oben".into(),
+            preferences_shortcut_page_down: "Seite nach unten".into(),
+            preferences_shortcut_jump_to_top: "Zum Anfang springen".into(),
+            preferences_shortcut_jump_to_bottom: "Zum Ende springen".into(),
+            preferences_shortcut_select_left: "Nach links auswählen".into(),
+            preferences_shortcut_select_right: "Nach rechts auswählen".into(),
+            preferences_shortcut_word_select_left: "Wort nach links auswählen".into(),
+            preferences_shortcut_word_select_right: "Wort nach rechts auswählen".into(),
+            preferences_shortcut_select_home: "Bis Zeilenanfang auswählen".into(),
+            preferences_shortcut_select_end: "Bis Zeilenende auswählen".into(),
+            preferences_shortcut_select_all: "Alles auswählen".into(),
+            preferences_shortcut_copy: "Kopieren".into(),
+            preferences_shortcut_cut: "Ausschneiden".into(),
+            preferences_shortcut_paste: "Einfügen".into(),
+            preferences_shortcut_undo: "Rückgängig".into(),
+            preferences_shortcut_redo: "Wiederholen".into(),
+            preferences_shortcut_bold_selection: "Fett".into(),
+            preferences_shortcut_italic_selection: "Kursiv".into(),
+            preferences_shortcut_underline_selection: "Unterstrichen".into(),
+            preferences_shortcut_code_selection: "Inline-Code".into(),
+            preferences_shortcut_indent_block: "Block einrücken".into(),
+            preferences_shortcut_outdent_block: "Block ausrücken".into(),
+            preferences_shortcut_exit_code_block: "Codeblock verlassen".into(),
+            preferences_shortcut_save_document: "Dokument speichern".into(),
+            preferences_shortcut_save_document_as: "Dokument speichern unter".into(),
+            preferences_shortcut_new_window: "Neues Fenster".into(),
+            preferences_shortcut_open_file: "Datei öffnen".into(),
+            preferences_shortcut_quit_application: "Programm beenden".into(),
+            preferences_shortcut_close_window: "Fenster schließen".into(),
+            preferences_shortcut_dismiss_transient_ui: "Einblendungen schließen".into(),
+            preferences_shortcut_toggle_view_mode: "Ansicht wechseln".into(),
+            preferences_shortcut_find: "Suchen".into(),
+            preferences_shortcut_find_replace: "Suchen und ersetzen".into(),
+            preferences_shortcut_find_next: "Weitersuchen".into(),
+            preferences_shortcut_find_previous: "Rückwärts suchen".into(),
+            find_placeholder: "Suchen".into(),
+            find_replace_placeholder: "Ersetzen durch".into(),
+            find_replace_one: "Ersetzen".into(),
+            find_replace_all: "Alle ersetzen".into(),
+            find_no_results: "Keine Treffer".into(),
+            find_match_count: "{current} von {total}".into(),
+            find_match_case: "Groß-/Kleinschreibung beachten".into(),
+            preferences_shortcut_toggle_workspace: "Arbeitsbereich ein-/ausblenden".into(),
+            preferences_shortcut_set_paragraph: "Absatz".into(),
+            preferences_shortcut_set_heading: "Überschrift {level}".into(),
+            preferences_shortcut_new_tab: "Neuer Tab".into(),
+            preferences_shortcut_close_tab: "Tab schließen".into(),
+            preferences_shortcut_next_tab: "Nächster Tab".into(),
+            preferences_shortcut_prev_tab: "Vorheriger Tab".into(),
+            workspace_tab_files: "Dateien".into(),
+            workspace_tab_outline: "Gliederung".into(),
+            workspace_no_file_title: "Keine Markdown-Datei geöffnet".into(),
+            workspace_no_file_message:
+                "Öffne oder speichere eine .md-Datei, um ihren Ordner als Arbeitsbereich zu nutzen."
+                    .into(),
+            workspace_empty_files: "Keine Markdown-Dateien vorhanden".into(),
+            workspace_empty_outline: "Dieses Dokument hat keine Überschriften".into(),
+            workspace_scan_failed_title: "Arbeitsbereich konnte nicht gelesen werden".into(),
+            open_link_title: "Link öffnen?".into(),
+            open_link_open: "Öffnen".into(),
+            open_link_cancel: "Abbrechen".into(),
+            view_mode_source: "Quelltext".into(),
+            view_mode_switch_to_source: "Zum Quelltext wechseln".into(),
+            view_mode_rendered: "Vorschau".into(),
+            view_mode_switch_to_rendered: "Zur Vorschau wechseln".into(),
+            context_menu_insert: "Einfügen".into(),
+            context_menu_table: "Tabelle".into(),
+            table_axis_align_column_left: "Spalte links ausrichten".into(),
+            table_axis_align_column_center: "Spalte zentrieren".into(),
+            table_axis_align_column_right: "Spalte rechts ausrichten".into(),
+            table_axis_move_column_left: "Spalte nach links".into(),
+            table_axis_move_column_right: "Spalte nach rechts".into(),
+            table_axis_delete_column: "Spalte löschen".into(),
+            table_axis_move_row_up: "Zeile nach oben".into(),
+            table_axis_move_row_down: "Zeile nach unten".into(),
+            table_axis_delete_row: "Zeile löschen".into(),
+            table_axis_insert_row_above: "Zeile oberhalb einfügen".into(),
+            table_axis_insert_row_below: "Zeile unterhalb einfügen".into(),
+            table_axis_insert_column_left: "Spalte links einfügen".into(),
+            table_axis_insert_column_right: "Spalte rechts einfügen".into(),
+            table_header_row: "Kopfzeile".into(),
+            table_insert_title: "Tabelle einfügen".into(),
+            table_insert_description:
+                "Erstellt eine Kopfzeile; Anzahl der Zeilen und Spalten festlegen.".into(),
+            table_insert_body_rows: "Zeilen".into(),
+            table_insert_columns: "Spalten".into(),
+            table_insert_cancel: "Abbrechen".into(),
+            table_insert_confirm: "Einfügen".into(),
+            image_placeholder: "Bild".into(),
+            image_loading_without_alt: "Bild wird geladen …".into(),
+            image_loading_with_alt_template: "{alt} wird geladen".into(),
+            code_language_placeholder: "Sprache".into(),
+            table_of_contents_empty: "Inhaltsverzeichnis: noch keine Überschriften".into(),
+            status_bar_files: "Seitenleiste".into(),
+            status_bar_mode_source: "Quelltext".into(),
+            status_bar_mode_rendered: "Vorschau".into(),
+            status_bar_word_count_suffix: "Wörter".into(),
+            preferences_nav_status_bar: "Statusleiste".into(),
+            preferences_status_bar_enabled: "Statusleiste anzeigen".into(),
+            preferences_status_bar_show_word_count: "Wortzahl".into(),
+            preferences_status_bar_show_cursor_position: "Cursorposition".into(),
+            preferences_status_bar_show_sidebar_toggle: "Seitenleisten-Schalter".into(),
+            preferences_status_bar_show_mode_switch: "Ansichtsumschalter".into(),
+        }
+    }
+
     /// Returns a built-in string set for a supported language id.
     pub fn for_language_id(language_id: &str) -> Option<Self> {
         match language_id {
             "zh-CN" => Some(Self::zh_cn()),
             "en-US" => Some(Self::en_us()),
+            "de-DE" => Some(Self::de_de()),
             _ => None,
         }
     }
@@ -1953,6 +2205,8 @@ const BUILTIN_LANGUAGE_ZH_CN_ID: &str = "zh-CN";
 const BUILTIN_LANGUAGE_ZH_CN_NAME: &str = "简体中文";
 const BUILTIN_LANGUAGE_EN_US_ID: &str = "en-US";
 const BUILTIN_LANGUAGE_EN_US_NAME: &str = "English";
+const BUILTIN_LANGUAGE_DE_DE_ID: &str = "de-DE";
+const BUILTIN_LANGUAGE_DE_DE_NAME: &str = "Deutsch";
 
 fn builtin_language_catalog() -> Vec<LanguageCatalogEntry> {
     vec![
@@ -1963,6 +2217,10 @@ fn builtin_language_catalog() -> Vec<LanguageCatalogEntry> {
         LanguageCatalogEntry {
             id: BUILTIN_LANGUAGE_EN_US_ID.into(),
             name: BUILTIN_LANGUAGE_EN_US_NAME.into(),
+        },
+        LanguageCatalogEntry {
+            id: BUILTIN_LANGUAGE_DE_DE_ID.into(),
+            name: BUILTIN_LANGUAGE_DE_DE_NAME.into(),
         },
     ]
 }
@@ -2037,6 +2295,7 @@ fn language_name_for_id(language_id: &str) -> Option<&'static str> {
     match language_id {
         BUILTIN_LANGUAGE_ZH_CN_ID => Some(BUILTIN_LANGUAGE_ZH_CN_NAME),
         BUILTIN_LANGUAGE_EN_US_ID => Some(BUILTIN_LANGUAGE_EN_US_NAME),
+        BUILTIN_LANGUAGE_DE_DE_ID => Some(BUILTIN_LANGUAGE_DE_DE_NAME),
         _ => None,
     }
 }
@@ -2044,7 +2303,7 @@ fn language_name_for_id(language_id: &str) -> Option<&'static str> {
 fn is_builtin_language_id(language_id: &str) -> bool {
     matches!(
         language_id,
-        BUILTIN_LANGUAGE_ZH_CN_ID | BUILTIN_LANGUAGE_EN_US_ID
+        BUILTIN_LANGUAGE_ZH_CN_ID | BUILTIN_LANGUAGE_EN_US_ID | BUILTIN_LANGUAGE_DE_DE_ID
     )
 }
 
@@ -2089,6 +2348,7 @@ fn language_id_for_locale(locale: &str) -> Option<&'static str> {
     match language.as_str() {
         "zh" => Some(BUILTIN_LANGUAGE_ZH_CN_ID),
         "en" => Some(BUILTIN_LANGUAGE_EN_US_ID),
+        "de" => Some(BUILTIN_LANGUAGE_DE_DE_ID),
         _ => None,
     }
 }
@@ -2370,14 +2630,21 @@ mod tests {
     }
 
     #[test]
-    fn language_catalog_contains_chinese_and_english() {
+    fn language_catalog_contains_builtin_languages() {
         let manager = I18nManager::default();
         let ids = manager
             .available_languages()
             .iter()
             .map(|entry| (entry.id.as_str(), entry.name.as_str()))
             .collect::<Vec<_>>();
-        assert_eq!(ids, vec![("zh-CN", "简体中文"), ("en-US", "English")]);
+        assert_eq!(
+            ids,
+            vec![
+                ("zh-CN", "简体中文"),
+                ("en-US", "English"),
+                ("de-DE", "Deutsch")
+            ]
+        );
     }
 
     #[test]
@@ -2407,6 +2674,8 @@ mod tests {
     #[test]
     fn locale_preferences_map_to_builtin_languages() {
         assert_eq!(language_id_for_locale_preferences(["zh-CN"]), "zh-CN");
+        assert_eq!(language_id_for_locale_preferences(["de-DE"]), "de-DE");
+        assert_eq!(language_id_for_locale_preferences(["de_AT.UTF-8"]), "de-DE");
         assert_eq!(language_id_for_locale_preferences(["zh-HK"]), "zh-CN");
         assert_eq!(language_id_for_locale_preferences(["zh-Hant-TW"]), "zh-CN");
         assert_eq!(language_id_for_locale_preferences(["zh_SG.UTF-8"]), "zh-CN");
