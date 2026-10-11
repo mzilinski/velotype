@@ -3504,7 +3504,10 @@ async fn outline_jump_focuses_heading_block_for_source_line(cx: &mut TestAppCont
 
     editor.update(cx, |editor, cx| {
         assert!(!editor.jump_to_source_line(99, cx));
+    });
+}
 
+#[gpui::test]
 async fn insert_table_row_and_column_in_the_middle(cx: &mut TestAppContext) {
     let markdown = ["| A | B |", "| --- | :---: |", "| 1 | 2 |", "| 3 | 4 |"].join("\n");
     let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
