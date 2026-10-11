@@ -6,7 +6,10 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, anyhow};
-use directories::ProjectDirs;
+use gpui::{Hsla, Rgba};
+
+use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
+use crate::theme::Theme;
 
 const SIMPLE_MERMAID_LINE_LIMIT: usize = 8;
 const MERMAID_COMPLEX_TARGET_WIDTH_RATIO: f32 = 0.9;
@@ -54,6 +57,108 @@ pub(crate) struct MermaidSvgRender {
 pub(crate) struct MermaidSvgSize {
     pub(crate) width: f32,
     pub(crate) height: f32,
+}
+
+/// Theme-derived colours handed to the Mermaid renderer so diagrams match the
+/// active editor theme instead of the renderer's fixed light palette.
+///
+/// All values are opaque `#rrggbb` strings; translucent theme tokens are
+/// composited over the editor background first.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct MermaidPalette {
+    dark: bool,
+    background: String,
+    text: String,
+    node_fill: String,
+    node_border: String,
+    line: String,
+    secondary_fill: String,
+    tertiary_fill: String,
+    cluster_fill: String,
+    cluster_border: String,
+    note_fill: String,
+    note_border: String,
+}
+
+impl MermaidPalette {
+    /// Derives diagram colours from editor theme tokens.
+    pub(crate) fn from_theme(theme: &Theme) -> Self {
+        let c = &theme.colors;
+        let bg = c.editor_background;
+        let hex = |color: Hsla| css_hex_over(color, bg);
+        Self {
+            dark: theme.is_dark(),
+            background: hex(bg),
+            text: hex(c.text_default),
+            node_fill: hex(c.code_bg),
+            node_border: hex(c.table_border),
+            line: hex(c.text_quote),
+            secondary_fill: hex(c.table_header_bg),
+            tertiary_fill: hex(c.table_cell_bg),
+            cluster_fill: hex(c.source_mode_block_bg),
+            cluster_border: hex(c.table_border),
+            note_fill: hex(c.callout_note_bg),
+            note_border: hex(c.callout_note_border),
+        }
+    }
+
+    /// Short stable fingerprint mixed into cache keys so a theme switch
+    /// renders (and caches) a separate SVG.
+    pub(crate) fn fingerprint(&self) -> String {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        format!("{:016x}", hasher.finish())
+    }
+
+    fn renderer_theme(&self) -> mermaid_rs_renderer::Theme {
+        // Start from the closest stock palette so the colours this palette
+        // does not cover (git branches, pie slices) still suit the background.
+        let mut theme = if self.dark {
+            mermaid_rs_renderer::Theme::dark()
+        } else {
+            mermaid_rs_renderer::Theme::modern()
+        };
+        theme.background = self.background.clone();
+        theme.primary_color = self.node_fill.clone();
+        theme.primary_text_color = self.text.clone();
+        theme.primary_border_color = self.node_border.clone();
+        theme.line_color = self.line.clone();
+        theme.secondary_color = self.secondary_fill.clone();
+        theme.tertiary_color = self.tertiary_fill.clone();
+        theme.edge_label_background = self.background.clone();
+        theme.cluster_background = self.cluster_fill.clone();
+        theme.cluster_border = self.cluster_border.clone();
+        theme.sequence_actor_fill = self.node_fill.clone();
+        theme.sequence_actor_border = self.node_border.clone();
+        theme.sequence_actor_line = self.line.clone();
+        theme.sequence_note_fill = self.note_fill.clone();
+        theme.sequence_note_border = self.note_border.clone();
+        theme.sequence_activation_fill = self.secondary_fill.clone();
+        theme.sequence_activation_border = self.node_border.clone();
+        theme.text_color = self.text.clone();
+        theme.pie_title_text_color = self.text.clone();
+        theme.pie_section_text_color = self.text.clone();
+        theme.pie_legend_text_color = self.text.clone();
+        theme.pie_stroke_color = self.background.clone();
+        theme.pie_outer_stroke_color = self.node_border.clone();
+        theme
+    }
+}
+
+/// Formats `color` as opaque `#rrggbb`, compositing it over `background`
+/// when it is translucent.
+fn css_hex_over(color: Hsla, background: Hsla) -> String {
+    let fg = Rgba::from(color);
+    let bg = Rgba::from(background);
+    let alpha = fg.a.clamp(0.0, 1.0);
+    let channel =
+        |f: f32, b: f32| ((f * alpha + b * (1.0 - alpha)).clamp(0.0, 1.0) * 255.0).round() as u8;
+    format!(
+        "#{:02x}{:02x}{:02x}",
+        channel(fg.r, bg.r),
+        channel(fg.g, bg.g),
+        channel(fg.b, bg.b)
+    )
 }
 
 /// Returns true when a fenced code info string declares Mermaid content.
@@ -123,21 +228,29 @@ pub(crate) fn parse_mermaid_fence_source(raw: &str) -> Option<MermaidSource> {
 /// Render Mermaid source into a cached SVG sized for editor display.
 pub(crate) fn render_mermaid_svg_for_display(
     source: &MermaidSource,
+    palette: &MermaidPalette,
     available_width: f32,
     viewport_width: f32,
 ) -> anyhow::Result<MermaidSvgRender> {
-    render_mermaid_svg_for_display_with(source, available_width, viewport_width, render_mermaid_raw)
+    render_mermaid_svg_for_display_with(
+        source,
+        palette,
+        available_width,
+        viewport_width,
+        render_mermaid_raw,
+    )
 }
 
 fn render_mermaid_svg_for_display_with(
     source: &MermaidSource,
+    palette: &MermaidPalette,
     available_width: f32,
     viewport_width: f32,
     renderer: MermaidRenderer,
 ) -> anyhow::Result<MermaidSvgRender> {
-    let base_key = mermaid_cache_key(&source.body);
+    let base_key = mermaid_cache_key(&source.body, palette);
     let base_path = mermaid_base_cache_path(&base_key)?;
-    let base_svg = render_mermaid_to_svg_cached_with(&source.body, &base_path, renderer)?;
+    let base_svg = render_mermaid_to_svg_cached_with(&source.body, palette, &base_path, renderer)?;
     let intrinsic = mermaid_svg_intrinsic_size(&base_svg)?;
     let scale = mermaid_display_scale(
         &source.body,
@@ -147,9 +260,10 @@ fn render_mermaid_svg_for_display_with(
         viewport_width,
     );
 
-    let display_key = mermaid_display_cache_key(&source.body, scale);
+    let display_key = mermaid_display_cache_key(&source.body, palette, scale);
     let display_path = mermaid_display_cache_path(&display_key)?;
     if display_path.exists() {
+        mark_svg_cache_hit(&display_path);
         let svg = fs::read_to_string(&display_path).with_context(|| {
             format!(
                 "failed to read Mermaid display SVG cache '{}'",
@@ -183,26 +297,31 @@ fn render_mermaid_svg_for_display_with(
 }
 
 /// Render a Mermaid diagram body into cached SVG text.
-pub(crate) fn render_mermaid_to_svg(source: &str) -> anyhow::Result<String> {
-    let key = mermaid_cache_key(source);
+pub(crate) fn render_mermaid_to_svg(
+    source: &str,
+    palette: &MermaidPalette,
+) -> anyhow::Result<String> {
+    let key = mermaid_cache_key(source, palette);
     let path = mermaid_base_cache_path(&key)?;
-    render_mermaid_to_svg_cached_with(source, &path, render_mermaid_raw)
+    render_mermaid_to_svg_cached_with(source, palette, &path, render_mermaid_raw)
 }
 
-type MermaidRenderer = fn(&str) -> anyhow::Result<String>;
+type MermaidRenderer = fn(&str, &MermaidPalette) -> anyhow::Result<String>;
 
 fn render_mermaid_to_svg_cached_with(
     source: &str,
+    palette: &MermaidPalette,
     path: &Path,
     renderer: MermaidRenderer,
 ) -> anyhow::Result<String> {
     if path.exists() {
+        mark_svg_cache_hit(path);
         return fs::read_to_string(path).with_context(|| {
             format!("failed to read Mermaid base SVG cache '{}'", path.display())
         });
     }
 
-    let svg = renderer(source)?;
+    let svg = renderer(source, palette)?;
     fs::write(path, &svg).with_context(|| {
         format!(
             "failed to write Mermaid base SVG cache '{}'",
@@ -212,28 +331,38 @@ fn render_mermaid_to_svg_cached_with(
     Ok(svg)
 }
 
-fn render_mermaid_raw(source: &str) -> anyhow::Result<String> {
+fn render_mermaid_raw(source: &str, palette: &MermaidPalette) -> anyhow::Result<String> {
     if !looks_like_supported_mermaid_source(source) {
         return Err(anyhow::anyhow!("unsupported Mermaid diagram"));
     }
-    let svg = mermaid_rs_renderer::render(source).map_err(|err| anyhow::anyhow!("{err}"))?;
+    let options = mermaid_rs_renderer::RenderOptions {
+        theme: palette.renderer_theme(),
+        ..mermaid_rs_renderer::RenderOptions::default()
+    };
+    let svg = mermaid_rs_renderer::render_with_options(source, options)
+        .map_err(|err| anyhow::anyhow!("{err}"))?;
     if svg.contains("class=\"error-text\"") || svg.contains("Syntax error in text") {
         return Err(anyhow::anyhow!("Mermaid syntax error"));
     }
     Ok(svg)
 }
 
-/// Stable cache key for Mermaid content.
-pub(crate) fn mermaid_cache_key(source: &str) -> String {
+/// Stable cache key for Mermaid content rendered with the given palette.
+pub(crate) fn mermaid_cache_key(source: &str, palette: &MermaidPalette) -> String {
     let mut hasher = DefaultHasher::new();
     source.hash(&mut hasher);
+    palette.fingerprint().hash(&mut hasher);
     format!("{:016x}", hasher.finish())
 }
 
-/// Stable cache key for editor display SVG content and scale.
-pub(crate) fn mermaid_display_cache_key(source: &str, scale: f32) -> String {
+/// Stable cache key for editor display SVG content, palette and scale.
+pub(crate) fn mermaid_display_cache_key(
+    source: &str,
+    palette: &MermaidPalette,
+    scale: f32,
+) -> String {
     let mut hasher = DefaultHasher::new();
-    mermaid_cache_key(source).hash(&mut hasher);
+    mermaid_cache_key(source, palette).hash(&mut hasher);
     scale.max(0.1).to_bits().hash(&mut hasher);
     format!("{:016x}", hasher.finish())
 }
@@ -501,10 +630,7 @@ fn svg_root_attrs(root_tag: &str) -> Vec<SvgRootAttr> {
 }
 
 fn mermaid_cache_dir() -> anyhow::Result<PathBuf> {
-    let root = ProjectDirs::from("com", "manyougz", "Velotype")
-        .map(|dirs| dirs.cache_dir().to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir().join("Velotype"));
-    let dir = root.join("mermaid-svg");
+    let dir = velotype_cache_root().join("mermaid-svg");
     fs::create_dir_all(&dir)
         .with_context(|| format!("failed to create Mermaid SVG cache '{}'", dir.display()))?;
     Ok(dir)
@@ -585,12 +711,16 @@ mod tests {
 
     static TEST_RENDERER_CALLS: OnceLock<Mutex<HashMap<String, usize>>> = OnceLock::new();
 
-    fn test_renderer(source: &str) -> anyhow::Result<String> {
+    fn test_renderer(source: &str, palette: &MermaidPalette) -> anyhow::Result<String> {
         let calls = TEST_RENDERER_CALLS.get_or_init(|| Mutex::new(HashMap::new()));
         let mut calls = calls.lock().expect("renderer calls mutex poisoned");
         *calls.entry(source.to_string()).or_default() += 1;
         drop(calls);
-        render_mermaid_raw(source)
+        render_mermaid_raw(source, palette)
+    }
+
+    fn dark_palette() -> MermaidPalette {
+        MermaidPalette::from_theme(&Theme::default_theme())
     }
 
     fn reset_renderer_calls(source: &str) {
@@ -656,10 +786,59 @@ mod tests {
 
     #[test]
     fn cache_key_changes_with_source() {
+        let palette = dark_palette();
         assert_ne!(
-            mermaid_cache_key("flowchart LR\nA --> B"),
-            mermaid_cache_key("flowchart LR\nA --> C")
+            mermaid_cache_key("flowchart LR\nA --> B", &palette),
+            mermaid_cache_key("flowchart LR\nA --> C", &palette)
         );
+    }
+
+    #[test]
+    fn cache_key_changes_with_theme_palette() {
+        let source = "flowchart LR\nA --> B";
+        let dark = dark_palette();
+        let light = MermaidPalette::from_theme(&Theme::light_theme());
+        assert_ne!(dark.fingerprint(), light.fingerprint());
+        assert_ne!(
+            mermaid_cache_key(source, &dark),
+            mermaid_cache_key(source, &light)
+        );
+        assert_ne!(
+            mermaid_display_cache_key(source, &dark, 1.0),
+            mermaid_display_cache_key(source, &light, 1.0)
+        );
+    }
+
+    #[test]
+    fn palette_uses_opaque_theme_colours() {
+        let theme = Theme::night_theme();
+        let palette = MermaidPalette::from_theme(&theme);
+        assert!(palette.dark);
+        assert_eq!(palette.background, "#2b3038");
+        assert_eq!(palette.text, "#d8dde4");
+        // Translucent callout tint is composited over the page background.
+        assert_eq!(palette.note_fill.len(), 7);
+        assert_ne!(palette.note_fill, palette.background);
+    }
+
+    #[test]
+    fn css_hex_composites_translucent_colours() {
+        let white = Hsla::from(gpui::rgba(0xffffffff));
+        let black = Hsla::from(gpui::rgba(0x000000ff));
+        assert_eq!(css_hex_over(white, black), "#ffffff");
+        assert_eq!(
+            css_hex_over(Hsla::from(gpui::rgba(0xffffff80)), black),
+            "#808080"
+        );
+    }
+
+    #[test]
+    fn rendered_svg_uses_theme_background_and_text() {
+        let palette = MermaidPalette::from_theme(&Theme::night_theme());
+        let svg = render_mermaid_raw("flowchart LR\nA[Start] --> B[End]", &palette).expect("svg");
+        assert!(svg.contains(&palette.background), "background missing");
+        assert!(svg.contains(&palette.node_fill), "node fill missing");
+        assert!(!svg.contains("#FFFFFF\""));
     }
 
     #[test]
@@ -701,8 +880,8 @@ mod tests {
     fn display_cache_key_changes_with_scale() {
         let source = "flowchart LR\nA --> B";
         assert_ne!(
-            mermaid_display_cache_key(source, 1.0),
-            mermaid_display_cache_key(source, 2.0)
+            mermaid_display_cache_key(source, &dark_palette(), 1.0),
+            mermaid_display_cache_key(source, &dark_palette(), 2.0)
         );
     }
 
@@ -745,7 +924,7 @@ mod tests {
 
     #[test]
     fn renders_basic_flowchart_svg() {
-        let svg = render_mermaid_to_svg("flowchart LR\nA --> B").expect("svg");
+        let svg = render_mermaid_to_svg("flowchart LR\nA --> B", &dark_palette()).expect("svg");
         assert!(svg.contains("<svg"));
         assert!(svg.contains("</svg>"));
     }
@@ -754,7 +933,8 @@ mod tests {
     fn display_render_uses_scaled_intrinsic_size() {
         let source =
             parse_mermaid_fence_source("```mermaid\nflowchart LR\nA --> B\n```").expect("source");
-        let rendered = render_mermaid_svg_for_display(&source, 720.0, 960.0).expect("display svg");
+        let rendered = render_mermaid_svg_for_display(&source, &dark_palette(), 720.0, 960.0)
+            .expect("display svg");
 
         assert!(rendered.display_width > 1.0);
         assert!(rendered.display_height > 1.0);
@@ -774,24 +954,36 @@ mod tests {
 
     #[test]
     fn invalid_mermaid_returns_error() {
-        assert!(render_mermaid_to_svg("not a real mermaid diagram ::::").is_err());
+        assert!(render_mermaid_to_svg("not a real mermaid diagram ::::", &dark_palette()).is_err());
     }
 
     #[test]
     fn display_cache_hit_does_not_call_renderer_again() {
         let source = unique_mermaid_source("display-cache-hit-does-not-call-renderer-again");
-        let base_key = mermaid_cache_key(&source.body);
+        let base_key = mermaid_cache_key(&source.body, &dark_palette());
         let base_path = mermaid_base_cache_path(&base_key).expect("base path");
         remove_cache_file(&base_path);
 
         reset_renderer_calls(&source.body);
-        let first = render_mermaid_svg_for_display_with(&source, 720.0, 960.0, test_renderer)
-            .expect("first render");
+        let first = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            720.0,
+            960.0,
+            test_renderer,
+        )
+        .expect("first render");
         assert_eq!(renderer_calls(&source.body), 1);
         let display_path = first.path.clone();
 
-        let second = render_mermaid_svg_for_display_with(&source, 720.0, 960.0, test_renderer)
-            .expect("cached render");
+        let second = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            720.0,
+            960.0,
+            test_renderer,
+        )
+        .expect("cached render");
         assert_eq!(renderer_calls(&source.body), 1);
         assert_eq!(second.path, display_path);
         assert_eq!(second.display_width, first.display_width);
@@ -804,18 +996,30 @@ mod tests {
     #[test]
     fn display_cache_miss_reuses_base_cache() {
         let source = unique_mermaid_source("display-cache-miss-reuses-base-cache");
-        let base_key = mermaid_cache_key(&source.body);
+        let base_key = mermaid_cache_key(&source.body, &dark_palette());
         let base_path = mermaid_base_cache_path(&base_key).expect("base path");
         remove_cache_file(&base_path);
 
         reset_renderer_calls(&source.body);
-        let first = render_mermaid_svg_for_display_with(&source, 720.0, 960.0, test_renderer)
-            .expect("first render");
+        let first = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            720.0,
+            960.0,
+            test_renderer,
+        )
+        .expect("first render");
         assert_eq!(renderer_calls(&source.body), 1);
         remove_cache_file(&first.path);
 
-        let second = render_mermaid_svg_for_display_with(&source, 720.0, 960.0, test_renderer)
-            .expect("display rebuild");
+        let second = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            720.0,
+            960.0,
+            test_renderer,
+        )
+        .expect("display rebuild");
         assert_eq!(renderer_calls(&source.body), 1);
         assert!(second.path.exists());
         assert_eq!(second.display_width, first.display_width);
@@ -828,17 +1032,29 @@ mod tests {
     #[test]
     fn display_scale_change_reuses_base_cache_with_new_display_file() {
         let source = unique_mermaid_source("display-scale-change-reuses-base-cache");
-        let base_key = mermaid_cache_key(&source.body);
+        let base_key = mermaid_cache_key(&source.body, &dark_palette());
         let base_path = mermaid_base_cache_path(&base_key).expect("base path");
         remove_cache_file(&base_path);
 
         reset_renderer_calls(&source.body);
-        let narrow = render_mermaid_svg_for_display_with(&source, 240.0, 320.0, test_renderer)
-            .expect("narrow render");
+        let narrow = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            240.0,
+            320.0,
+            test_renderer,
+        )
+        .expect("narrow render");
         assert_eq!(renderer_calls(&source.body), 1);
 
-        let wide = render_mermaid_svg_for_display_with(&source, 900.0, 1200.0, test_renderer)
-            .expect("wide render");
+        let wide = render_mermaid_svg_for_display_with(
+            &source,
+            &dark_palette(),
+            900.0,
+            1200.0,
+            test_renderer,
+        )
+        .expect("wide render");
         assert_eq!(renderer_calls(&source.body), 1);
         assert!(wide.path.exists());
 

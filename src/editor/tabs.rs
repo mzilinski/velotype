@@ -87,11 +87,16 @@ pub struct EditorWindow {
     pub(crate) close_guard_installed: bool,
     /// Folder opened with Open Folder, given to every tab of this window.
     workspace_folder: Option<PathBuf>,
+    /// Re-applies the appearance-bound theme when the OS light/dark mode flips.
+    _appearance_subscription: Subscription,
 }
 
 impl EditorWindow {
     pub(crate) fn new(editor: Entity<Editor>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let tab = Self::attach_with_folder(editor, None, window, cx);
+        let appearance_subscription = cx.observe_window_appearance(window, |_, window, cx| {
+            crate::config::sync_theme_with_system_appearance(cx, window.appearance());
+        });
         Self {
             tabs: vec![tab],
             active: 0,
@@ -99,6 +104,7 @@ impl EditorWindow {
             drafts_unavailable: false,
             close_guard_installed: false,
             workspace_folder: None,
+            _appearance_subscription: appearance_subscription,
         }
     }
 

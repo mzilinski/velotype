@@ -6,8 +6,9 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use anyhow::{Context as _, anyhow};
-use directories::ProjectDirs;
 use gpui::{Hsla, Rgba};
+
+use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
 
 const DISPLAY_MATH_SCALE: f32 = 1.25;
 const INLINE_MATH_SCALE: f32 = 1.12;
@@ -92,7 +93,9 @@ fn render_latex_svg_to_cache(
     let svg = render_latex_to_svg(latex, text_color, font_size)?;
     let key = latex_cache_key(latex, text_color, font_size);
     let path = latex_cache_dir()?.join(format!("{key}.svg"));
-    if !path.exists() {
+    if path.exists() {
+        mark_svg_cache_hit(&path);
+    } else {
         fs::write(&path, &svg)
             .with_context(|| format!("failed to write LaTeX SVG cache '{}'", path.display()))?;
     }
@@ -136,10 +139,7 @@ fn strip_display_indent(line: &str) -> Option<&str> {
 }
 
 fn latex_cache_dir() -> anyhow::Result<PathBuf> {
-    let root = ProjectDirs::from("com", "manyougz", "Velotype")
-        .map(|dirs| dirs.cache_dir().to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir().join("Velotype"));
-    let dir = root.join("latex-svg");
+    let dir = velotype_cache_root().join("latex-svg");
     fs::create_dir_all(&dir)
         .with_context(|| format!("failed to create LaTeX SVG cache '{}'", dir.display()))?;
     Ok(dir)

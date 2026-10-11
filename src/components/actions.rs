@@ -69,6 +69,7 @@ actions!(
         ExportPdf,
         AddLanguageConfig,
         AddThemeConfig,
+        ToggleFollowSystemAppearance,
         QuitApplication,
         CloseWindow,
         CheckForUpdates,
