@@ -8,7 +8,11 @@ use crate::fonts::FontSettings;
 use crate::theme::Theme;
 
 mod html;
+mod options;
 mod pdf;
+
+pub(crate) use options::{DEFAULT_PDF_MARGIN_MM, PdfExportOptions, PdfOrientation, PdfPaperSize};
+pub(crate) use pdf::find_chromium_executable;
 
 /// Export target selected from the app menu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,6 +41,7 @@ pub(crate) fn render_pdf_with_fonts(
     title: &str,
     base_path: Option<&std::path::Path>,
     fonts: &FontSettings,
+    options: &PdfExportOptions,
 ) -> anyhow::Result<Vec<u8>> {
-    pdf::render_pdf_with_fonts(markdown, theme, title, base_path, fonts)
+    pdf::render_pdf_with_fonts(markdown, theme, title, base_path, fonts, options)
 }

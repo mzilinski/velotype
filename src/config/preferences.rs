@@ -15,6 +15,7 @@ use crate::components::{
     normalize_shortcut_config, normalize_shortcut_keys, resolved_shortcut_keys,
     shortcut_conflict_for, shortcut_definitions, switch::Switch,
 };
+use crate::export::{DEFAULT_PDF_MARGIN_MM, PdfExportOptions, PdfOrientation, PdfPaperSize};
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings, FontStackParseError};
 use crate::i18n::{I18nManager, I18nStrings, language_id_for_locale_preferences};
 use crate::theme::{Theme, ThemeCatalogEntry, ThemeManager};
@@ -148,6 +149,8 @@ pub(crate) struct AppPreferences {
     pub(crate) keybindings: BTreeMap<String, Vec<String>>,
     pub(crate) status_bar: StatusBarPreferences,
     pub(crate) fonts: FontPreferences,
+    /// Page setup for File > Export > PDF.
+    pub(crate) pdf_export: PdfExportOptions,
 }
 
 impl Default for AppPreferences {
@@ -162,6 +165,7 @@ impl Default for AppPreferences {
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),
+            pdf_export: PdfExportOptions::default(),
         }
     }
 }
@@ -310,6 +314,26 @@ struct PreferencesFile {
     status_bar: StatusBarPreferencesFile,
     keybindings: BTreeMap<String, Vec<String>>,
     fonts: FontPreferencesFile,
+    pdf_export: PdfExportPreferencesFile,
+}
+
+#[derive(Serialize)]
+struct PdfExportPreferencesFile {
+    paper_size: String,
+    orientation: String,
+    margin_mm: u32,
+    page_numbers: bool,
+}
+
+impl From<&PdfExportOptions> for PdfExportPreferencesFile {
+    fn from(value: &PdfExportOptions) -> Self {
+        Self {
+            paper_size: value.paper_size.as_str().into(),
+            orientation: value.orientation.as_str().into(),
+            margin_mm: value.margin_mm,
+            page_numbers: value.page_numbers,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -403,6 +427,7 @@ impl From<&AppPreferences> for PreferencesFile {
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
             fonts: FontPreferencesFile::from(&value.fonts),
+            pdf_export: PdfExportPreferencesFile::from(&value.pdf_export),
         }
     }
 }
@@ -594,6 +619,7 @@ fn app_preferences_from_toml_value(
         keybindings,
         status_bar,
         fonts,
+        pdf_export: PdfExportOptions::from_toml(value.get("pdf_export")),
     }
 }
 
@@ -771,6 +797,7 @@ enum PreferencesNav {
     Image,
     Shortcuts,
     StatusBar,
+    Export,
 }
 
 fn font_uses_system_default(fonts: &FontPreferences, catalog: &FontCatalog) -> [bool; 3] {
@@ -819,6 +846,8 @@ pub(crate) struct PreferencesWindow {
     body_font_input: Entity<SingleLineInput>,
     code_font_input: Entity<SingleLineInput>,
     ui_font_input: Entity<SingleLineInput>,
+    pdf_export: PdfExportOptions,
+    saved_pdf_export: PdfExportOptions,
 }
 
 impl PreferencesWindow {
@@ -905,6 +934,8 @@ impl PreferencesWindow {
             body_font_input,
             code_font_input,
             ui_font_input,
+            pdf_export: preferences.pdf_export.clone(),
+            saved_pdf_export: preferences.pdf_export,
         }
     }
 
@@ -963,6 +994,7 @@ impl PreferencesWindow {
             || self.status_bar_show_sidebar_toggle != self.saved_status_bar_show_sidebar_toggle
             || self.status_bar_show_mode_switch != self.saved_status_bar_show_mode_switch
             || self.fonts != self.saved_fonts
+            || self.pdf_export != self.saved_pdf_export
     }
 
     fn set_nav_file(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
@@ -1003,6 +1035,15 @@ impl PreferencesWindow {
 
     fn set_nav_status_bar(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::StatusBar;
+        self.startup_dropdown_open = false;
+        self.theme_dropdown_open = false;
+        self.image_dropdown_open = false;
+        self.recording_shortcut = None;
+        cx.notify();
+    }
+
+    fn set_nav_export(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.nav = PreferencesNav::Export;
         self.startup_dropdown_open = false;
         self.theme_dropdown_open = false;
         self.image_dropdown_open = false;
@@ -1071,7 +1112,14 @@ impl PreferencesWindow {
                 custom_buttons: Vec::new(),
             },
             &self.fonts,
-        ) {
+        )
+        .and_then(|mut preferences| {
+            // PDF page setup is stored separately so the shared window save
+            // signature stays unchanged.
+            preferences.pdf_export = self.pdf_export.clone();
+            save_app_preferences(&preferences)?;
+            Ok(preferences)
+        }) {
             Ok(preferences) => preferences,
             Err(err) => {
                 let strings = cx.global::<I18nManager>().strings().clone();
@@ -1134,6 +1182,7 @@ impl PreferencesWindow {
         self.saved_status_bar_show_sidebar_toggle = self.status_bar_show_sidebar_toggle;
         self.saved_status_bar_show_mode_switch = self.status_bar_show_mode_switch;
         self.saved_fonts = self.fonts.clone();
+        self.saved_pdf_export = self.pdf_export.clone();
         cx.notify();
     }
 
@@ -2036,6 +2085,157 @@ impl PreferencesWindow {
             .justify_center()
             .child(items)
     }
+
+    /// Compact single-choice button used by the export page.
+    fn choice_chip(
+        id: impl Into<ElementId>,
+        label: String,
+        selected: bool,
+        theme: &Theme,
+        on_click: impl Fn(&mut Self, &ClickEvent, &mut Window, &mut Context<Self>) + 'static,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let c = &theme.colors;
+        let d = &theme.dimensions;
+        let t = &theme.typography;
+        div()
+            .id(id)
+            .min_h(px(30.0))
+            .px(px(12.0))
+            .flex()
+            .items_center()
+            .rounded(px(d.menu_item_radius))
+            .border(px(d.dialog_border_width))
+            .border_color(c.dialog_border)
+            .cursor_pointer()
+            .text_size(px(t.dialog_body_size))
+            .text_color(if selected {
+                c.dialog_primary_button_text
+            } else {
+                c.dialog_body
+            })
+            .bg(if selected {
+                c.dialog_primary_button_bg
+            } else {
+                c.dialog_secondary_button_bg
+            })
+            .hover(move |this| {
+                this.bg(if selected {
+                    c.dialog_primary_button_hover
+                } else {
+                    c.dialog_secondary_button_hover
+                })
+            })
+            .child(label)
+            .on_click(cx.listener(on_click))
+    }
+
+    fn render_export_page(
+        &self,
+        theme: &Theme,
+        strings: &crate::i18n::I18nStrings,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        let chips = || div().w_full().flex().flex_wrap().gap(px(6.0));
+
+        let mut paper = chips();
+        for (index, size) in PdfPaperSize::ALL.into_iter().enumerate() {
+            paper = paper.child(Self::choice_chip(
+                ("preferences-pdf-paper", index),
+                size.label().to_string(),
+                self.pdf_export.paper_size == size,
+                theme,
+                move |this, _, _, cx| {
+                    this.pdf_export.paper_size = size;
+                    cx.notify();
+                },
+                cx,
+            ));
+        }
+
+        let mut orientation = chips();
+        for (index, (value, label)) in [
+            (
+                PdfOrientation::Portrait,
+                &strings.preferences_pdf_orientation_portrait,
+            ),
+            (
+                PdfOrientation::Landscape,
+                &strings.preferences_pdf_orientation_landscape,
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            orientation = orientation.child(Self::choice_chip(
+                ("preferences-pdf-orientation", index),
+                label.clone(),
+                self.pdf_export.orientation == value,
+                theme,
+                move |this, _, _, cx| {
+                    this.pdf_export.orientation = value;
+                    cx.notify();
+                },
+                cx,
+            ));
+        }
+
+        // Presets cover common layouts; a custom value from config.toml stays
+        // selectable alongside them.
+        let mut margins = vec![5, 10, DEFAULT_PDF_MARGIN_MM, 20, 25];
+        if !margins.contains(&self.saved_pdf_export.margin_mm) {
+            margins.push(self.saved_pdf_export.margin_mm);
+            margins.sort_unstable();
+        }
+        let mut margin = chips();
+        for (index, value) in margins.into_iter().enumerate() {
+            margin = margin.child(Self::choice_chip(
+                ("preferences-pdf-margin", index),
+                format!("{value} mm"),
+                self.pdf_export.margin_mm == value,
+                theme,
+                move |this, _, _, cx| {
+                    this.pdf_export.margin_mm = value;
+                    cx.notify();
+                },
+                cx,
+            ));
+        }
+
+        let c = &theme.colors;
+        let t = &theme.typography;
+        let page_numbers = div()
+            .w_full()
+            .flex()
+            .items_center()
+            .justify_between()
+            .child(
+                div()
+                    .text_size(px(t.dialog_body_size))
+                    .font_weight(t.dialog_button_weight.to_font_weight())
+                    .text_color(c.dialog_title)
+                    .child(strings.preferences_pdf_page_numbers.clone()),
+            )
+            .child(
+                Switch::new("preferences-pdf-page-numbers")
+                    .checked(self.pdf_export.page_numbers)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.pdf_export.page_numbers = !this.pdf_export.page_numbers;
+                        cx.notify();
+                    })),
+            );
+
+        div()
+            .w_full()
+            .min_w(px(0.0))
+            .flex()
+            .flex_col()
+            .gap(px(18.0))
+            .child(self.labeled_row(&strings.preferences_pdf_paper_size, paper, theme))
+            .child(self.labeled_row(&strings.preferences_pdf_orientation, orientation, theme))
+            .child(self.labeled_row(&strings.preferences_pdf_margin, margin, theme))
+            .child(page_numbers)
+    }
 }
 
 impl Render for PreferencesWindow {
@@ -2115,6 +2315,14 @@ impl Render for PreferencesWindow {
                                 &theme,
                                 Self::set_nav_status_bar,
                                 cx,
+                            ))
+                            .child(self.nav_button(
+                                "preferences-nav-export",
+                                strings.preferences_nav_export.clone(),
+                                self.nav == PreferencesNav::Export,
+                                &theme,
+                                Self::set_nav_export,
+                                cx,
                             )),
                     ),
             )
@@ -2156,6 +2364,9 @@ impl Render for PreferencesWindow {
                                         }
                                         PreferencesNav::StatusBar => {
                                             strings.preferences_nav_status_bar.clone()
+                                        }
+                                        PreferencesNav::Export => {
+                                            strings.preferences_nav_export.clone()
                                         }
                                     }),
                             )
@@ -2202,6 +2413,17 @@ impl Render for PreferencesWindow {
                                     .items_center()
                                     .justify_center()
                                     .child(self.render_status_bar_page(&theme, &strings, cx))
+                                    .into_any_element(),
+                                PreferencesNav::Export => div()
+                                    .id("preferences-export-scroll")
+                                    .w_full()
+                                    .h_full()
+                                    .flex_1()
+                                    .min_h(px(0.0))
+                                    .min_w(px(0.0))
+                                    .overflow_y_scroll()
+                                    .pr(px(4.0))
+                                    .child(self.render_export_page(&theme, &strings, cx))
                                     .into_any_element(),
                             }),
                     )
@@ -2345,6 +2567,7 @@ mod tests {
         save_preferences_from_window_with_dirs,
     };
     use crate::config::VelotypeConfigDirs;
+    use crate::export::{PdfExportOptions, PdfOrientation, PdfPaperSize};
     use crate::fonts::FontPreferences;
     use crate::i18n::I18nManager;
     use crate::theme::{ThemeCatalogEntry, ThemeManager};
@@ -2504,6 +2727,12 @@ mod tests {
                 code_stack: "Consolas, monospace".into(),
                 ui_stack: ".SystemUIFont".into(),
             },
+            pdf_export: PdfExportOptions {
+                paper_size: PdfPaperSize::Letter,
+                orientation: PdfOrientation::Landscape,
+                margin_mm: 22,
+                page_numbers: true,
+            },
         };
 
         save_app_preferences_with_dirs(&preferences, &dirs)
@@ -2524,6 +2753,11 @@ mod tests {
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));
+        assert!(text.contains("[pdf_export]"));
+        assert!(text.contains("paper_size = \"letter\""));
+        assert!(text.contains("orientation = \"landscape\""));
+        assert!(text.contains("margin_mm = 22"));
+        assert!(text.contains("page_numbers = true"));
         let _ = std::fs::remove_dir_all(root);
     }
 
@@ -2596,6 +2830,7 @@ mod tests {
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),
+            pdf_export: PdfExportOptions::default(),
         };
         save_app_preferences_with_dirs(&preferences, &dirs)
             .expect("preferences should save to config.toml");
@@ -2727,6 +2962,36 @@ mod tests {
                 );
             })
             .expect("preferences window should expose live font validation");
+    }
+
+    #[gpui::test]
+    async fn pdf_export_draft_changes_mark_window_dirty(cx: &mut TestAppContext) {
+        init_preferences_test_app(cx);
+
+        let handle = cx.update(|cx| {
+            open_preferences_window_with_state(
+                cx,
+                AppPreferences::default(),
+                default_theme_options(),
+                "Preferences".into(),
+            )
+        });
+        cx.run_until_parked();
+
+        handle
+            .update(cx, |preferences, window, cx| {
+                assert!(!preferences.has_unsaved_changes());
+                preferences.pdf_export.page_numbers = true;
+                preferences.pdf_export.paper_size = PdfPaperSize::A5;
+                assert!(preferences.has_unsaved_changes());
+                let saved = AppPreferences {
+                    pdf_export: preferences.pdf_export.clone(),
+                    ..AppPreferences::default()
+                };
+                preferences.apply_saved_preferences(saved, window, cx);
+                assert!(!preferences.has_unsaved_changes());
+            })
+            .expect("preferences window should be updateable");
     }
 
     #[gpui::test]
