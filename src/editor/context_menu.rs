@@ -262,6 +262,9 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.close_palette(cx) {
+            return;
+        }
         let had_overlay = self.context_menu.is_some() || self.table_insert_dialog.is_some();
         self.dismiss_contextual_overlays(cx);
         if !had_overlay {

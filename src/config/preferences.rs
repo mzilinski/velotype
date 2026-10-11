@@ -1598,6 +1598,10 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleTypewriterMode => strings.menu_typewriter_mode.clone(),
             ShortcutCommand::ToggleReadOnly => strings.menu_read_only.clone(),
             ShortcutCommand::ToggleSpellcheck => strings.menu_spellcheck.clone(),
+            ShortcutCommand::QuickOpen => strings.preferences_shortcut_quick_open.clone(),
+            ShortcutCommand::SearchInWorkspace => {
+                strings.preferences_shortcut_search_workspace.clone()
+            }
             ShortcutCommand::DismissTransientUi => {
                 strings.preferences_shortcut_dismiss_transient_ui.clone()
             }

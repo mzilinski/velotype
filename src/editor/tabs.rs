@@ -52,6 +52,12 @@ pub(crate) enum EditorTabEvent {
         paths: Vec<PathBuf>,
         open_workspace: bool,
     },
+    /// Open one file (Quick Open, Search in Folder) and optionally reveal
+    /// `(line, query)` in it.
+    OpenPathAndReveal {
+        path: PathBuf,
+        reveal: Option<(usize, String)>,
+    },
 }
 
 impl EventEmitter<EditorTabEvent> for Editor {}
@@ -429,6 +435,14 @@ impl EditorWindow {
                 open_workspace,
             } => {
                 self.open_paths(paths.clone(), *open_workspace, window, cx);
+            }
+            EditorTabEvent::OpenPathAndReveal { path, reveal } => {
+                self.open_paths(vec![path.clone()], false, window, cx);
+                let editor = self.active_editor().clone();
+                let opened = editor.read(cx).file_path.as_deref() == Some(path.as_path());
+                if let (true, Some((line, query))) = (opened, reveal.clone()) {
+                    editor.update(cx, |editor, cx| editor.reveal_search_hit(line, &query, cx));
+                }
             }
         }
     }

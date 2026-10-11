@@ -140,6 +140,11 @@ pub struct I18nStrings {
     pub context_spelling_no_suggestions: String,
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
+    pub quick_open_placeholder: String,
+    pub workspace_search_placeholder: String,
+    pub workspace_search_no_results: String,
+    pub preferences_shortcut_quick_open: String,
+    pub preferences_shortcut_search_workspace: String,
     /// Native file-dialog prompt for opening Markdown files.
     pub open_markdown_files_prompt: String,
     /// Native file-dialog prompt for importing a language pack.
@@ -453,6 +458,11 @@ struct I18nStringsDe {
     context_spelling_ignore: Option<String>,
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
+    quick_open_placeholder: Option<String>,
+    workspace_search_placeholder: Option<String>,
+    workspace_search_no_results: Option<String>,
+    preferences_shortcut_quick_open: Option<String>,
+    preferences_shortcut_search_workspace: Option<String>,
     open_markdown_files_prompt: Option<String>,
     add_language_config_prompt: Option<String>,
     add_theme_config_prompt: Option<String>,
@@ -682,6 +692,11 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_ignore",
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
+    "quick_open_placeholder",
+    "workspace_search_placeholder",
+    "workspace_search_no_results",
+    "preferences_shortcut_quick_open",
+    "preferences_shortcut_search_workspace",
     "open_markdown_files_prompt",
     "add_language_config_prompt",
     "add_theme_config_prompt",
@@ -989,6 +1004,21 @@ impl I18nStringsDe {
             spelling_download_failed_title: self
                 .spelling_download_failed_title
                 .unwrap_or(defaults.spelling_download_failed_title),
+            quick_open_placeholder: self
+                .quick_open_placeholder
+                .unwrap_or(defaults.quick_open_placeholder),
+            workspace_search_placeholder: self
+                .workspace_search_placeholder
+                .unwrap_or(defaults.workspace_search_placeholder),
+            workspace_search_no_results: self
+                .workspace_search_no_results
+                .unwrap_or(defaults.workspace_search_no_results),
+            preferences_shortcut_quick_open: self
+                .preferences_shortcut_quick_open
+                .unwrap_or(defaults.preferences_shortcut_quick_open),
+            preferences_shortcut_search_workspace: self
+                .preferences_shortcut_search_workspace
+                .unwrap_or(defaults.preferences_shortcut_search_workspace),
             open_markdown_files_prompt: self
                 .open_markdown_files_prompt
                 .unwrap_or(defaults.open_markdown_files_prompt),
@@ -1524,6 +1554,11 @@ impl I18nStrings {
             context_spelling_ignore: "忽略".into(),
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
+            quick_open_placeholder: "转到文件…".into(),
+            workspace_search_placeholder: "在文件夹中搜索…".into(),
+            workspace_search_no_results: "此文件夹中没有匹配项".into(),
+            preferences_shortcut_quick_open: "快速打开".into(),
+            preferences_shortcut_search_workspace: "在文件夹中搜索".into(),
             open_markdown_files_prompt: "打开 Markdown 文件".into(),
             add_language_config_prompt: "选择语言配置文件".into(),
             add_theme_config_prompt: "选择主题配置文件".into(),
@@ -1771,6 +1806,11 @@ impl I18nStrings {
             context_spelling_ignore: "Ignore".into(),
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
+            quick_open_placeholder: "Go to file…".into(),
+            workspace_search_placeholder: "Search in folder…".into(),
+            workspace_search_no_results: "No matches in this folder".into(),
+            preferences_shortcut_quick_open: "Quick Open".into(),
+            preferences_shortcut_search_workspace: "Search in Folder".into(),
             open_markdown_files_prompt: "Open Markdown Files".into(),
             add_language_config_prompt: "Choose Language Config".into(),
             add_theme_config_prompt: "Choose Theme Config".into(),
@@ -2020,6 +2060,11 @@ impl I18nStrings {
             context_spelling_ignore: "Ignorieren".into(),
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
+            quick_open_placeholder: "Gehe zu Datei …".into(),
+            workspace_search_placeholder: "Im Ordner suchen …".into(),
+            workspace_search_no_results: "Keine Treffer in diesem Ordner".into(),
+            preferences_shortcut_quick_open: "Schnell öffnen".into(),
+            preferences_shortcut_search_workspace: "Im Ordner suchen".into(),
             open_markdown_files_prompt: "Markdown-Dateien öffnen".into(),
             add_language_config_prompt: "Sprachdatei auswählen".into(),
             add_theme_config_prompt: "Design-Datei auswählen".into(),

@@ -47,6 +47,7 @@ mod tree;
 mod update;
 mod window_state;
 mod workspace;
+mod workspace_search;
 mod writing;
 
 use self::status_bar::StatusBarState;
@@ -127,6 +128,8 @@ pub struct Editor {
     table_insert_dialog: Option<TableInsertDialogState>,
     /// Open find & replace bar, if any.
     find: Option<find::FindState>,
+    /// Open Quick Open / Search in Folder palette, if any.
+    palette: Option<workspace_search::PaletteState>,
     context_menu_submenu_close_task: Option<Task<()>>,
     table_axis_preview: Option<TableAxisSelection>,
     table_axis_selection: Option<TableAxisSelection>,
@@ -373,6 +376,7 @@ impl Editor {
             typewriter_last_caret: None,
             table_insert_dialog: None,
             find: None,
+            palette: None,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,
             table_axis_selection: None,

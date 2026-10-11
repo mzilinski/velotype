@@ -2086,6 +2086,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_and_replace))
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
+            .on_action(cx.listener(Self::on_quick_open))
+            .on_action(cx.listener(Self::on_search_in_workspace))
             .on_action(cx.listener(Self::on_install_cli_tool))
             .on_action(cx.listener(Self::on_uninstall_cli_tool));
         // Fetch menus + collect labels once for both renderers; previously each
@@ -2184,6 +2186,11 @@ impl Render for Editor {
         };
         let base = if let Some(find_bar) = self.render_find_bar(&theme, px(titlebar_height), cx) {
             base.child(find_bar)
+        } else {
+            base
+        };
+        let base = if let Some(palette) = self.render_palette(&theme, px(titlebar_height), cx) {
+            base.child(palette)
         } else {
             base
         };
