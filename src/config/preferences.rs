@@ -1491,6 +1491,10 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleViewMode => {
                 strings.preferences_shortcut_toggle_view_mode.clone()
             }
+            ShortcutCommand::FindInDocument => strings.preferences_shortcut_find.clone(),
+            ShortcutCommand::FindAndReplace => strings.preferences_shortcut_find_replace.clone(),
+            ShortcutCommand::FindNext => strings.preferences_shortcut_find_next.clone(),
+            ShortcutCommand::FindPrevious => strings.preferences_shortcut_find_previous.clone(),
             ShortcutCommand::ToggleWorkspace => {
                 strings.preferences_shortcut_toggle_workspace.clone()
             }

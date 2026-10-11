@@ -215,7 +215,7 @@ impl Editor {
         });
     }
 
-    fn focus_block_range(
+    pub(super) fn focus_block_range(
         &mut self,
         block: &Entity<super::Block>,
         range: std::ops::Range<usize>,
@@ -1572,6 +1572,10 @@ impl Editor {
         if let BlockEvent::PrepareUndo { kind } = event {
             self.prepare_undo_capture_from_stable_snapshot(*kind);
             return;
+        }
+
+        if matches!(event, BlockEvent::Changed) && self.find.is_some() {
+            self.refresh_find_matches(cx);
         }
 
         if let BlockEvent::RequestReplaceCrossBlockSelection {

@@ -114,6 +114,10 @@ pub struct Block {
     pub selected_range: Range<usize>,
     pub selection_reversed: bool,
     pub(crate) editor_selection_range: Option<Range<usize>>,
+    /// Find-bar matches in clean (unprojected) text offsets.
+    pub(crate) search_highlights: Vec<Range<usize>>,
+    /// Index into `search_highlights` of the current find match, if it is here.
+    pub(crate) active_search_highlight: Option<usize>,
     pub marked_range: Option<Range<usize>>,
     pub last_layout: Option<Vec<WrappedLine>>,
     pub last_bounds: Option<Bounds<Pixels>>,
@@ -220,6 +224,8 @@ impl Block {
             selected_range: 0..0,
             selection_reversed: false,
             editor_selection_range: None,
+            search_highlights: Vec::new(),
+            active_search_highlight: None,
             marked_range: None,
             last_layout: None,
             last_bounds: None,
@@ -352,6 +358,26 @@ impl Block {
 
     pub fn display_text(&self) -> &str {
         self.current_cache().visible_text()
+    }
+
+    /// Visible text without the inline-marker projection used while focused,
+    /// so offsets into it stay stable whether or not the block has focus.
+    pub(crate) fn clean_text(&self) -> &str {
+        self.render_cache.visible_text()
+    }
+
+    /// Replaces the find-bar highlights (clean offsets) painted in this block.
+    pub(crate) fn set_search_highlights(
+        &mut self,
+        ranges: Vec<Range<usize>>,
+        active: Option<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.search_highlights != ranges || self.active_search_highlight != active {
+            self.search_highlights = ranges;
+            self.active_search_highlight = active;
+            cx.notify();
+        }
     }
 
     /// Cheap clone of the current display text as a `SharedString` (Arc bump)

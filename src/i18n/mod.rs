@@ -235,6 +235,24 @@ pub struct I18nStrings {
     pub preferences_shortcut_close_window: String,
     pub preferences_shortcut_dismiss_transient_ui: String,
     pub preferences_shortcut_toggle_view_mode: String,
+    pub preferences_shortcut_find: String,
+    pub preferences_shortcut_find_replace: String,
+    pub preferences_shortcut_find_next: String,
+    pub preferences_shortcut_find_previous: String,
+    /// Find bar search field placeholder.
+    pub find_placeholder: String,
+    /// Find bar replacement field placeholder.
+    pub find_replace_placeholder: String,
+    /// Find bar button replacing the current match.
+    pub find_replace_one: String,
+    /// Find bar button replacing every match.
+    pub find_replace_all: String,
+    /// Find bar status when the query has no matches.
+    pub find_no_results: String,
+    /// Find bar match counter; `{current}` and `{total}` are substituted.
+    pub find_match_count: String,
+    /// Tooltip for the find bar case-sensitivity toggle.
+    pub find_match_case: String,
     pub preferences_shortcut_toggle_workspace: String,
     /// Workspace drawer Files tab.
     pub workspace_tab_files: String,
@@ -475,6 +493,17 @@ struct I18nStringsDe {
     preferences_shortcut_close_window: Option<String>,
     preferences_shortcut_dismiss_transient_ui: Option<String>,
     preferences_shortcut_toggle_view_mode: Option<String>,
+    preferences_shortcut_find: Option<String>,
+    preferences_shortcut_find_replace: Option<String>,
+    preferences_shortcut_find_next: Option<String>,
+    preferences_shortcut_find_previous: Option<String>,
+    find_placeholder: Option<String>,
+    find_replace_placeholder: Option<String>,
+    find_replace_one: Option<String>,
+    find_replace_all: Option<String>,
+    find_no_results: Option<String>,
+    find_match_count: Option<String>,
+    find_match_case: Option<String>,
     preferences_shortcut_toggle_workspace: Option<String>,
     workspace_tab_files: Option<String>,
     workspace_tab_outline: Option<String>,
@@ -667,6 +696,17 @@ const I18N_STRING_KEYS: &[&str] = &[
     "preferences_shortcut_close_window",
     "preferences_shortcut_dismiss_transient_ui",
     "preferences_shortcut_toggle_view_mode",
+    "preferences_shortcut_find",
+    "preferences_shortcut_find_replace",
+    "preferences_shortcut_find_next",
+    "preferences_shortcut_find_previous",
+    "find_placeholder",
+    "find_replace_placeholder",
+    "find_replace_one",
+    "find_replace_all",
+    "find_no_results",
+    "find_match_count",
+    "find_match_case",
     "preferences_shortcut_toggle_workspace",
     "workspace_tab_files",
     "workspace_tab_outline",
@@ -1101,6 +1141,27 @@ impl I18nStringsDe {
             preferences_shortcut_toggle_view_mode: self
                 .preferences_shortcut_toggle_view_mode
                 .unwrap_or(defaults.preferences_shortcut_toggle_view_mode),
+            preferences_shortcut_find: self
+                .preferences_shortcut_find
+                .unwrap_or(defaults.preferences_shortcut_find),
+            preferences_shortcut_find_replace: self
+                .preferences_shortcut_find_replace
+                .unwrap_or(defaults.preferences_shortcut_find_replace),
+            preferences_shortcut_find_next: self
+                .preferences_shortcut_find_next
+                .unwrap_or(defaults.preferences_shortcut_find_next),
+            preferences_shortcut_find_previous: self
+                .preferences_shortcut_find_previous
+                .unwrap_or(defaults.preferences_shortcut_find_previous),
+            find_placeholder: self.find_placeholder.unwrap_or(defaults.find_placeholder),
+            find_replace_placeholder: self
+                .find_replace_placeholder
+                .unwrap_or(defaults.find_replace_placeholder),
+            find_replace_one: self.find_replace_one.unwrap_or(defaults.find_replace_one),
+            find_replace_all: self.find_replace_all.unwrap_or(defaults.find_replace_all),
+            find_no_results: self.find_no_results.unwrap_or(defaults.find_no_results),
+            find_match_count: self.find_match_count.unwrap_or(defaults.find_match_count),
+            find_match_case: self.find_match_case.unwrap_or(defaults.find_match_case),
             preferences_shortcut_toggle_workspace: self
                 .preferences_shortcut_toggle_workspace
                 .unwrap_or(defaults.preferences_shortcut_toggle_workspace),
@@ -1385,6 +1446,17 @@ impl I18nStrings {
             preferences_shortcut_close_window: "关闭窗口".into(),
             preferences_shortcut_dismiss_transient_ui: "关闭临时界面".into(),
             preferences_shortcut_toggle_view_mode: "切换视图模式".into(),
+            preferences_shortcut_find: "查找".into(),
+            preferences_shortcut_find_replace: "查找和替换".into(),
+            preferences_shortcut_find_next: "查找下一个".into(),
+            preferences_shortcut_find_previous: "查找上一个".into(),
+            find_placeholder: "查找".into(),
+            find_replace_placeholder: "替换".into(),
+            find_replace_one: "替换".into(),
+            find_replace_all: "全部替换".into(),
+            find_no_results: "无结果".into(),
+            find_match_count: "第 {current} 项，共 {total} 项".into(),
+            find_match_case: "区分大小写".into(),
             preferences_shortcut_toggle_workspace: "切换工作区".into(),
             workspace_tab_files: "文件".into(),
             workspace_tab_outline: "大纲".into(),
@@ -1606,6 +1678,17 @@ impl I18nStrings {
             preferences_shortcut_close_window: "Close Window".into(),
             preferences_shortcut_dismiss_transient_ui: "Dismiss Temporary UI".into(),
             preferences_shortcut_toggle_view_mode: "Toggle View Mode".into(),
+            preferences_shortcut_find: "Find".into(),
+            preferences_shortcut_find_replace: "Find and Replace".into(),
+            preferences_shortcut_find_next: "Find Next".into(),
+            preferences_shortcut_find_previous: "Find Previous".into(),
+            find_placeholder: "Find".into(),
+            find_replace_placeholder: "Replace".into(),
+            find_replace_one: "Replace".into(),
+            find_replace_all: "Replace All".into(),
+            find_no_results: "No results".into(),
+            find_match_count: "{current} of {total}".into(),
+            find_match_case: "Match Case".into(),
             preferences_shortcut_toggle_workspace: "Toggle Workspace".into(),
             workspace_tab_files: "Files".into(),
             workspace_tab_outline: "Outline".into(),

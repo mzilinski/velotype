@@ -12,6 +12,11 @@ const FADE_GRAPHEME_COUNT: usize = 4;
 
 pub(crate) struct InputChanged;
 
+/// Emitted when Enter is pressed; `shift` reports whether Shift was held.
+pub(crate) struct InputSubmitted {
+    pub shift: bool,
+}
+
 /// Controls how unfocused input text is presented when it exceeds the field.
 /// Focused fields always use a clipped, cursor-following viewport so editing
 /// remains predictable.
@@ -46,6 +51,7 @@ pub(crate) struct SingleLineInput {
 }
 
 impl EventEmitter<InputChanged> for SingleLineInput {}
+impl EventEmitter<InputSubmitted> for SingleLineInput {}
 impl Focusable for SingleLineInput {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
@@ -87,13 +93,18 @@ impl SingleLineInput {
     pub(crate) fn value(&self) -> &str {
         &self.content
     }
-    #[cfg(test)]
     pub(crate) fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.content = value.into();
         self.selection = self.content.len()..self.content.len();
         self.marked = None;
         self.ensure_cursor_visible = true;
         cx.emit(InputChanged);
+        cx.notify();
+    }
+    pub(crate) fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.selection = 0..self.content.len();
+        self.reversed = false;
+        self.ensure_cursor_visible = true;
         cx.notify();
     }
     fn cursor(&self) -> usize {
@@ -233,7 +244,7 @@ impl SingleLineInput {
                 }
                 self.replace_text_in_range(None, "", window, cx);
             }
-            (_, _, "enter") => {}
+            (_, shift, "enter") => cx.emit(InputSubmitted { shift }),
             _ => return,
         }
         cx.stop_propagation();

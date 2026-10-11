@@ -394,7 +394,11 @@ impl Editor {
     }
 
     fn ensure_focused_caret_visible(&mut self, window: &Window, cx: &App) -> bool {
-        let Some(focused_block) = self.focused_edit_target(window, cx) else {
+        // While the find field has focus, the current match is the scroll target.
+        let Some(focused_block) = self
+            .focused_edit_target(window, cx)
+            .or_else(|| self.find_scroll_target())
+        else {
             return false;
         };
         let Some(active_bounds) =
@@ -1716,6 +1720,7 @@ impl Render for Editor {
         // table cell maps to its containing table block's row.
         let focus_row = self
             .focused_edit_target_entity_id(window, cx)
+            .or_else(|| self.find_scroll_target().map(|block| block.entity_id()))
             .and_then(|id| {
                 self.document.visible_index_for_entity_id(id).or_else(|| {
                     self.table_cell_binding(id).and_then(|binding| {
@@ -2020,6 +2025,10 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_jump_to_top))
             .on_action(cx.listener(Self::on_jump_to_bottom))
             .on_action(cx.listener(Self::on_dismiss_transient_ui))
+            .on_action(cx.listener(Self::on_find_in_document))
+            .on_action(cx.listener(Self::on_find_and_replace))
+            .on_action(cx.listener(Self::on_find_next))
+            .on_action(cx.listener(Self::on_find_previous))
             .on_action(cx.listener(Self::on_install_cli_tool))
             .on_action(cx.listener(Self::on_uninstall_cli_tool));
         // Fetch menus + collect labels once for both renderers; previously each
@@ -2101,6 +2110,11 @@ impl Render for Editor {
         };
         let base = if let Some(table_dialog) = self.render_table_insert_dialog_overlay(&theme, cx) {
             base.child(table_dialog)
+        } else {
+            base
+        };
+        let base = if let Some(find_bar) = self.render_find_bar(&theme, px(titlebar_height), cx) {
+            base.child(find_bar)
         } else {
             base
         };

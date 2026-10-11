@@ -1145,6 +1145,34 @@ impl Element for BlockTextElement {
             }
         }
 
+        // Find-bar matches paint beneath the text like code backgrounds; the
+        // current match uses a stronger tint than the others.
+        if !self.is_placeholder && !input.search_highlights.is_empty() {
+            let text = input.display_text();
+            let clean = input.clean_text();
+            for (index, clean_range) in input.search_highlights.iter().enumerate() {
+                // Highlights can be one edit behind the text; skip stale ranges
+                // rather than slicing past the end or inside a character.
+                if clean_range.end > clean.len()
+                    || !clean.is_char_boundary(clean_range.start)
+                    || !clean.is_char_boundary(clean_range.end)
+                {
+                    continue;
+                }
+                let color = if input.active_search_highlight == Some(index) {
+                    hsla(28.0 / 360.0, 0.95, 0.55, 0.65)
+                } else {
+                    hsla(48.0 / 360.0, 0.95, 0.55, 0.35)
+                };
+                let range = input.clean_to_current_range(clean_range.clone());
+                for segment in
+                    range_segment_bounds(&lines, text_bounds, line_height, text, range, text_align)
+                {
+                    code_quads.push(fill(segment, color));
+                }
+            }
+        }
+
         PrepaintState {
             lines,
             source_line_numbers,
