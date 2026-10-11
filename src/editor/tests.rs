@@ -3504,5 +3504,36 @@ async fn outline_jump_focuses_heading_block_for_source_line(cx: &mut TestAppCont
 
     editor.update(cx, |editor, cx| {
         assert!(!editor.jump_to_source_line(99, cx));
+
+async fn insert_table_row_and_column_in_the_middle(cx: &mut TestAppContext) {
+    let markdown = ["| A | B |", "| --- | :---: |", "| 1 | 2 |", "| 3 | 4 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+
+        editor.insert_table_row(&table, 1, cx);
+        {
+            let runtime = table.read(cx).table_runtime.as_ref().expect("runtime");
+            assert_eq!(editor.pending_focus, Some(runtime.rows[1][0].entity_id()));
+        }
+
+        editor.insert_table_column(&table, 1, cx);
+        {
+            let runtime = table.read(cx).table_runtime.as_ref().expect("runtime");
+            assert_eq!(editor.pending_focus, Some(runtime.header[1].entity_id()));
+        }
+
+        assert_eq!(
+            editor.document.markdown_text(cx),
+            [
+                "| A |  | B |",
+                "| --- | --- | :---: |",
+                "| 1 |  | 2 |",
+                "|  |  |  |",
+                "| 3 |  | 4 |",
+            ]
+            .join("\n")
+        );
     });
 }

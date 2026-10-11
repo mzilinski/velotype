@@ -214,6 +214,86 @@ impl Editor {
         cx.notify();
     }
 
+    /// Inserts an empty body row before `body_index` and focuses its first cell.
+    pub(super) fn insert_table_row(
+        &mut self,
+        table_block: &Entity<Block>,
+        body_index: usize,
+        cx: &mut Context<Self>,
+    ) {
+        self.sync_table_record_from_runtime(table_block, cx);
+        let Some(mut table) = table_block.read(cx).record.table.clone() else {
+            return;
+        };
+        let started_local_capture = if self.pending_undo_capture.is_none() {
+            self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+            true
+        } else {
+            false
+        };
+        let body_index = body_index.min(table.rows.len());
+        table.insert_row(body_index);
+        table_block.update(cx, move |block, _cx| {
+            block.record.table = Some(table.clone());
+        });
+        self.rebuild_table_runtimes(cx);
+        self.set_table_axis_selection(None, cx);
+        self.focus_table_cell_position(
+            table_block,
+            TableCellPosition {
+                row: body_index + 1,
+                column: 0,
+            },
+            cx,
+        );
+        self.mark_dirty(cx);
+        self.request_active_block_scroll_into_view(cx);
+        if started_local_capture {
+            self.finalize_pending_undo_capture(cx);
+        }
+        cx.notify();
+    }
+
+    /// Inserts an empty column before `col_index` and focuses its header cell.
+    pub(super) fn insert_table_column(
+        &mut self,
+        table_block: &Entity<Block>,
+        col_index: usize,
+        cx: &mut Context<Self>,
+    ) {
+        self.sync_table_record_from_runtime(table_block, cx);
+        let Some(mut table) = table_block.read(cx).record.table.clone() else {
+            return;
+        };
+        let started_local_capture = if self.pending_undo_capture.is_none() {
+            self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+            true
+        } else {
+            false
+        };
+        let col_index = col_index.min(table.column_count());
+        table.insert_column(col_index, TableColumnAlignment::Default);
+        table_block.update(cx, move |block, _cx| {
+            block.record.table = Some(table.clone());
+        });
+        self.rebuild_table_runtimes(cx);
+        self.set_table_axis_selection(None, cx);
+        self.focus_table_cell_position(
+            table_block,
+            TableCellPosition {
+                row: 0,
+                column: col_index,
+            },
+            cx,
+        );
+        self.mark_dirty(cx);
+        self.request_active_block_scroll_into_view(cx);
+        if started_local_capture {
+            self.finalize_pending_undo_capture(cx);
+        }
+        cx.notify();
+    }
+
     pub(super) fn preview_table_axis(
         &mut self,
         table_block_id: EntityId,

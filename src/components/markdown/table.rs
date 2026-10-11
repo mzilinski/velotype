@@ -138,6 +138,33 @@ impl TableData {
         }
     }
 
+    /// Inserts one empty body row before `body_index`; indices past the end
+    /// append.
+    pub fn insert_row(&mut self, body_index: usize) {
+        self.normalize_shape();
+        let columns = self.column_count();
+        let index = body_index.min(self.rows.len());
+        self.rows.insert(
+            index,
+            (0..columns)
+                .map(|_| InlineTextTree::plain(String::new()))
+                .collect(),
+        );
+    }
+
+    /// Inserts one empty column before `col_index`; indices past the end
+    /// append.
+    pub fn insert_column(&mut self, col_index: usize, alignment: TableColumnAlignment) {
+        self.normalize_shape();
+        let index = col_index.min(self.column_count());
+        self.header
+            .insert(index, InlineTextTree::plain(String::new()));
+        self.alignments.insert(index, alignment);
+        for row in &mut self.rows {
+            row.insert(index, InlineTextTree::plain(String::new()));
+        }
+    }
+
     /// Sets the alignment of one column if it exists.
     pub fn set_column_alignment(&mut self, column: usize, alignment: TableColumnAlignment) {
         self.normalize_shape();
