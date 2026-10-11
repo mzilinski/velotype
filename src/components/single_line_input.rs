@@ -174,7 +174,8 @@ impl SingleLineInput {
     fn on_key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         let key = event.keystroke.key.as_str();
         let shift = event.keystroke.modifiers.shift;
-        let command = event.keystroke.modifiers.platform;
+        // Cmd on macOS, Ctrl on Windows/Linux.
+        let command = event.keystroke.modifiers.secondary();
         match (command, shift, key) {
             (true, _, "a") => {
                 self.selection = 0..self.content.len();
