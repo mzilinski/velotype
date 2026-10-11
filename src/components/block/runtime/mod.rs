@@ -1891,7 +1891,7 @@ impl Block {
     /// into that heading level, pressing the active level again (or `level` 0)
     /// turns it back into a paragraph. Other block kinds are left untouched.
     pub(crate) fn set_heading_level(&mut self, level: u8, cx: &mut Context<Self>) {
-        if self.is_table_cell() || self.uses_raw_text_editing() {
+        if self.is_table_cell() || self.uses_raw_text_editing() || self.read_only {
             return;
         }
         let current = self.kind();
