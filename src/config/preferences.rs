@@ -110,7 +110,7 @@ impl ImagePasteBehavior {
 }
 
 /// Writing aids toggled from the View menu.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WritingPreferences {
     /// Close brackets/quotes as they are typed and wrap selections.
     pub(crate) auto_pair: bool,
@@ -118,6 +118,10 @@ pub(crate) struct WritingPreferences {
     pub(crate) focus_mode: bool,
     /// Keep the caret line vertically centered while typing.
     pub(crate) typewriter_mode: bool,
+    /// Underline misspelled words using the system dictionaries.
+    pub(crate) spellcheck: bool,
+    /// BCP-47 dictionary language; empty follows the system locale.
+    pub(crate) spellcheck_language: String,
 }
 
 impl Default for WritingPreferences {
@@ -126,6 +130,8 @@ impl Default for WritingPreferences {
             auto_pair: true,
             focus_mode: false,
             typewriter_mode: false,
+            spellcheck: true,
+            spellcheck_language: String::new(),
         }
     }
 }
@@ -247,7 +253,7 @@ impl EditorSettings {
     /// (e.g. in unit tests).
     pub(crate) fn writing(cx: &App) -> WritingPreferences {
         cx.try_global::<Self>()
-            .map(|settings| settings.writing)
+            .map(|settings| settings.writing.clone())
             .unwrap_or_default()
     }
 
@@ -269,7 +275,7 @@ impl EditorSettings {
         update(&mut writing);
         let show_table_headers = Self::show_table_headers(cx);
         let status_bar = Self::status_bar_preferences(cx);
-        Self::set_global(cx, show_table_headers, writing, &status_bar);
+        Self::set_global(cx, show_table_headers, writing.clone(), &status_bar);
         match read_app_preferences() {
             Ok(mut preferences) => {
                 preferences.writing = writing;
@@ -335,6 +341,8 @@ struct EditorPreferencesFile {
     auto_pair: bool,
     focus_mode: bool,
     typewriter_mode: bool,
+    spellcheck: bool,
+    spellcheck_language: String,
 }
 
 #[derive(Serialize)]
@@ -389,6 +397,8 @@ impl From<&AppPreferences> for PreferencesFile {
                 auto_pair: value.writing.auto_pair,
                 focus_mode: value.writing.focus_mode,
                 typewriter_mode: value.writing.typewriter_mode,
+                spellcheck: value.writing.spellcheck,
+                spellcheck_language: value.writing.spellcheck_language.clone(),
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -494,6 +504,13 @@ fn app_preferences_from_toml_value(
         auto_pair: editor_flag("auto_pair", default_writing.auto_pair),
         focus_mode: editor_flag("focus_mode", default_writing.focus_mode),
         typewriter_mode: editor_flag("typewriter_mode", default_writing.typewriter_mode),
+        spellcheck: editor_flag("spellcheck", default_writing.spellcheck),
+        spellcheck_language: value
+            .get("editor")
+            .and_then(|editor| editor.get("spellcheck_language"))
+            .and_then(|value| value.as_str())
+            .map(|language| language.trim().to_string())
+            .unwrap_or_default(),
     };
 
     let status_bar = value
@@ -1580,6 +1597,7 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleFocusMode => strings.menu_focus_mode.clone(),
             ShortcutCommand::ToggleTypewriterMode => strings.menu_typewriter_mode.clone(),
             ShortcutCommand::ToggleReadOnly => strings.menu_read_only.clone(),
+            ShortcutCommand::ToggleSpellcheck => strings.menu_spellcheck.clone(),
             ShortcutCommand::DismissTransientUi => {
                 strings.preferences_shortcut_dismiss_transient_ui.clone()
             }
@@ -2446,6 +2464,8 @@ mod tests {
                 auto_pair: false,
                 focus_mode: true,
                 typewriter_mode: true,
+                spellcheck: false,
+                spellcheck_language: "de-DE".into(),
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             keybindings: BTreeMap::new(),
@@ -2471,6 +2491,7 @@ mod tests {
         assert!(text.contains("auto_pair = false"));
         assert!(text.contains("focus_mode = true"));
         assert!(text.contains("typewriter_mode = true"));
+        assert!(text.contains("spellcheck_language = \"de-DE\""));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));

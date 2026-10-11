@@ -12,6 +12,11 @@ const SOURCE_LINE_NUMBER_MIN_DIGITS: usize = 2;
 const SOURCE_LINE_NUMBER_GAP: f32 = 12.0;
 const SOURCE_LINE_NUMBER_DIGIT_WIDTH_RATIO: f32 = 0.62;
 
+/// Wavy underline color for misspelled words.
+fn spelling_error_color() -> Hsla {
+    hsla(0.0, 0.8, 0.55, 1.0)
+}
+
 fn source_line_count(text: &str) -> usize {
     text.split('\n').count().max(1)
 }
@@ -61,6 +66,7 @@ fn build_text_runs(
     code_bg: Hsla,
     show_inline_code_backgrounds: bool,
     code_font: &Font,
+    misspelled: &[Range<usize>],
 ) -> Vec<TextRun> {
     let spans = input.inline_spans();
     let mut boundaries = vec![0, display_text.len()];
@@ -71,6 +77,10 @@ fn build_text_runs(
     if let Some(marked_range) = input.marked_range.as_ref() {
         boundaries.push(marked_range.start);
         boundaries.push(marked_range.end);
+    }
+    for range in misspelled {
+        boundaries.push(range.start.min(display_text.len()));
+        boundaries.push(range.end.min(display_text.len()));
     }
     boundaries.sort_unstable();
     boundaries.dedup();
@@ -124,13 +134,22 @@ fn build_text_runs(
         {
             run_color = html_css_color_to_hsla(color, run_color);
         }
-        let underline = (inline_style.underline || is_marked || is_link || is_footnote).then_some(
-            UnderlineStyle {
+        let is_misspelled = misspelled
+            .iter()
+            .any(|range| start < range.end && range.start < end);
+        let underline = (inline_style.underline || is_marked || is_link || is_footnote)
+            .then_some(UnderlineStyle {
                 color: Some(run_color),
                 thickness: underline_thickness,
                 wavy: false,
-            },
-        );
+            })
+            .or_else(|| {
+                is_misspelled.then_some(UnderlineStyle {
+                    color: Some(spelling_error_color()),
+                    thickness: underline_thickness,
+                    wavy: true,
+                })
+            });
         let strikethrough = inline_style.strikethrough.then_some(StrikethroughStyle {
             color: Some(run_color),
             thickness: underline_thickness,
@@ -822,6 +841,45 @@ impl Element for CodeLanguageInputElement {
 }
 
 impl BlockTextElement {
+    /// Misspelled words in display offsets, leaving out code, links, math,
+    /// footnotes and the word the caret is currently typing.
+    fn misspelled_display_ranges(&self, window: &Window, cx: &mut App) -> Vec<Range<usize>> {
+        if self.is_placeholder || !crate::config::EditorSettings::writing(cx).spellcheck {
+            return Vec::new();
+        }
+        let input = self.input.read(cx);
+        if input.uses_raw_text_editing() {
+            return Vec::new();
+        }
+        let clean = input.clean_text().to_string();
+        let clean_ranges = crate::spellcheck::SpellChecker::misspelled(cx, &clean);
+        if clean_ranges.is_empty() {
+            return clean_ranges;
+        }
+
+        let input = self.input.read(cx);
+        let caret = input
+            .focus_handle
+            .is_focused(window)
+            .then(|| input.cursor_offset());
+        let spans = input.inline_spans();
+        clean_ranges
+            .into_iter()
+            .map(|range| input.clean_to_current_range(range))
+            .filter(|range| caret.is_none_or(|caret| caret < range.start || caret > range.end))
+            .filter(|range| {
+                !spans.iter().any(|span| {
+                    (span.style.code
+                        || span.link.is_some()
+                        || span.footnote.is_some()
+                        || span.math.is_some())
+                        && span.range.start < range.end
+                        && range.start < span.range.end
+                })
+            })
+            .collect()
+    }
+
     pub fn new(input: Entity<Block>, is_placeholder: bool) -> Self {
         Self {
             input,
@@ -886,6 +944,7 @@ impl Element for BlockTextElement {
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
         let theme = cx.global::<ThemeManager>().current_arc();
+        let misspelled = self.misspelled_display_ranges(window, cx);
         let input = self.input.read(cx);
         let shared_text = input.shared_display_text();
         let is_placeholder = self.is_placeholder;
@@ -934,6 +993,7 @@ impl Element for BlockTextElement {
                     theme.colors.code_bg,
                     show_inline_code_backgrounds,
                     &crate::fonts::FontSettings::code_font(cx),
+                    &misspelled,
                 )
             }
         } else {
@@ -1536,6 +1596,7 @@ mod tests {
                 Hsla::from(rgba(0x111111ff)),
                 true,
                 &base_run.font,
+                &[],
             );
             let marked_run = runs.last().expect("styled text should create a final run");
 

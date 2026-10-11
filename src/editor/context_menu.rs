@@ -28,6 +28,8 @@ pub(super) enum ContextMenuState {
         submenu_hovered: bool,
         submenu_open: bool,
     },
+    /// Spelling suggestions for the misspelled word under the pointer.
+    Spelling(super::spelling::SpellingMenuState),
     /// Table row or column context menu for an existing native table.
     TableAxis {
         position: Point<Pixels>,
@@ -226,6 +228,10 @@ impl Editor {
             return;
         }
         cx.stop_propagation();
+        // A misspelled word under the pointer takes precedence over inserting.
+        if self.open_spelling_menu_at(entity_id, event.position, cx) {
+            return;
+        }
         // Right-clicking inside a table cell, or any block where inserting a
         // table makes no sense (code, math, etc.), offers no insert menu.
         if self.table_cell_binding(entity_id).is_some() {
@@ -708,6 +714,9 @@ impl Editor {
         let t = &theme.typography;
         let s = cx.global::<I18nManager>().strings().clone();
 
+        if let ContextMenuState::Spelling(spelling) = menu {
+            return Some(self.render_spelling_menu(spelling, theme, cx));
+        }
         match menu {
             ContextMenuState::Insert {
                 position,
@@ -820,6 +829,7 @@ impl Editor {
                     overlay.into_any_element()
                 })
             }
+            ContextMenuState::Spelling(_) => None,
             ContextMenuState::TableAxis {
                 position,
                 selection,

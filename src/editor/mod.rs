@@ -35,6 +35,7 @@ mod render;
 mod runtime_context;
 mod selection;
 mod source_mapping;
+mod spelling;
 mod status_bar;
 mod table_edit;
 #[cfg(test)]
