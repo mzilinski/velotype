@@ -1,0 +1,71 @@
+name: CI
+
+# Builds and tests on Linux, macOS and Windows, so platform-specific
+# breakage shows up before a release build.
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - integration
+      - "feat/**"
+      - "fix/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+          - name: macOS
+            os: macos-15
+          - name: Windows
+            os: windows-2025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        shell: bash
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config cmake clang libssl-dev \
+            libfontconfig1-dev libfreetype6-dev \
+            libx11-dev libxcb1-dev libxrandr-dev libxi-dev \
+            libxcursor-dev libxdamage-dev libxfixes-dev libxrender-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libgl1-mesa-dev libvulkan-dev
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Test
+        run: cargo test --locked
