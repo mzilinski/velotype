@@ -85,23 +85,59 @@ pub struct EditorWindow {
     /// the unsaved-changes prompt instead of being kept as drafts.
     drafts_unavailable: bool,
     pub(crate) close_guard_installed: bool,
+    /// Folder opened with Open Folder, given to every tab of this window.
+    workspace_folder: Option<PathBuf>,
 }
 
 impl EditorWindow {
     pub(crate) fn new(editor: Entity<Editor>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let tab = Self::attach(editor, window, cx);
+        let tab = Self::attach_with_folder(editor, None, window, cx);
         Self {
             tabs: vec![tab],
             active: 0,
             closing_window: false,
             drafts_unavailable: false,
             close_guard_installed: false,
+            workspace_folder: None,
         }
     }
 
-    fn attach(editor: Entity<Editor>, window: &mut Window, cx: &mut Context<Self>) -> EditorTab {
+    #[cfg(test)]
+    pub(crate) fn workspace_folder(&self) -> Option<&Path> {
+        self.workspace_folder.as_deref()
+    }
+
+    /// Opens (or with `None` closes) `folder` as the workspace of every tab.
+    pub(crate) fn set_workspace_folder(&mut self, folder: Option<PathBuf>, cx: &mut Context<Self>) {
+        self.workspace_folder = folder.clone();
+        for tab in &self.tabs {
+            let folder = folder.clone();
+            tab.editor
+                .update(cx, |editor, cx| editor.set_workspace_folder(folder, cx));
+        }
+        cx.notify();
+    }
+
+    fn attach(
+        &self,
+        editor: Entity<Editor>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> EditorTab {
+        Self::attach_with_folder(editor, self.workspace_folder.clone(), window, cx)
+    }
+
+    fn attach_with_folder(
+        editor: Entity<Editor>,
+        folder: Option<PathBuf>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> EditorTab {
         let host = cx.weak_entity();
-        editor.update(cx, |editor, _cx| editor.tab_host = Some(host));
+        editor.update(cx, |editor, cx| {
+            editor.tab_host = Some(host);
+            editor.set_workspace_folder(folder, cx);
+        });
         let subscription = cx.subscribe_in(&editor, window, Self::on_editor_event);
         EditorTab {
             editor,
@@ -145,7 +181,7 @@ impl EditorWindow {
     }
 
     fn push_tab(&mut self, editor: Entity<Editor>, window: &mut Window, cx: &mut Context<Self>) {
-        let tab = Self::attach(editor, window, cx);
+        let tab = self.attach(editor, window, cx);
         self.tabs.push(tab);
         self.set_active(self.tabs.len() - 1, window, cx);
     }
@@ -175,7 +211,7 @@ impl EditorWindow {
             active.is_pristine_untitled(cx) && !active.has_blocking_dialog()
         };
         if replace_active {
-            let tab = Self::attach(editor.clone(), window, cx);
+            let tab = self.attach(editor.clone(), window, cx);
             self.tabs[self.active] = tab;
             self.activate_current(window, cx);
         } else {

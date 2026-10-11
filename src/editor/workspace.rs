@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result};
+use gpui::prelude::FluentBuilder as _;
 use gpui::*;
 
 use super::{BlockKind, Editor};
@@ -51,6 +52,9 @@ enum WorkspaceSelection {
 pub(super) struct WorkspaceState {
     pub(super) is_open: bool,
     active_tab: WorkspaceTab,
+    /// Folder opened with Open Folder; shared by all tabs of a window. Without
+    /// one the workspace is the folder of the current file.
+    pub(super) folder: Option<PathBuf>,
     root: Option<PathBuf>,
     file_tree: Option<WorkspaceTreeNode>,
     file_error: Option<String>,
@@ -98,12 +102,96 @@ impl Editor {
         self.sync_workspace_outline(cx);
     }
 
-    fn workspace_root_for_current_file(&self) -> Option<PathBuf> {
-        self.file_path.as_ref()?.parent().map(Path::to_path_buf)
+    /// The opened folder, or else the folder of the current file.
+    pub(super) fn workspace_root(&self) -> Option<PathBuf> {
+        self.workspace
+            .folder
+            .clone()
+            .or_else(|| self.file_path.as_ref()?.parent().map(Path::to_path_buf))
+    }
+
+    /// Sets the opened folder of this editor and rescans the drawer. Opening a
+    /// folder also shows the drawer on its file tree.
+    pub(super) fn set_workspace_folder(&mut self, folder: Option<PathBuf>, cx: &mut Context<Self>) {
+        if self.workspace.folder == folder {
+            return;
+        }
+        let opened = folder.is_some();
+        self.workspace.folder = folder;
+        self.workspace.root = None;
+        self.workspace.file_tree = None;
+        self.workspace.file_error = None;
+        if opened {
+            self.workspace.is_open = true;
+            self.workspace.active_tab = WorkspaceTab::Files;
+        }
+        if self.workspace.is_open {
+            self.sync_workspace_models(cx);
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn on_open_folder(
+        &mut self,
+        _: &crate::components::OpenFolder,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.prompt_open_folder(cx);
+    }
+
+    pub(crate) fn on_close_folder(
+        &mut self,
+        _: &crate::components::CloseFolder,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.apply_workspace_folder(None, cx);
+    }
+
+    /// Asks for a directory and opens it as the workspace of this window.
+    pub(crate) fn prompt_open_folder(&mut self, cx: &mut Context<Self>) {
+        let prompt_title = cx
+            .global::<crate::i18n::I18nManager>()
+            .strings()
+            .open_folder_prompt
+            .clone();
+        let prompt = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some(prompt_title.into()),
+        });
+        cx.spawn(async move |this, cx| {
+            if let Ok(Ok(Some(paths))) = prompt.await
+                && let Some(folder) = paths.into_iter().next()
+            {
+                let _ = this.update(cx, |this, cx| this.apply_workspace_folder(Some(folder), cx));
+            }
+        })
+        .detach();
+    }
+
+    /// Opens or closes `folder` for every tab of this window and remembers it
+    /// for the next start.
+    pub(crate) fn apply_workspace_folder(
+        &mut self,
+        folder: Option<PathBuf>,
+        cx: &mut Context<Self>,
+    ) {
+        let _ = crate::config::write_last_workspace_folder(folder.as_deref());
+        if let Some(host) = self.tab_host.as_ref().and_then(WeakEntity::upgrade) {
+            // The host updates this editor too; defer so it is not borrowed.
+            cx.defer(move |cx| {
+                host.update(cx, |host, cx| host.set_workspace_folder(folder, cx));
+            });
+        } else {
+            self.set_workspace_folder(folder, cx);
+        }
     }
 
     fn sync_workspace_file_tree(&mut self) {
-        let next_root = self.workspace_root_for_current_file();
+        let next_root = self.workspace_root();
         if self.workspace.root == next_root && self.workspace.file_tree.is_some() {
             self.workspace.selected = self
                 .file_path
@@ -315,8 +403,65 @@ impl Editor {
                         .py(px(10.0))
                         .child(body),
                 )
+                .when(self.workspace.active_tab == WorkspaceTab::Files, |panel| {
+                    panel.child(self.render_workspace_folder_actions(theme, strings, &editor))
+                })
                 .into_any_element(),
         )
+    }
+
+    /// "Open Folder…" and, with a folder open, "Close Folder" below the tree.
+    fn render_workspace_folder_actions(
+        &self,
+        theme: &Theme,
+        strings: &I18nStrings,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let d = &theme.dimensions;
+        let t = &theme.typography;
+        let button = |id: &'static str, label: String| {
+            div()
+                .id(id)
+                .h(px(28.0))
+                .px(px(10.0))
+                .flex()
+                .items_center()
+                .rounded(px(6.0))
+                .hover(|this| this.bg(c.dialog_secondary_button_hover))
+                .cursor_pointer()
+                .text_size(px(t.text_size * 0.85))
+                .text_color(c.dialog_muted)
+                .child(label)
+        };
+        let open_editor = editor.clone();
+        let close_editor = editor.clone();
+        div()
+            .px(px(8.0))
+            .py(px(6.0))
+            .flex()
+            .flex_wrap()
+            .gap(px(4.0))
+            .border_t(px(d.dialog_border_width))
+            .border_color(c.dialog_border)
+            .child(
+                button("workspace-open-folder", strings.menu_open_folder.clone()).on_click(
+                    move |_, _, cx| {
+                        let _ = open_editor.update(cx, |editor, cx| editor.prompt_open_folder(cx));
+                    },
+                ),
+            )
+            .when(self.workspace.folder.is_some(), |row| {
+                row.child(
+                    button("workspace-close-folder", strings.menu_close_folder.clone()).on_click(
+                        move |_, _, cx| {
+                            let _ = close_editor
+                                .update(cx, |editor, cx| editor.apply_workspace_folder(None, cx));
+                        },
+                    ),
+                )
+            })
+            .into_any_element()
     }
 
     fn render_workspace_files_tree(
@@ -551,8 +696,10 @@ impl Editor {
 }
 
 fn is_markdown_file(path: &Path) -> bool {
-    path.extension()
-        .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("md"))
+    path.extension().is_some_and(|extension| {
+        let extension = extension.to_string_lossy();
+        extension.eq_ignore_ascii_case("md") || extension.eq_ignore_ascii_case("markdown")
+    })
 }
 
 fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
@@ -564,7 +711,16 @@ fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
         let entry_path = entry.path();
         let file_type = entry.file_type()?;
         if file_type.is_dir() {
-            children.push(scan_workspace_dir(&entry_path)?);
+            if super::workspace_search::is_skipped_dir_name(&entry.file_name().to_string_lossy()) {
+                continue;
+            }
+            // Unreadable subfolders are left out instead of failing the tree,
+            // and so are folders without any Markdown file below them.
+            if let Ok(child) = scan_workspace_dir(&entry_path)
+                && !child.children.is_empty()
+            {
+                children.push(child);
+            }
         } else if file_type.is_file() && is_markdown_file(&entry_path) {
             children.push(WorkspaceTreeNode {
                 id: file_node_id(&entry_path),
@@ -751,6 +907,11 @@ mod tests {
         fs::write(root.join("a.md"), "a").expect("write md");
         fs::write(root.join("a.txt"), "ignored").expect("write txt");
         fs::write(root.join("nested").join("b.md"), "b").expect("write nested md");
+        // Folders without Markdown files and dependency folders are left out.
+        fs::create_dir_all(root.join("images")).expect("create images dir");
+        fs::write(root.join("images").join("a.png"), "png").expect("write png");
+        fs::create_dir_all(root.join("node_modules")).expect("create node_modules");
+        fs::write(root.join("node_modules").join("readme.md"), "x").expect("write dep md");
 
         let tree = scan_workspace_dir(&root).expect("scan tree");
         let labels = tree

@@ -595,3 +595,38 @@ async fn restored_drafts_open_as_unsaved_untitled_tabs(cx: &mut TestAppContext) 
     );
     let _ = fs::remove_dir_all(store.dir());
 }
+
+#[gpui::test]
+async fn opened_folder_is_shared_by_all_tabs_and_new_ones(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let handle = open_tab_window(cx, "first");
+    with_host(&handle, cx, |host, window, cx| host.new_tab(window, cx));
+    let folder = std::env::temp_dir();
+
+    let shared = folder.clone();
+    with_host(&handle, cx, |host, _window, cx| {
+        host.set_workspace_folder(Some(shared), cx)
+    });
+    with_host(&handle, cx, |host, window, cx| host.new_tab(window, cx));
+    for index in 0..3 {
+        let editor = editor_at(&handle, index, cx);
+        cx.update(|cx| {
+            let editor = editor.read(cx);
+            assert_eq!(editor.workspace_root(), Some(folder.clone()), "tab {index}");
+            assert!(
+                editor.workspace.is_open,
+                "opening a folder shows the drawer"
+            );
+        });
+    }
+
+    with_host(&handle, cx, |host, _window, cx| {
+        host.set_workspace_folder(None, cx)
+    });
+    let host_folder = with_host(&handle, cx, |host, _window, _cx| {
+        host.workspace_folder().map(PathBuf::from)
+    });
+    assert_eq!(host_folder, None);
+    let editor = editor_at(&handle, 2, cx);
+    cx.update(|cx| assert_eq!(editor.read(cx).workspace_root(), None));
+}

@@ -1,7 +1,8 @@
 //! Workspace palette: Quick Open (Ctrl/Cmd+P) and Search in Folder
 //! (Ctrl/Cmd+Shift+F).
 //!
-//! Both work on the folder of the current file, like the workspace drawer.
+//! Both work on the workspace root like the drawer: the opened folder, or else
+//! the folder of the current file.
 //! Quick Open fuzzy-filters the Markdown files below it (plus recent files);
 //! Search in Folder scans their contents on a background thread and lists
 //! matching lines. Opening goes through the tab host when there is one, and a
@@ -72,7 +73,7 @@ pub(super) fn collect_markdown_files(root: &Path) -> Vec<PathBuf> {
                 continue;
             };
             if file_type.is_dir() {
-                if !name.starts_with('.') && !SKIPPED_DIRS.contains(&name.as_str()) {
+                if !is_skipped_dir_name(&name) {
                     pending.push(path);
                 }
             } else if file_type.is_file() && is_markdown_path(&path) {
@@ -85,6 +86,11 @@ pub(super) fn collect_markdown_files(root: &Path) -> Vec<PathBuf> {
     }
     files.sort();
     files
+}
+
+/// Hidden folders and build/dependency folders are not part of a workspace.
+pub(super) fn is_skipped_dir_name(name: &str) -> bool {
+    name.starts_with('.') || SKIPPED_DIRS.contains(&name)
 }
 
 fn is_markdown_path(path: &Path) -> bool {
@@ -202,11 +208,7 @@ impl Editor {
         let subscription = cx.subscribe(&input, |this, _, _: &InputChanged, cx| {
             this.refresh_palette(cx);
         });
-        let root = self
-            .file_path
-            .as_ref()
-            .and_then(|path| path.parent())
-            .map(Path::to_path_buf);
+        let root = self.workspace_root();
         let files = match (mode, root.as_ref()) {
             (PaletteMode::QuickOpen, Some(root)) => collect_markdown_files(root),
             _ => Vec::new(),

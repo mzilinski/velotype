@@ -141,6 +141,9 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_open_folder: String,
+    pub menu_close_folder: String,
+    pub open_folder_prompt: String,
     pub workspace_search_placeholder: String,
     pub workspace_search_no_results: String,
     pub preferences_shortcut_quick_open: String,
@@ -459,6 +462,9 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_open_folder: Option<String>,
+    menu_close_folder: Option<String>,
+    open_folder_prompt: Option<String>,
     workspace_search_placeholder: Option<String>,
     workspace_search_no_results: Option<String>,
     preferences_shortcut_quick_open: Option<String>,
@@ -693,6 +699,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_open_folder",
+    "menu_close_folder",
+    "open_folder_prompt",
     "workspace_search_placeholder",
     "workspace_search_no_results",
     "preferences_shortcut_quick_open",
@@ -1007,6 +1016,11 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_open_folder: self.menu_open_folder.unwrap_or(defaults.menu_open_folder),
+            menu_close_folder: self.menu_close_folder.unwrap_or(defaults.menu_close_folder),
+            open_folder_prompt: self
+                .open_folder_prompt
+                .unwrap_or(defaults.open_folder_prompt),
             workspace_search_placeholder: self
                 .workspace_search_placeholder
                 .unwrap_or(defaults.workspace_search_placeholder),
@@ -1555,6 +1569,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_open_folder: "打开文件夹…".into(),
+            menu_close_folder: "关闭文件夹".into(),
+            open_folder_prompt: "打开文件夹".into(),
             workspace_search_placeholder: "在文件夹中搜索…".into(),
             workspace_search_no_results: "此文件夹中没有匹配项".into(),
             preferences_shortcut_quick_open: "快速打开".into(),
@@ -1807,6 +1824,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_open_folder: "Open Folder…".into(),
+            menu_close_folder: "Close Folder".into(),
+            open_folder_prompt: "Open Folder".into(),
             workspace_search_placeholder: "Search in folder…".into(),
             workspace_search_no_results: "No matches in this folder".into(),
             preferences_shortcut_quick_open: "Quick Open".into(),
@@ -2061,6 +2081,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_open_folder: "Ordner öffnen …".into(),
+            menu_close_folder: "Ordner schließen".into(),
+            open_folder_prompt: "Ordner öffnen".into(),
             workspace_search_placeholder: "Im Ordner suchen …".into(),
             workspace_search_no_results: "Keine Treffer in diesem Ordner".into(),
             preferences_shortcut_quick_open: "Schnell öffnen".into(),
