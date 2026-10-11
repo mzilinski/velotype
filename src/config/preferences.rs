@@ -17,7 +17,7 @@ use crate::components::{
 };
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings, FontStackParseError};
 use crate::i18n::{I18nManager, I18nStrings, language_id_for_locale_preferences};
-use crate::theme::{Theme, ThemeCatalogEntry, ThemeManager};
+use crate::theme::{AppearanceThemes, Theme, ThemeCatalogEntry, ThemeManager};
 use crate::window_chrome::{
     custom_titlebar_height, render_custom_titlebar, velotype_window_options,
 };
@@ -142,6 +142,8 @@ pub(crate) struct AppPreferences {
     pub(crate) startup_open: StartupOpenPreference,
     pub(crate) default_language_id: String,
     pub(crate) default_theme_id: String,
+    /// Light/dark theme pair applied when the theme follows the OS appearance.
+    pub(crate) appearance_themes: AppearanceThemes,
     pub(crate) show_table_headers: bool,
     pub(crate) writing: WritingPreferences,
     pub(crate) image_paste_behavior: ImagePasteBehavior,
@@ -156,6 +158,7 @@ impl Default for AppPreferences {
             startup_open: StartupOpenPreference::NewFile,
             default_language_id: DEFAULT_LANGUAGE_ID.into(),
             default_theme_id: DEFAULT_THEME_ID.into(),
+            appearance_themes: AppearanceThemes::default(),
             show_table_headers: true,
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
@@ -353,6 +356,9 @@ struct LanguagePreferencesFile {
 #[derive(Serialize)]
 struct ThemePreferencesFile {
     default_theme_id: String,
+    follow_system_appearance: bool,
+    light_theme_id: String,
+    dark_theme_id: String,
 }
 
 #[derive(Serialize)]
@@ -390,6 +396,9 @@ impl From<&AppPreferences> for PreferencesFile {
             },
             theme: ThemePreferencesFile {
                 default_theme_id: value.default_theme_id.clone(),
+                follow_system_appearance: value.appearance_themes.follow_system,
+                light_theme_id: value.appearance_themes.light_theme_id.clone(),
+                dark_theme_id: value.appearance_themes.dark_theme_id.clone(),
             },
             editor: EditorPreferencesFile {
                 show_table_headers: value.show_table_headers,
@@ -462,6 +471,7 @@ fn app_preferences_from_toml_value(
         .filter(|id| !id.is_empty())
         .unwrap_or(DEFAULT_THEME_ID)
         .to_string();
+    let appearance_themes = appearance_themes_from_toml_value(value);
     let keybindings = value
         .get("keybindings")
         .and_then(|keybindings| keybindings.as_table())
@@ -588,12 +598,35 @@ fn app_preferences_from_toml_value(
         startup_open,
         default_language_id,
         default_theme_id,
+        appearance_themes,
         show_table_headers,
         writing,
         image_paste_behavior,
         keybindings,
         status_bar,
         fonts,
+    }
+}
+
+fn appearance_themes_from_toml_value(value: &toml::Value) -> AppearanceThemes {
+    let defaults = AppearanceThemes::default();
+    let theme = value.get("theme");
+    let theme_id = |key: &str, fallback: String| {
+        theme
+            .and_then(|theme| theme.get(key))
+            .and_then(|id| id.as_str())
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+            .map(str::to_string)
+            .unwrap_or(fallback)
+    };
+    AppearanceThemes {
+        follow_system: theme
+            .and_then(|theme| theme.get("follow_system_appearance"))
+            .and_then(|value| value.as_bool())
+            .unwrap_or(defaults.follow_system),
+        light_theme_id: theme_id("light_theme_id", defaults.light_theme_id),
+        dark_theme_id: theme_id("dark_theme_id", defaults.dark_theme_id),
     }
 }
 
@@ -674,9 +707,23 @@ pub(crate) fn apply_configured_language(cx: &mut App, language_id: &str) -> anyh
 
 pub(crate) fn apply_configured_theme(cx: &mut App, theme_id: &str) -> anyhow::Result<bool> {
     let mut applied = false;
+    let dark = system_appearance_is_dark(cx.window_appearance());
+    let mut appearance_themes = None;
     let changed = cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
         let changed = theme_manager.set_theme_by_id(theme_id);
         applied = changed || theme_manager.current_theme_id() == theme_id;
+        if applied && theme_manager.follows_system_appearance() {
+            // While following the system, picking a theme assigns it to the
+            // slot of the appearance that is currently active.
+            let mut appearance = theme_manager.appearance_themes().clone();
+            if dark {
+                appearance.dark_theme_id = theme_id.into();
+            } else {
+                appearance.light_theme_id = theme_id.into();
+            }
+            theme_manager.set_appearance_themes(appearance.clone());
+            appearance_themes = Some(appearance);
+        }
         changed
     });
     if !applied {
@@ -684,8 +731,72 @@ pub(crate) fn apply_configured_theme(cx: &mut App, theme_id: &str) -> anyhow::Re
     }
     update_app_preferences(|preferences| {
         preferences.default_theme_id = theme_id.into();
+        if let Some(appearance_themes) = appearance_themes {
+            preferences.appearance_themes = appearance_themes;
+        }
     })?;
     Ok(changed)
+}
+
+/// True for the dark variants of the OS window appearance.
+pub(crate) fn system_appearance_is_dark(appearance: WindowAppearance) -> bool {
+    matches!(
+        appearance,
+        WindowAppearance::Dark | WindowAppearance::VibrantDark
+    )
+}
+
+/// Installs the persisted light/dark theme pair and, when following is
+/// enabled, activates the theme matching the current OS appearance.
+pub(crate) fn init_appearance_themes(cx: &mut App, appearance_themes: AppearanceThemes) {
+    let dark = system_appearance_is_dark(cx.window_appearance());
+    cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
+        theme_manager.set_appearance_themes(appearance_themes);
+        theme_manager.apply_system_appearance(dark);
+    });
+}
+
+/// Re-applies the appearance-bound theme after the OS appearance changed.
+/// Returns true when the active theme changed and windows need a refresh.
+pub(crate) fn sync_theme_with_system_appearance(
+    cx: &mut App,
+    appearance: WindowAppearance,
+) -> bool {
+    let dark = system_appearance_is_dark(appearance);
+    let changed = cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
+        theme_manager.apply_system_appearance(dark)
+    });
+    if changed {
+        crate::app_menu::install_menus(cx);
+        cx.refresh_windows();
+    }
+    changed
+}
+
+/// Toggles "follow system appearance". Turning it on seeds the slot of the
+/// current appearance with the active theme, so nothing changes visually
+/// until the OS appearance flips.
+pub(crate) fn toggle_follow_system_appearance(cx: &mut App) -> anyhow::Result<()> {
+    let dark = system_appearance_is_dark(cx.window_appearance());
+    let appearance_themes = cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
+        let mut appearance = theme_manager.appearance_themes().clone();
+        appearance.follow_system = !appearance.follow_system;
+        if appearance.follow_system {
+            let current = theme_manager.current_theme_id().to_string();
+            if dark {
+                appearance.dark_theme_id = current;
+            } else {
+                appearance.light_theme_id = current;
+            }
+        }
+        theme_manager.set_appearance_themes(appearance);
+        theme_manager.apply_system_appearance(dark);
+        theme_manager.appearance_themes().clone()
+    });
+    update_app_preferences(|preferences| {
+        preferences.appearance_themes = appearance_themes;
+    })?;
+    Ok(())
 }
 
 pub(crate) fn import_language_config_and_select(
@@ -1104,6 +1215,19 @@ impl PreferencesWindow {
             let _ = cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
                 theme_manager.set_theme_by_id(DEFAULT_THEME_ID)
             });
+        }
+        if cx.global::<ThemeManager>().follows_system_appearance() {
+            if self.selected_theme_id != self.saved_theme_id {
+                // A newly picked theme becomes the current appearance's theme.
+                if let Err(err) = apply_configured_theme(cx, &preferences.default_theme_id) {
+                    eprintln!("failed to persist appearance theme: {err}");
+                }
+            } else {
+                let dark = system_appearance_is_dark(window.appearance());
+                cx.update_global::<ThemeManager, _>(|theme_manager, _cx| {
+                    theme_manager.apply_system_appearance(dark)
+                });
+            }
         }
         cx.clear_key_bindings();
         install_keybindings(cx, &preferences.keybindings);
@@ -2342,11 +2466,16 @@ mod tests {
         read_app_preferences_with_dirs, save_app_preferences_with_dirs,
         save_preferences_from_window_with_dirs,
     };
+    use super::{
+        AppearanceThemes, DEFAULT_LANGUAGE_ID, app_preferences_from_toml_value,
+        system_appearance_is_dark,
+    };
     use crate::config::VelotypeConfigDirs;
     use crate::fonts::FontPreferences;
     use crate::i18n::I18nManager;
     use crate::theme::{ThemeCatalogEntry, ThemeManager};
     use gpui::TestAppContext;
+    use gpui::WindowAppearance;
     use std::collections::BTreeMap;
 
     fn init_preferences_test_app(cx: &mut TestAppContext) {
@@ -2476,6 +2605,35 @@ mod tests {
     }
 
     #[test]
+    fn appearance_themes_default_off_and_tolerate_missing_keys() {
+        let value =
+            toml::from_str::<toml::Value>("[theme]\ndefault_theme_id = \"night\"\n").expect("toml");
+        let preferences = app_preferences_from_toml_value(&value, DEFAULT_LANGUAGE_ID);
+        assert_eq!(preferences.appearance_themes, AppearanceThemes::default());
+        assert!(!preferences.appearance_themes.follow_system);
+
+        let value = toml::from_str::<toml::Value>(
+            "[theme]\nfollow_system_appearance = true\nlight_theme_id = \" \"\ndark_theme_id = \"night\"\n",
+        )
+        .expect("toml");
+        let preferences = app_preferences_from_toml_value(&value, DEFAULT_LANGUAGE_ID);
+        assert!(preferences.appearance_themes.follow_system);
+        assert_eq!(
+            preferences.appearance_themes.light_theme_id,
+            AppearanceThemes::default().light_theme_id
+        );
+        assert_eq!(preferences.appearance_themes.dark_theme_id, "night");
+    }
+
+    #[test]
+    fn dark_window_appearances_are_detected() {
+        assert!(system_appearance_is_dark(WindowAppearance::Dark));
+        assert!(system_appearance_is_dark(WindowAppearance::VibrantDark));
+        assert!(!system_appearance_is_dark(WindowAppearance::Light));
+        assert!(!system_appearance_is_dark(WindowAppearance::VibrantLight));
+    }
+
+    #[test]
     fn saves_and_reads_preferences() {
         let root = std::env::temp_dir().join(format!(
             "velotype-preferences-save-{}",
@@ -2486,6 +2644,11 @@ mod tests {
             startup_open: StartupOpenPreference::LastOpenedFile,
             default_language_id: "zh-CN".into(),
             default_theme_id: "velotype-light".into(),
+            appearance_themes: AppearanceThemes {
+                follow_system: true,
+                light_theme_id: "github".into(),
+                dark_theme_id: "night".into(),
+            },
             show_table_headers: false,
             writing: WritingPreferences {
                 auto_pair: false,
@@ -2514,6 +2677,9 @@ mod tests {
         assert!(text.contains("open = \"last_opened_file\""));
         assert!(text.contains("default_language_id = \"zh-CN\""));
         assert!(text.contains("default_theme_id = \"velotype-light\""));
+        assert!(text.contains("follow_system_appearance = true"));
+        assert!(text.contains("light_theme_id = \"github\""));
+        assert!(text.contains("dark_theme_id = \"night\""));
         assert!(text.contains("show_table_headers = false"));
         assert!(text.contains("auto_pair = false"));
         assert!(text.contains("focus_mode = true"));
@@ -2588,6 +2754,7 @@ mod tests {
             startup_open: StartupOpenPreference::NewFile,
             default_language_id: "zh-CN".into(),
             default_theme_id: "velotype".into(),
+            appearance_themes: AppearanceThemes::default(),
             show_table_headers: true,
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,

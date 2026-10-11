@@ -14,8 +14,9 @@ pub(crate) use drafts::SessionDrafts;
 pub(crate) use preferences::{
     EditorSettings, ImagePasteBehavior, StartupOpenPreference, WritingPreferences,
     apply_configured_language, apply_configured_theme, first_existing_recent_markdown_file,
-    import_language_config_and_select, import_theme_config_and_select,
+    import_language_config_and_select, import_theme_config_and_select, init_appearance_themes,
     load_or_create_app_preferences, open_preferences_window, read_app_preferences,
+    sync_theme_with_system_appearance, toggle_follow_system_appearance,
 };
 
 pub(crate) const RECENT_FILES_LIMIT: usize = 20;

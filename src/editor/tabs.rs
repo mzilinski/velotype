@@ -85,17 +85,23 @@ pub struct EditorWindow {
     /// the unsaved-changes prompt instead of being kept as drafts.
     drafts_unavailable: bool,
     pub(crate) close_guard_installed: bool,
+    /// Re-applies the appearance-bound theme when the OS light/dark mode flips.
+    _appearance_subscription: Subscription,
 }
 
 impl EditorWindow {
     pub(crate) fn new(editor: Entity<Editor>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let tab = Self::attach(editor, window, cx);
+        let appearance_subscription = cx.observe_window_appearance(window, |_, window, cx| {
+            crate::config::sync_theme_with_system_appearance(cx, window.appearance());
+        });
         Self {
             tabs: vec![tab],
             active: 0,
             closing_window: false,
             drafts_unavailable: false,
             close_guard_installed: false,
+            _appearance_subscription: appearance_subscription,
         }
     }
 

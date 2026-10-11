@@ -12,7 +12,8 @@
   // Required. The Theme menu displays custom themes as "<name> - <creator>".
   "creator": "",
   // Optional. Choose the built-in theme used for missing fields.
-  // Supported values: "velotype", "velotype-light".
+  // Supported values: "velotype", "velotype-light", "github", "newsprint",
+  // "night", "whitey".
   "base_theme_id": "",
   // Optional short description for theme galleries, release notes, or sharing.
   "description": "",

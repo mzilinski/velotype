@@ -289,6 +289,8 @@ pub struct I18nStrings {
     pub workspace_tab_files: String,
     /// Workspace drawer Outline tab.
     pub workspace_tab_outline: String,
+    /// Theme menu toggle that switches light/dark themes with the OS appearance.
+    pub menu_follow_system_appearance: String,
     /// Title shown when no Markdown file path is available for workspace mode.
     pub workspace_no_file_title: String,
     /// Message shown when no Markdown file path is available for workspace mode.
@@ -574,6 +576,7 @@ struct I18nStringsDe {
     preferences_shortcut_prev_tab: Option<String>,
     workspace_tab_files: Option<String>,
     workspace_tab_outline: Option<String>,
+    menu_follow_system_appearance: Option<String>,
     workspace_no_file_title: Option<String>,
     workspace_no_file_message: Option<String>,
     workspace_empty_files: Option<String>,
@@ -808,6 +811,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "preferences_shortcut_prev_tab",
     "workspace_tab_files",
     "workspace_tab_outline",
+    "menu_follow_system_appearance",
     "workspace_no_file_title",
     "workspace_no_file_message",
     "workspace_empty_files",
@@ -1334,6 +1338,9 @@ impl I18nStringsDe {
             workspace_tab_outline: self
                 .workspace_tab_outline
                 .unwrap_or(defaults.workspace_tab_outline),
+            menu_follow_system_appearance: self
+                .menu_follow_system_appearance
+                .unwrap_or(defaults.menu_follow_system_appearance),
             workspace_no_file_title: self
                 .workspace_no_file_title
                 .unwrap_or(defaults.workspace_no_file_title),
@@ -1664,6 +1671,7 @@ impl I18nStrings {
             preferences_shortcut_prev_tab: "上一个标签页".into(),
             workspace_tab_files: "文件".into(),
             workspace_tab_outline: "大纲".into(),
+            menu_follow_system_appearance: "跟随系统外观".into(),
             workspace_no_file_title: "未打开 Markdown 文件".into(),
             workspace_no_file_message: "打开或保存一个 .md 文件后，工作区会使用该文件所在目录。"
                 .into(),
@@ -1927,6 +1935,7 @@ impl I18nStrings {
             preferences_shortcut_prev_tab: "Previous Tab".into(),
             workspace_tab_files: "Files".into(),
             workspace_tab_outline: "Outline".into(),
+            menu_follow_system_appearance: "Follow System Appearance".into(),
             workspace_no_file_title: "No Markdown File Open".into(),
             workspace_no_file_message:
                 "Open or save a .md file to use its folder as the workspace.".into(),
@@ -2183,6 +2192,7 @@ impl I18nStrings {
             preferences_shortcut_prev_tab: "Vorheriger Tab".into(),
             workspace_tab_files: "Dateien".into(),
             workspace_tab_outline: "Gliederung".into(),
+            menu_follow_system_appearance: "Systemdarstellung folgen".into(),
             workspace_no_file_title: "Keine Markdown-Datei geöffnet".into(),
             workspace_no_file_message:
                 "Öffne oder speichere eine .md-Datei, um ihren Ordner als Arbeitsbereich zu nutzen."

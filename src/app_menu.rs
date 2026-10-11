@@ -14,8 +14,8 @@ use crate::components::{
     ExportPdf, InstallCliTool, NewTab, NewWindow, NextTab, NoRecentFiles, OpenFile,
     OpenPreferences, OpenRecentFile, PrevTab, QuitApplication, SaveDocument, SaveDocumentAs,
     SelectLanguage, SelectSpellcheckLanguage, SelectTheme, ShowAbout, ToggleAutoPair,
-    ToggleFocusMode, ToggleReadOnly, ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace,
-    UninstallCliTool,
+    ToggleFocusMode, ToggleFollowSystemAppearance, ToggleReadOnly, ToggleSpellcheck,
+    ToggleTypewriterMode, ToggleWorkspace, UninstallCliTool,
 };
 use crate::config::{
     SessionDrafts, apply_configured_language, apply_configured_theme,
@@ -665,6 +665,21 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         );
     } else if action.as_any().is::<ToggleReadOnly>() {
         let _ = with_active_editor(cx, |editor, _window, cx| editor.toggle_read_only(cx));
+    } else if action.as_any().is::<ToggleFollowSystemAppearance>() {
+        match crate::config::toggle_follow_system_appearance(cx) {
+            Ok(()) => {
+                install_menus(cx);
+                cx.refresh_windows();
+            }
+            Err(err) => {
+                let title = cx
+                    .global::<I18nManager>()
+                    .strings()
+                    .preferences_save_failed_title
+                    .clone();
+                show_window_prompt(cx.active_window(), &title, &err.to_string(), cx);
+            }
+        }
     } else if let Some(action) = action.as_any().downcast_ref::<SelectTheme>() {
         match apply_configured_theme(cx, &action.theme_id) {
             Ok(changed) => {
@@ -834,6 +849,12 @@ fn build_menus(
         })
         .collect::<Vec<_>>();
     theme_items.push(MenuItem::separator());
+    let follow_label = if theme_manager.follows_system_appearance() {
+        format!("\u{2713} {}", strings.menu_follow_system_appearance)
+    } else {
+        strings.menu_follow_system_appearance.clone()
+    };
+    theme_items.push(MenuItem::action(follow_label, ToggleFollowSystemAppearance));
     theme_items.push(MenuItem::action(
         strings.menu_add_theme_config.clone(),
         AddThemeConfig,
@@ -1294,6 +1315,9 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|action: &SelectTheme, cx| {
         dispatch_menu_action(action, cx);
     });
+    cx.on_action(|_: &ToggleFollowSystemAppearance, cx| {
+        dispatch_menu_action(&ToggleFollowSystemAppearance, cx);
+    });
     cx.on_action(|action: &SelectLanguage, cx| {
         dispatch_menu_action(action, cx);
     });
@@ -1341,7 +1365,7 @@ mod tests {
     use crate::components::{
         AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseWindow, ExportHtml, ExportPdf,
         NewWindow, NoRecentFiles, OpenFile, OpenPreferences, OpenRecentFile, QuitApplication,
-        SaveDocument, SelectLanguage, SelectTheme, ShowAbout,
+        SaveDocument, SelectLanguage, SelectTheme, ShowAbout, ToggleFollowSystemAppearance,
     };
     use crate::i18n::I18nManager;
     use crate::theme::ThemeManager;
@@ -1687,9 +1711,13 @@ mod tests {
         assert_eq!(action_name(&theme_items[0]), "\u{2713} Velotype");
         assert_eq!(action_name(&theme_items[1]), "Velotype Light");
         assert!(matches!(
-            theme_items[theme_items.len() - 2],
+            theme_items[theme_items.len() - 3],
             MenuItem::Separator
         ));
+        assert_eq!(
+            action_name(&theme_items[theme_items.len() - 2]),
+            "Follow System Appearance"
+        );
         assert_eq!(
             action_name(&theme_items[theme_items.len() - 1]),
             "Add Theme Config"
@@ -1705,6 +1733,27 @@ mod tests {
                 assert!(action.as_any().is::<AddThemeConfig>());
             }
             _ => panic!("expected add theme config action item"),
+        }
+    }
+
+    #[test]
+    fn theme_menu_marks_follow_system_appearance_when_enabled() {
+        let mut theme_manager = ThemeManager::default();
+        theme_manager.set_appearance_themes(crate::theme::AppearanceThemes {
+            follow_system: true,
+            ..Default::default()
+        });
+        let i18n_manager = I18nManager::default();
+        let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
+        let theme_items = &menus[THEME_IDX].items;
+        let follow = &theme_items[theme_items.len() - 2];
+
+        assert_eq!(action_name(follow), "\u{2713} Follow System Appearance");
+        match follow {
+            MenuItem::Action { action, .. } => {
+                assert!(action.as_any().is::<ToggleFollowSystemAppearance>());
+            }
+            _ => panic!("expected follow system appearance action item"),
         }
     }
 

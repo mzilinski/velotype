@@ -1445,6 +1445,295 @@ impl Theme {
         }
     }
 
+    /// Returns the built-in "GitHub" theme: a crisp white page with neutral
+    /// grey chrome and blue links, in the spirit of rendered repository docs.
+    pub fn github_theme() -> Self {
+        let base = Self::light_theme();
+        Self {
+            name: BUILTIN_THEME_GITHUB_NAME.into(),
+            colors: ThemeColors {
+                editor_background: Hsla::from(rgba(0xffffffff)),
+                source_mode_block_bg: Hsla::from(rgba(0xf6f8faff)),
+                text_default: Hsla::from(rgba(0x1f2328ff)),
+                text_link: Hsla::from(rgba(0x0a66d1ff)),
+                text_placeholder: Hsla::from(rgba(0x6e7781cc)),
+                text_h1: Hsla::from(rgba(0x1f2328ff)),
+                text_h2: Hsla::from(rgba(0x1f2328ff)),
+                text_h3: Hsla::from(rgba(0x1f2328ff)),
+                text_h4: Hsla::from(rgba(0x1f2328ff)),
+                text_h5: Hsla::from(rgba(0x1f2328ff)),
+                text_h6: Hsla::from(rgba(0x5a626bff)),
+                border_h1: Hsla::from(rgba(0xd5dbe1ff)),
+                border_h2: Hsla::from(rgba(0xd5dbe1ff)),
+                text_quote: Hsla::from(rgba(0x5a626bff)),
+                border_quote: Hsla::from(rgba(0xd5dbe1ff)),
+                footnote_backref: Hsla::from(rgba(0x0a66d1ff)),
+                task_checkbox_checked_bg: Hsla::from(rgba(0x0a66d1ff)),
+                separator_color: Hsla::from(rgba(0xd5dbe1ff)),
+                code_bg: Hsla::from(rgba(0xf3f5f7ff)),
+                code_text: Hsla::from(rgba(0x1f2328ff)),
+                code_syntax_comment: Hsla::from(rgba(0x5f6974ff)),
+                code_syntax_keyword: Hsla::from(rgba(0xc4243bff)),
+                code_syntax_string: Hsla::from(rgba(0x0b3f7cff)),
+                code_syntax_number: Hsla::from(rgba(0x0553adff)),
+                code_syntax_type: Hsla::from(rgba(0x8a4a00ff)),
+                code_syntax_function: Hsla::from(rgba(0x7a3fd1ff)),
+                code_syntax_constant: Hsla::from(rgba(0x0553adff)),
+                code_syntax_variable: Hsla::from(rgba(0x1f2328ff)),
+                code_syntax_property: Hsla::from(rgba(0x0553adff)),
+                code_syntax_operator: Hsla::from(rgba(0xc4243bff)),
+                code_syntax_punctuation: Hsla::from(rgba(0x1f2328ff)),
+                table_border: Hsla::from(rgba(0xd5dbe1ff)),
+                table_header_bg: Hsla::from(rgba(0xf6f8faff)),
+                table_cell_bg: Hsla::from(rgba(0xffffffff)),
+                table_cell_active_outline: Hsla::from(rgba(0x0a66d1ff)),
+                cursor: Hsla::from(rgba(0x1f2328ff)),
+                selection: Hsla::from(rgba(0xc8e1ffcc)),
+                dialog_primary_button_bg: Hsla::from(rgba(0x1a7f37ff)),
+                dialog_primary_button_hover: Hsla::from(rgba(0x166c2fff)),
+                status_bar_background: Hsla::from(rgba(0xf6f8faff)),
+                status_bar_text: Hsla::from(rgba(0x3d444dff)),
+                status_bar_text_dim: Hsla::from(rgba(0x6e7781ff)),
+                status_bar_button_hover: Hsla::from(rgba(0xe5e9edff)),
+                ..base.colors
+            },
+            dimensions: base.dimensions,
+            typography: base.typography,
+            placeholders: base.placeholders,
+        }
+    }
+
+    /// Returns the built-in "Night" theme: a calm blue-grey dark palette that
+    /// is softer than the near-black default theme.
+    pub fn night_theme() -> Self {
+        let base = Self::default_theme();
+        Self {
+            name: BUILTIN_THEME_NIGHT_NAME.into(),
+            colors: ThemeColors {
+                editor_background: Hsla::from(rgba(0x2b3038ff)),
+                source_mode_block_bg: Hsla::from(rgba(0x353b45ff)),
+                text_default: Hsla::from(rgba(0xd8dde4ff)),
+                text_link: Hsla::from(rgba(0x84bdf5ff)),
+                text_placeholder: Hsla::from(rgba(0x8b95a3ff)),
+                text_h1: Hsla::from(rgba(0xf0f3f7ff)),
+                text_h2: Hsla::from(rgba(0xf0f3f7ff)),
+                text_h3: Hsla::from(rgba(0xf0f3f7ff)),
+                text_h4: Hsla::from(rgba(0xe6eaf0ff)),
+                text_h5: Hsla::from(rgba(0xe6eaf0ff)),
+                text_h6: Hsla::from(rgba(0xc3cad4ff)),
+                border_h1: Hsla::from(rgba(0x4c5563ff)),
+                border_h2: Hsla::from(rgba(0x444c59ff)),
+                text_quote: Hsla::from(rgba(0xb4bdc9ff)),
+                border_quote: Hsla::from(rgba(0x5d6878ff)),
+                footnote_bg: Hsla::from(rgba(0x30363fff)),
+                footnote_border: Hsla::from(rgba(0x4c556380)),
+                footnote_backref: Hsla::from(rgba(0x84bdf5ff)),
+                task_checkbox_border: Hsla::from(rgba(0x7a8594ff)),
+                task_checkbox_checked_bg: Hsla::from(rgba(0x84bdf5ff)),
+                task_checkbox_check: Hsla::from(rgba(0x1e232aff)),
+                separator_color: Hsla::from(rgba(0x56606eff)),
+                code_bg: Hsla::from(rgba(0x232830ff)),
+                code_text: Hsla::from(rgba(0xdde2e9ff)),
+                code_language_input_bg: Hsla::from(rgba(0x353b45ff)),
+                table_border: Hsla::from(rgba(0x4c5563ff)),
+                table_header_bg: Hsla::from(rgba(0x323842ff)),
+                table_cell_bg: Hsla::from(rgba(0x2e333bff)),
+                table_cell_active_outline: Hsla::from(rgba(0x84bdf5ff)),
+                table_append_button_bg: Hsla::from(rgba(0x3a414bff)),
+                table_append_button_hover: Hsla::from(rgba(0x4c5563ff)),
+                image_placeholder_bg: Hsla::from(rgba(0x30363fff)),
+                image_placeholder_border: Hsla::from(rgba(0x56606eff)),
+                image_caption_text: Hsla::from(rgba(0x9aa4b2ff)),
+                cursor: Hsla::from(rgba(0xe6eaf0ff)),
+                selection: Hsla::from(rgba(0x3e5a7dff)),
+                dialog_backdrop: Hsla::from(rgba(0x12151acc)),
+                dialog_surface: Hsla::from(rgba(0x2f343dff)),
+                dialog_border: Hsla::from(rgba(0x434b57ff)),
+                dialog_secondary_button_bg: Hsla::from(rgba(0x3a414bff)),
+                dialog_secondary_button_hover: Hsla::from(rgba(0x4c5563ff)),
+                status_bar_background: Hsla::from(rgba(0x262a31ff)),
+                status_bar_text: Hsla::from(rgba(0xc3cad4cc)),
+                status_bar_text_dim: Hsla::from(rgba(0x7a8594ff)),
+                status_bar_button_hover: Hsla::from(rgba(0x3a414bff)),
+                ..base.colors
+            },
+            dimensions: base.dimensions,
+            typography: base.typography,
+            placeholders: base.placeholders,
+        }
+    }
+
+    /// Returns the built-in "Newsprint" theme: warm off-white paper with
+    /// ink-brown text and rust-coloured accents.
+    pub fn newsprint_theme() -> Self {
+        let base = Self::light_theme();
+        Self {
+            name: BUILTIN_THEME_NEWSPRINT_NAME.into(),
+            colors: ThemeColors {
+                editor_background: Hsla::from(rgba(0xf4efe4ff)),
+                source_mode_block_bg: Hsla::from(rgba(0xebe3d3ff)),
+                comment_bg: Hsla::from(rgba(0xe9d9a866)),
+                text_default: Hsla::from(rgba(0x2e241bff)),
+                text_link: Hsla::from(rgba(0x8f3a14ff)),
+                text_placeholder: Hsla::from(rgba(0x857565cc)),
+                text_h1: Hsla::from(rgba(0x1c140dff)),
+                text_h2: Hsla::from(rgba(0x1c140dff)),
+                text_h3: Hsla::from(rgba(0x1c140dff)),
+                text_h4: Hsla::from(rgba(0x2e241bff)),
+                text_h5: Hsla::from(rgba(0x2e241bff)),
+                text_h6: Hsla::from(rgba(0x5c4c3dff)),
+                border_h1: Hsla::from(rgba(0x2e241bff)),
+                border_h2: Hsla::from(rgba(0xc9b99eff)),
+                text_quote: Hsla::from(rgba(0x5c4c3dff)),
+                border_quote: Hsla::from(rgba(0xb5a184ff)),
+                footnote_bg: Hsla::from(rgba(0xf8f4ecff)),
+                footnote_border: Hsla::from(rgba(0xd3c5adff)),
+                footnote_badge_bg: Hsla::from(rgba(0xe6dccaff)),
+                footnote_badge_text: Hsla::from(rgba(0x4a3b2dff)),
+                footnote_backref: Hsla::from(rgba(0x8f3a14ff)),
+                task_checkbox_border: Hsla::from(rgba(0xa6937aff)),
+                task_checkbox_bg: Hsla::from(rgba(0xfaf7f0ff)),
+                task_checkbox_checked_bg: Hsla::from(rgba(0x8f3a14ff)),
+                task_checkbox_check: Hsla::from(rgba(0xfaf7f0ff)),
+                separator_color: Hsla::from(rgba(0xb5a184ff)),
+                code_bg: Hsla::from(rgba(0xebe3d3ff)),
+                code_text: Hsla::from(rgba(0x2e241bff)),
+                code_language_input_bg: Hsla::from(rgba(0xfaf7f0ff)),
+                code_language_input_border: Hsla::from(rgba(0xd3c5adff)),
+                code_language_input_text: Hsla::from(rgba(0x2e241bff)),
+                code_syntax_comment: Hsla::from(rgba(0x7a6a58ff)),
+                code_syntax_keyword: Hsla::from(rgba(0x8f3a14ff)),
+                code_syntax_string: Hsla::from(rgba(0x4f6b1fff)),
+                code_syntax_number: Hsla::from(rgba(0x9a5b00ff)),
+                code_syntax_type: Hsla::from(rgba(0x1f5f66ff)),
+                code_syntax_function: Hsla::from(rgba(0x31508aff)),
+                code_syntax_constant: Hsla::from(rgba(0x9a5b00ff)),
+                code_syntax_variable: Hsla::from(rgba(0x2e241bff)),
+                code_syntax_property: Hsla::from(rgba(0x1f5f66ff)),
+                code_syntax_operator: Hsla::from(rgba(0x6e3f8aff)),
+                code_syntax_punctuation: Hsla::from(rgba(0x6b5a48ff)),
+                table_border: Hsla::from(rgba(0xcdbfa6ff)),
+                table_header_bg: Hsla::from(rgba(0xebe3d3ff)),
+                table_cell_bg: Hsla::from(rgba(0xf8f4ecff)),
+                table_cell_active_outline: Hsla::from(rgba(0x8f3a14ff)),
+                table_axis_preview_bg: Hsla::from(rgba(0x8f3a1414)),
+                table_axis_selected_bg: Hsla::from(rgba(0x8f3a1429)),
+                table_append_button_bg: Hsla::from(rgba(0xe6dccaff)),
+                table_append_button_hover: Hsla::from(rgba(0xd3c5adff)),
+                table_append_button_text: Hsla::from(rgba(0x4a3b2dff)),
+                image_placeholder_bg: Hsla::from(rgba(0xf8f4ecff)),
+                image_placeholder_border: Hsla::from(rgba(0xcdbfa6ff)),
+                image_placeholder_text: Hsla::from(rgba(0x5c4c3dff)),
+                image_caption_text: Hsla::from(rgba(0x6b5a48ff)),
+                scrollbar_thumb: Hsla::from(rgba(0x857565b8)),
+                cursor: Hsla::from(rgba(0x1c140dff)),
+                selection: Hsla::from(rgba(0xe5cf9ecc)),
+                dialog_surface: Hsla::from(rgba(0xfaf7f0ff)),
+                dialog_border: Hsla::from(rgba(0xcdbfa6ff)),
+                dialog_title: Hsla::from(rgba(0x1c140dff)),
+                dialog_body: Hsla::from(rgba(0x3b2f24ff)),
+                dialog_muted: Hsla::from(rgba(0x6b5a48ff)),
+                dialog_primary_button_bg: Hsla::from(rgba(0x8f3a14ff)),
+                dialog_primary_button_hover: Hsla::from(rgba(0x75300fff)),
+                dialog_secondary_button_bg: Hsla::from(rgba(0xebe3d3ff)),
+                dialog_secondary_button_hover: Hsla::from(rgba(0xe0d5c0ff)),
+                dialog_secondary_button_text: Hsla::from(rgba(0x2e241bff)),
+                status_bar_background: Hsla::from(rgba(0xebe4d6ff)),
+                status_bar_text: Hsla::from(rgba(0x4a3b2dff)),
+                status_bar_text_dim: Hsla::from(rgba(0x7a6a58ff)),
+                status_bar_button_hover: Hsla::from(rgba(0xddd2bdff)),
+                ..base.colors
+            },
+            dimensions: base.dimensions,
+            typography: base.typography,
+            placeholders: base.placeholders,
+        }
+    }
+
+    /// Returns the built-in "Whitey" theme: a minimal, almost monochrome white
+    /// page that keeps chrome and accents out of the way.
+    pub fn whitey_theme() -> Self {
+        let base = Self::light_theme();
+        Self {
+            name: BUILTIN_THEME_WHITEY_NAME.into(),
+            colors: ThemeColors {
+                editor_background: Hsla::from(rgba(0xffffffff)),
+                source_mode_block_bg: Hsla::from(rgba(0xf6f6f6ff)),
+                text_default: Hsla::from(rgba(0x333333ff)),
+                text_link: Hsla::from(rgba(0x2f5f9eff)),
+                text_placeholder: Hsla::from(rgba(0x8a8a8acc)),
+                text_h1: Hsla::from(rgba(0x111111ff)),
+                text_h2: Hsla::from(rgba(0x111111ff)),
+                text_h3: Hsla::from(rgba(0x222222ff)),
+                text_h4: Hsla::from(rgba(0x222222ff)),
+                text_h5: Hsla::from(rgba(0x333333ff)),
+                text_h6: Hsla::from(rgba(0x555555ff)),
+                border_h1: Hsla::from(rgba(0xeeeeeeff)),
+                border_h2: Hsla::from(rgba(0xeeeeeeff)),
+                text_quote: Hsla::from(rgba(0x666666ff)),
+                border_quote: Hsla::from(rgba(0xddddddff)),
+                footnote_bg: Hsla::from(rgba(0xfafafaff)),
+                footnote_border: Hsla::from(rgba(0xe5e5e5ff)),
+                footnote_badge_bg: Hsla::from(rgba(0xeeeeeeff)),
+                footnote_badge_text: Hsla::from(rgba(0x444444ff)),
+                footnote_backref: Hsla::from(rgba(0x2f5f9eff)),
+                task_checkbox_border: Hsla::from(rgba(0xaaaaaaff)),
+                task_checkbox_checked_bg: Hsla::from(rgba(0x333333ff)),
+                separator_color: Hsla::from(rgba(0xe0e0e0ff)),
+                code_bg: Hsla::from(rgba(0xf5f5f5ff)),
+                code_text: Hsla::from(rgba(0x2b2b2bff)),
+                code_language_input_border: Hsla::from(rgba(0xddddddff)),
+                code_language_input_text: Hsla::from(rgba(0x333333ff)),
+                table_border: Hsla::from(rgba(0xe2e2e2ff)),
+                table_header_bg: Hsla::from(rgba(0xf7f7f7ff)),
+                table_cell_bg: Hsla::from(rgba(0xffffffff)),
+                table_cell_active_outline: Hsla::from(rgba(0x555555ff)),
+                table_axis_preview_bg: Hsla::from(rgba(0x0000000d)),
+                table_axis_selected_bg: Hsla::from(rgba(0x0000001a)),
+                table_append_button_bg: Hsla::from(rgba(0xeeeeeeff)),
+                table_append_button_hover: Hsla::from(rgba(0xe0e0e0ff)),
+                table_append_button_text: Hsla::from(rgba(0x444444ff)),
+                image_placeholder_bg: Hsla::from(rgba(0xfafafaff)),
+                image_placeholder_border: Hsla::from(rgba(0xddddddff)),
+                image_placeholder_text: Hsla::from(rgba(0x555555ff)),
+                image_caption_text: Hsla::from(rgba(0x777777ff)),
+                scrollbar_thumb: Hsla::from(rgba(0x999999b8)),
+                cursor: Hsla::from(rgba(0x111111ff)),
+                selection: Hsla::from(rgba(0xdde3eaff)),
+                dialog_border: Hsla::from(rgba(0xe2e2e2ff)),
+                dialog_title: Hsla::from(rgba(0x111111ff)),
+                dialog_body: Hsla::from(rgba(0x333333ff)),
+                dialog_muted: Hsla::from(rgba(0x777777ff)),
+                dialog_primary_button_bg: Hsla::from(rgba(0x222222ff)),
+                dialog_primary_button_hover: Hsla::from(rgba(0x000000ff)),
+                dialog_secondary_button_bg: Hsla::from(rgba(0xf3f3f3ff)),
+                dialog_secondary_button_hover: Hsla::from(rgba(0xe8e8e8ff)),
+                dialog_secondary_button_text: Hsla::from(rgba(0x333333ff)),
+                status_bar_background: Hsla::from(rgba(0xfafafaff)),
+                status_bar_text: Hsla::from(rgba(0x555555ff)),
+                status_bar_text_dim: Hsla::from(rgba(0x8a8a8aff)),
+                status_bar_button_hover: Hsla::from(rgba(0xeeeeeeff)),
+                ..base.colors
+            },
+            dimensions: base.dimensions,
+            typography: base.typography,
+            placeholders: base.placeholders,
+        }
+    }
+
+    /// Returns the built-in theme registered under `theme_id`, if any.
+    pub fn builtin(theme_id: &str) -> Option<Self> {
+        BUILTIN_THEMES
+            .iter()
+            .find(|builtin| builtin.id == theme_id)
+            .map(|builtin| (builtin.build)())
+    }
+
+    /// True when the editor background is dark, i.e. light text on a dark page.
+    pub fn is_dark(&self) -> bool {
+        self.colors.editor_background.l < 0.5
+    }
+
     /// Parses a theme from JSON text.
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
         Ok(serde_json::from_str(json)?)
@@ -1473,19 +1762,70 @@ const BUILTIN_THEME_VELOTYPE_ID: &str = "velotype";
 const BUILTIN_THEME_VELOTYPE_NAME: &str = "Velotype";
 const BUILTIN_THEME_VELOTYPE_LIGHT_ID: &str = "velotype-light";
 const BUILTIN_THEME_VELOTYPE_LIGHT_NAME: &str = "Velotype Light";
+const BUILTIN_THEME_GITHUB_ID: &str = "github";
+const BUILTIN_THEME_GITHUB_NAME: &str = "GitHub";
+const BUILTIN_THEME_NIGHT_ID: &str = "night";
+const BUILTIN_THEME_NIGHT_NAME: &str = "Night";
+const BUILTIN_THEME_NEWSPRINT_ID: &str = "newsprint";
+const BUILTIN_THEME_NEWSPRINT_NAME: &str = "Newsprint";
+const BUILTIN_THEME_WHITEY_ID: &str = "whitey";
+const BUILTIN_THEME_WHITEY_NAME: &str = "Whitey";
 const CUSTOM_THEME_ID: &str = "custom";
 
+/// Default theme used for the light appearance when following the system.
+pub const DEFAULT_LIGHT_THEME_ID: &str = BUILTIN_THEME_VELOTYPE_LIGHT_ID;
+/// Default theme used for the dark appearance when following the system.
+pub const DEFAULT_DARK_THEME_ID: &str = BUILTIN_THEME_VELOTYPE_ID;
+
+/// A theme compiled into the binary.
+struct BuiltinTheme {
+    id: &'static str,
+    name: &'static str,
+    build: fn() -> Theme,
+}
+
+/// Built-in themes in menu order.
+const BUILTIN_THEMES: &[BuiltinTheme] = &[
+    BuiltinTheme {
+        id: BUILTIN_THEME_VELOTYPE_ID,
+        name: BUILTIN_THEME_VELOTYPE_NAME,
+        build: Theme::default_theme,
+    },
+    BuiltinTheme {
+        id: BUILTIN_THEME_VELOTYPE_LIGHT_ID,
+        name: BUILTIN_THEME_VELOTYPE_LIGHT_NAME,
+        build: Theme::light_theme,
+    },
+    BuiltinTheme {
+        id: BUILTIN_THEME_GITHUB_ID,
+        name: BUILTIN_THEME_GITHUB_NAME,
+        build: Theme::github_theme,
+    },
+    BuiltinTheme {
+        id: BUILTIN_THEME_NEWSPRINT_ID,
+        name: BUILTIN_THEME_NEWSPRINT_NAME,
+        build: Theme::newsprint_theme,
+    },
+    BuiltinTheme {
+        id: BUILTIN_THEME_NIGHT_ID,
+        name: BUILTIN_THEME_NIGHT_NAME,
+        build: Theme::night_theme,
+    },
+    BuiltinTheme {
+        id: BUILTIN_THEME_WHITEY_ID,
+        name: BUILTIN_THEME_WHITEY_NAME,
+        build: Theme::whitey_theme,
+    },
+];
+
 fn builtin_theme_catalog() -> Vec<ThemeCatalogEntry> {
-    vec![
-        ThemeCatalogEntry {
-            id: BUILTIN_THEME_VELOTYPE_ID.into(),
-            name: BUILTIN_THEME_VELOTYPE_NAME.into(),
-        },
-        ThemeCatalogEntry {
-            id: BUILTIN_THEME_VELOTYPE_LIGHT_ID.into(),
-            name: BUILTIN_THEME_VELOTYPE_LIGHT_NAME.into(),
-        },
-    ]
+    BUILTIN_THEMES
+        .iter()
+        .map(|builtin| ThemeCatalogEntry {
+            id: builtin.id.into(),
+            name: builtin.name.into(),
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -1506,6 +1846,39 @@ pub struct ThemeManager {
     current_theme_id: String,
     custom_themes: Vec<CustomThemeEntry>,
     theme_catalog: Vec<ThemeCatalogEntry>,
+    appearance: AppearanceThemes,
+}
+
+/// Light/dark theme pair used when the theme follows the OS appearance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppearanceThemes {
+    /// When true, the active theme tracks the system light/dark appearance.
+    pub follow_system: bool,
+    /// Theme applied while the system uses a light appearance.
+    pub light_theme_id: String,
+    /// Theme applied while the system uses a dark appearance.
+    pub dark_theme_id: String,
+}
+
+impl Default for AppearanceThemes {
+    fn default() -> Self {
+        Self {
+            follow_system: false,
+            light_theme_id: DEFAULT_LIGHT_THEME_ID.into(),
+            dark_theme_id: DEFAULT_DARK_THEME_ID.into(),
+        }
+    }
+}
+
+impl AppearanceThemes {
+    /// Theme id configured for the given appearance.
+    pub fn theme_id_for(&self, dark: bool) -> &str {
+        if dark {
+            &self.dark_theme_id
+        } else {
+            &self.light_theme_id
+        }
+    }
 }
 
 impl Global for ThemeManager {}
@@ -1517,6 +1890,7 @@ impl Default for ThemeManager {
             current_theme_id: BUILTIN_THEME_VELOTYPE_ID.into(),
             custom_themes: Vec::new(),
             theme_catalog: builtin_theme_catalog(),
+            appearance: AppearanceThemes::default(),
         }
     }
 }
@@ -1595,26 +1969,61 @@ impl ThemeManager {
 
     /// Activates a theme by identifier.
     pub fn set_theme_by_id(&mut self, theme_id: &str) -> bool {
-        match theme_id {
-            id if id == BUILTIN_THEME_VELOTYPE_ID => {
-                self.current = Arc::new(Theme::default_theme());
-                self.current_theme_id = BUILTIN_THEME_VELOTYPE_ID.into();
-                true
-            }
-            id if id == BUILTIN_THEME_VELOTYPE_LIGHT_ID => {
-                self.current = Arc::new(Theme::light_theme());
-                self.current_theme_id = BUILTIN_THEME_VELOTYPE_LIGHT_ID.into();
-                true
-            }
-            id => {
-                let Some(entry) = self.custom_themes.iter().find(|entry| entry.id == id) else {
-                    return false;
-                };
-                self.current = Arc::new(entry.theme.clone());
-                self.current_theme_id = entry.id.clone();
-                true
-            }
+        if let Some(theme) = Theme::builtin(theme_id) {
+            self.current = Arc::new(theme);
+            self.current_theme_id = theme_id.into();
+            return true;
         }
+        let Some(entry) = self.custom_themes.iter().find(|entry| entry.id == theme_id) else {
+            return false;
+        };
+        self.current = Arc::new(entry.theme.clone());
+        self.current_theme_id = entry.id.clone();
+        true
+    }
+
+    /// Returns the light/dark pair used when following the system appearance.
+    pub fn appearance_themes(&self) -> &AppearanceThemes {
+        &self.appearance
+    }
+
+    /// True when the active theme tracks the OS light/dark appearance.
+    pub fn follows_system_appearance(&self) -> bool {
+        self.appearance.follow_system
+    }
+
+    /// Replaces the light/dark pair. Unknown theme ids fall back to the
+    /// built-in defaults so a deleted custom theme cannot strand the editor.
+    pub fn set_appearance_themes(&mut self, appearance: AppearanceThemes) {
+        let known = |id: &str| self.theme_catalog.iter().any(|entry| entry.id == id);
+        let light_theme_id = if known(&appearance.light_theme_id) {
+            appearance.light_theme_id
+        } else {
+            DEFAULT_LIGHT_THEME_ID.into()
+        };
+        let dark_theme_id = if known(&appearance.dark_theme_id) {
+            appearance.dark_theme_id
+        } else {
+            DEFAULT_DARK_THEME_ID.into()
+        };
+        self.appearance = AppearanceThemes {
+            follow_system: appearance.follow_system,
+            light_theme_id,
+            dark_theme_id,
+        };
+    }
+
+    /// Activates the theme configured for the given system appearance when
+    /// following is enabled. Returns true when the active theme changed.
+    pub fn apply_system_appearance(&mut self, dark: bool) -> bool {
+        if !self.appearance.follow_system {
+            return false;
+        }
+        let theme_id = self.appearance.theme_id_for(dark).to_string();
+        if theme_id == self.current_theme_id {
+            return false;
+        }
+        self.set_theme_by_id(&theme_id)
     }
 
     /// Imports a user theme pack, persists a normalized copy, and activates it.
@@ -1703,19 +2112,17 @@ impl ThemeManager {
     }
 
     fn theme_id_for_loaded_theme(&self, theme: &Theme) -> String {
-        if theme.name == BUILTIN_THEME_VELOTYPE_NAME {
-            BUILTIN_THEME_VELOTYPE_ID.into()
-        } else if theme.name == BUILTIN_THEME_VELOTYPE_LIGHT_NAME {
-            BUILTIN_THEME_VELOTYPE_LIGHT_ID.into()
-        } else {
-            CUSTOM_THEME_ID.into()
-        }
+        BUILTIN_THEMES
+            .iter()
+            .find(|builtin| builtin.name == theme.name)
+            .map(|builtin| builtin.id)
+            .unwrap_or(CUSTOM_THEME_ID)
+            .into()
     }
 
     fn theme_import_base_theme_id(&self) -> String {
         match self.current_theme_id.as_str() {
-            BUILTIN_THEME_VELOTYPE_LIGHT_ID => BUILTIN_THEME_VELOTYPE_LIGHT_ID.into(),
-            BUILTIN_THEME_VELOTYPE_ID => BUILTIN_THEME_VELOTYPE_ID.into(),
+            id if is_builtin_theme_id(id) => id.into(),
             id => self
                 .custom_themes
                 .iter()
@@ -1750,7 +2157,7 @@ fn custom_theme_from_value_with_default_base(
         bail!("field 'theme' must be a JSON object when present");
     }
 
-    let base_theme = custom_theme_base_theme(&base_theme_id);
+    let base_theme = custom_theme_base_theme(base_theme_id);
     let mut merged = serde_json::to_value(base_theme)?;
     let mut theme_patch = filter_json_by_schema(&raw_theme_patch, &merged);
     if let Value::Object(theme_patch_object) = &mut theme_patch {
@@ -1819,15 +2226,11 @@ fn resolved_custom_theme_base_id<'a>(
 }
 
 fn is_builtin_theme_id(theme_id: &str) -> bool {
-    theme_id == BUILTIN_THEME_VELOTYPE_ID || theme_id == BUILTIN_THEME_VELOTYPE_LIGHT_ID
+    BUILTIN_THEMES.iter().any(|builtin| builtin.id == theme_id)
 }
 
 fn custom_theme_base_theme(theme_id: &str) -> Theme {
-    if theme_id == BUILTIN_THEME_VELOTYPE_LIGHT_ID {
-        Theme::light_theme()
-    } else {
-        Theme::default_theme()
-    }
+    Theme::builtin(theme_id).unwrap_or_else(Theme::default_theme)
 }
 
 fn filter_json_by_schema(value: &Value, schema: &Value) -> Value {
@@ -1860,9 +2263,12 @@ fn required_string(object: &Map<String, Value>, key: &str) -> anyhow::Result<Str
 }
 #[cfg(test)]
 mod tests {
-    use super::{Theme, ThemeManager};
+    use super::{
+        AppearanceThemes, DEFAULT_DARK_THEME_ID, DEFAULT_LIGHT_THEME_ID, Theme, ThemeManager,
+        builtin_theme_catalog, custom_theme_from_value, is_builtin_theme_id,
+    };
     use crate::config::VelotypeConfigDirs;
-    use gpui::rgba;
+    use gpui::{Hsla, Rgba, rgba};
 
     #[test]
     fn deserializes_legacy_block_focused_bg_key() {
@@ -2358,7 +2764,14 @@ mod tests {
                 .iter()
                 .map(|entry| entry.name.as_str())
                 .collect::<Vec<_>>(),
-            vec!["Velotype", "Velotype Light"]
+            vec![
+                "Velotype",
+                "Velotype Light",
+                "GitHub",
+                "Newsprint",
+                "Night",
+                "Whitey"
+            ]
         );
 
         assert!(manager.set_theme_by_id("velotype-light"));
@@ -2373,5 +2786,138 @@ mod tests {
         assert_eq!(manager.current_theme_id(), "velotype");
         assert_eq!(manager.current().name, "Velotype");
         assert!(!manager.set_theme_by_id("missing"));
+    }
+
+    #[test]
+    fn every_builtin_theme_activates_and_round_trips_its_id() {
+        for entry in builtin_theme_catalog() {
+            let mut manager = ThemeManager::default();
+            assert!(manager.set_theme_by_id(&entry.id), "{}", entry.id);
+            assert_eq!(manager.current_theme_id(), entry.id);
+            assert_eq!(manager.current().name, entry.name);
+            let theme = manager.current().clone();
+            manager.set_theme(theme);
+            assert_eq!(manager.current_theme_id(), entry.id);
+            assert!(is_builtin_theme_id(&entry.id));
+        }
+    }
+
+    #[test]
+    fn builtin_theme_darkness_matches_intent() {
+        assert!(Theme::default_theme().is_dark());
+        assert!(Theme::night_theme().is_dark());
+        assert!(!Theme::light_theme().is_dark());
+        assert!(!Theme::github_theme().is_dark());
+        assert!(!Theme::newsprint_theme().is_dark());
+        assert!(!Theme::whitey_theme().is_dark());
+    }
+
+    /// WCAG relative luminance of an opaque colour.
+    fn relative_luminance(color: Hsla) -> f32 {
+        let rgb = Rgba::from(color);
+        let linear = |channel: f32| {
+            if channel <= 0.04045 {
+                channel / 12.92
+            } else {
+                ((channel + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * linear(rgb.r) + 0.7152 * linear(rgb.g) + 0.0722 * linear(rgb.b)
+    }
+
+    /// WCAG contrast ratio of `foreground` drawn over the opaque `background`.
+    fn contrast_ratio(foreground: Hsla, background: Hsla) -> f32 {
+        let fg = Rgba::from(foreground);
+        let bg = Rgba::from(background);
+        let blend = |f: f32, b: f32| f * fg.a + b * (1.0 - fg.a);
+        let composited = Hsla::from(Rgba {
+            r: blend(fg.r, bg.r),
+            g: blend(fg.g, bg.g),
+            b: blend(fg.b, bg.b),
+            a: 1.0,
+        });
+        let (a, b) = (
+            relative_luminance(composited),
+            relative_luminance(background),
+        );
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn builtin_themes_keep_body_text_readable() {
+        for entry in builtin_theme_catalog() {
+            let theme = Theme::builtin(&entry.id).expect("builtin theme");
+            let c = &theme.colors;
+            for (token, foreground, background) in [
+                ("text_default", c.text_default, c.editor_background),
+                ("text_h1", c.text_h1, c.editor_background),
+                ("text_quote", c.text_quote, c.editor_background),
+                ("text_link", c.text_link, c.editor_background),
+                ("code_text", c.code_text, c.code_bg),
+            ] {
+                let ratio = contrast_ratio(foreground, background);
+                assert!(
+                    ratio >= 4.5,
+                    "{} {token} contrast {ratio:.2} is below 4.5:1",
+                    entry.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn contrast_ratio_matches_known_values() {
+        let black = Hsla::from(rgba(0x000000ff));
+        let white = Hsla::from(rgba(0xffffffff));
+        assert!((contrast_ratio(black, white) - 21.0).abs() < 0.01);
+        assert!((contrast_ratio(white, white) - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn appearance_following_switches_between_configured_themes() {
+        let mut manager = ThemeManager::default();
+        assert!(!manager.follows_system_appearance());
+        assert!(!manager.apply_system_appearance(false));
+        assert_eq!(manager.current_theme_id(), "velotype");
+
+        manager.set_appearance_themes(AppearanceThemes {
+            follow_system: true,
+            light_theme_id: "github".into(),
+            dark_theme_id: "night".into(),
+        });
+        assert!(manager.follows_system_appearance());
+        assert!(manager.apply_system_appearance(false));
+        assert_eq!(manager.current_theme_id(), "github");
+        assert!(!manager.apply_system_appearance(false));
+        assert!(manager.apply_system_appearance(true));
+        assert_eq!(manager.current_theme_id(), "night");
+    }
+
+    #[test]
+    fn appearance_themes_fall_back_for_unknown_ids() {
+        let mut manager = ThemeManager::default();
+        manager.set_appearance_themes(AppearanceThemes {
+            follow_system: true,
+            light_theme_id: "custom:gone_nobody".into(),
+            dark_theme_id: "".into(),
+        });
+        let appearance = manager.appearance_themes();
+        assert_eq!(appearance.light_theme_id, DEFAULT_LIGHT_THEME_ID);
+        assert_eq!(appearance.dark_theme_id, DEFAULT_DARK_THEME_ID);
+    }
+
+    #[test]
+    fn custom_theme_can_inherit_new_builtin_base() {
+        let (entry, _) = custom_theme_from_value(serde_json::json!({
+            "name": "Paper",
+            "creator": "Tester",
+            "base_theme_id": "newsprint",
+        }))
+        .expect("custom theme");
+        assert_eq!(entry.base_theme_id, "newsprint");
+        assert_eq!(
+            entry.theme.colors.editor_background,
+            Theme::newsprint_theme().colors.editor_background
+        );
     }
 }

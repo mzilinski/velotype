@@ -197,6 +197,7 @@ fn main() {
         });
         I18nManager::init_with_language_id(cx, &preferences.default_language_id);
         ThemeManager::init_with_theme_id(cx, &preferences.default_theme_id);
+        config::init_appearance_themes(cx, preferences.appearance_themes.clone());
         fonts::FontSettings::init(cx, preferences.fonts.clone());
         config::EditorSettings::init(cx, preferences.show_table_headers);
         spellcheck::SpellChecker::init(cx, &preferences.writing.spellcheck_language);
