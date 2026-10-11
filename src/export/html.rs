@@ -1,16 +1,20 @@
 //! HTML document generation for Markdown export.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
 use base64::{Engine as _, engine::general_purpose};
 use gpui::{Hsla, Rgba};
-use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, html};
+use pulldown_cmark::{
+    CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, TextMergeStream, html,
+};
 
 use crate::components::{
     inline_math_font_size, is_mermaid_closing_fence, parse_display_math_source,
     parse_html_image_block, parse_mermaid_fence_source, parse_mermaid_fence_start,
-    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export,
+    render_latex_to_svg, render_mermaid_to_svg, sanitize_html_for_export, strip_front_matter,
+    wiki_link_file_target,
 };
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings};
 use crate::net;
@@ -88,20 +92,150 @@ fn markdown_options() -> Options {
     options.insert(Options::ENABLE_TASKLISTS);
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_GFM);
+    options.insert(Options::ENABLE_WIKILINKS);
     options
 }
 
 fn render_browser_html_body(markdown: &str, theme: &Theme, base_dir: Option<&Path>) -> String {
+    // Front matter is document metadata, not content.
+    let markdown = strip_front_matter(markdown);
     let rewritten = rewrite_visible_comment_blocks(markdown);
     let rewritten = rewrite_unsafe_html_blocks(&rewritten, base_dir);
     let rewritten = rewrite_display_math_blocks(&rewritten, theme);
     let rewritten = rewrite_inline_math(&rewritten, theme);
     let rewritten = rewrite_mermaid_blocks(&rewritten);
     let parser = Parser::new_ext(&rewritten, markdown_options())
-        .map(|event| rewrite_local_image_event(event, base_dir));
+        .map(|event| rewrite_local_image_event(event, base_dir))
+        .map(rewrite_wiki_link_event);
     let mut body = String::new();
-    html::push_html(&mut body, parser);
+    html::push_html(&mut body, insert_table_of_contents(parser).into_iter());
     body
+}
+
+/// Replaces standalone `[TOC]` paragraphs with a nested list of links to the
+/// document's headings. Headings only receive slug ids when a table of
+/// contents is present, so exports without one keep their exact markup.
+fn insert_table_of_contents<'a>(events: impl Iterator<Item = Event<'a>>) -> Vec<Event<'a>> {
+    let mut events = TextMergeStream::new(events).collect::<Vec<_>>();
+    let toc_positions = events
+        .windows(3)
+        .enumerate()
+        .filter(|(_, window)| {
+            matches!(
+                window,
+                [
+                    Event::Start(Tag::Paragraph),
+                    Event::Text(text),
+                    Event::End(TagEnd::Paragraph),
+                ] if text.trim().eq_ignore_ascii_case("[toc]")
+            )
+        })
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    if toc_positions.is_empty() {
+        return events;
+    }
+
+    let mut headings = Vec::new();
+    let mut used_slugs = HashMap::<String, usize>::new();
+    for index in 0..events.len() {
+        let Event::Start(Tag::Heading { level, .. }) = &events[index] else {
+            continue;
+        };
+        let level = *level as u8;
+        let mut text = String::new();
+        for event in &events[index + 1..] {
+            match event {
+                Event::End(TagEnd::Heading(_)) => break,
+                Event::Text(value) | Event::Code(value) => text.push_str(value),
+                _ => {}
+            }
+        }
+
+        if let Event::Start(Tag::Heading { id, .. }) = &mut events[index] {
+            let anchor = match id {
+                Some(existing) => existing.to_string(),
+                None => {
+                    let anchor = unique_heading_slug(&text, &mut used_slugs);
+                    *id = Some(CowStr::from(anchor.clone()));
+                    anchor
+                }
+            };
+            headings.push((level, text, anchor));
+        }
+    }
+
+    let toc_html = table_of_contents_html(&headings);
+    for position in toc_positions.into_iter().rev() {
+        events.splice(
+            position..position + 3,
+            [Event::Html(CowStr::from(toc_html.clone()))],
+        );
+    }
+    events
+}
+
+fn unique_heading_slug(text: &str, used: &mut HashMap<String, usize>) -> String {
+    let mut slug = String::new();
+    for ch in text.trim().chars().flat_map(char::to_lowercase) {
+        if ch.is_alphanumeric() || ch == '-' || ch == '_' {
+            slug.push(ch);
+        } else if ch.is_whitespace() {
+            slug.push('-');
+        }
+    }
+    if slug.is_empty() {
+        slug.push_str("section");
+    }
+
+    let count = used.entry(slug.clone()).or_insert(0);
+    let unique = if *count == 0 {
+        slug
+    } else {
+        format!("{slug}-{count}")
+    };
+    *count += 1;
+    unique
+}
+
+fn table_of_contents_html(headings: &[(u8, String, String)]) -> String {
+    let mut html = String::from("<nav class=\"vlt-toc\">\n");
+    let base_level = headings.iter().map(|(level, ..)| *level).min().unwrap_or(1);
+    let mut open_lists = 0usize;
+    for (level, text, anchor) in headings {
+        // Clamp skipped levels (H1 -> H3) to one nesting step so every nested
+        // list sits inside a list item.
+        let depth = (usize::from(level - base_level) + 1).min(open_lists + 1);
+        if depth > open_lists {
+            html.push_str(if open_lists == 0 {
+                "<ul>\n"
+            } else {
+                "\n<ul>\n"
+            });
+            open_lists += 1;
+        } else {
+            html.push_str("</li>\n");
+            while open_lists > depth {
+                html.push_str("</ul>\n</li>\n");
+                open_lists -= 1;
+            }
+        }
+        html.push_str(&format!(
+            "<li><a href=\"#{}\">{}</a>",
+            escape_html(anchor),
+            escape_html(text)
+        ));
+    }
+    if open_lists > 0 {
+        html.push_str("</li>\n");
+        while open_lists > 1 {
+            html.push_str("</ul>\n</li>\n");
+            open_lists -= 1;
+        }
+        html.push_str("</ul>\n");
+    }
+    html.push_str("</nav>\n");
+    html
 }
 
 fn rewrite_visible_comment_blocks(markdown: &str) -> String {
@@ -220,6 +354,16 @@ fn rewrite_inline_math_line(line: &str, theme: &Theme) -> String {
             continue;
         }
 
+        // pulldown-cmark has no `==highlight==` extension; emit inline `<mark>`
+        // tags and keep the body as Markdown so nested emphasis still renders.
+        if let Some((end, body)) = locate_inline_highlight_source(line, index) {
+            output.push_str("<mark>");
+            output.push_str(&rewrite_inline_math_line(body, theme));
+            output.push_str("</mark>");
+            index = end;
+            continue;
+        }
+
         let Some(ch) = line[index..].chars().next() else {
             break;
         };
@@ -277,6 +421,33 @@ fn locate_inline_script_source(line: &str, index: usize) -> Option<(usize, Strin
     } else {
         None
     }
+}
+
+fn locate_inline_highlight_source(line: &str, index: usize) -> Option<(usize, &str)> {
+    if !line[index..].starts_with("==")
+        || is_escaped_ascii(line, index)
+        || previous_char(line, index) == Some('=')
+    {
+        return None;
+    }
+    let body_start = index + 2;
+    let first = line[body_start..].chars().next()?;
+    if first == '=' {
+        return None;
+    }
+
+    let mut cursor = body_start + first.len_utf8();
+    while cursor < line.len() {
+        if line[cursor..].starts_with("==")
+            && !is_escaped_ascii(line, cursor)
+            && previous_char(line, cursor).is_some_and(|ch| !ch.is_whitespace())
+        {
+            return Some((cursor + 2, &line[body_start..cursor]));
+        }
+        cursor += line[cursor..].chars().next()?.len_utf8();
+    }
+
+    None
 }
 
 fn locate_script_close(line: &str, index: usize, marker: char) -> Option<(usize, String)> {
@@ -528,6 +699,33 @@ fn rewrite_local_image_event<'a>(event: Event<'a>, base_dir: Option<&Path>) -> E
     }
 }
 
+/// Points `[[wiki]]` links at the Markdown file they name, matching how the
+/// editor opens them.
+fn rewrite_wiki_link_event(event: Event<'_>) -> Event<'_> {
+    match event {
+        Event::Start(Tag::Link {
+            link_type: link_type @ LinkType::WikiLink { .. },
+            dest_url,
+            title,
+            id,
+        }) => {
+            let dest_url = wiki_link_file_target(&dest_url)
+                .map(|(file, anchor)| match anchor {
+                    Some(anchor) => CowStr::from(format!("{file}#{anchor}")),
+                    None => CowStr::from(file),
+                })
+                .unwrap_or(dest_url);
+            Event::Start(Tag::Link {
+                link_type,
+                dest_url,
+                title,
+                id,
+            })
+        }
+        event => event,
+    }
+}
+
 fn local_image_data_uri(source: &str, base_dir: Option<&Path>) -> Option<String> {
     if source.is_empty()
         || source.starts_with('#')
@@ -707,6 +905,7 @@ fn theme_css(theme: &Theme, fonts: &FontSettings) -> String {
   --vlt-code-bg: {};
   --vlt-code-text: {};
   --vlt-comment-bg: {};
+  --vlt-highlight-bg: {};
   --vlt-table-head-bg: {};
   --vlt-table-cell-bg: {};
   --vlt-quote-border: {};
@@ -849,6 +1048,7 @@ th, td {{
 }}
 th {{ background-color: var(--vlt-table-head-bg); font-weight: 600; }}
 td {{ background-color: var(--vlt-table-cell-bg); }}
+mark {{ background-color: var(--vlt-highlight-bg); color: inherit; border-radius: 2px; }}
 img {{ max-width: 100%; height: auto; display: block; margin: 1rem auto; }}
 hr {{ border: 0; border-top: 1px solid; border-color: var(--vlt-border); }}
 .footnote-definition {{
@@ -865,6 +1065,7 @@ hr {{ border: 0; border-top: 1px solid; border-color: var(--vlt-border); }}
         css_color(c.code_bg),
         css_color(c.code_text),
         css_color(c.comment_bg),
+        css_color(c.highlight_bg),
         css_color(c.table_header_bg),
         css_color(c.table_cell_bg),
         css_color(c.border_quote),
@@ -1336,6 +1537,76 @@ mod tests {
 
         assert!(html.contains("x<sup>2</sup>"));
         assert!(html.contains("H<sub>2</sub>O"));
+    }
+
+    #[test]
+    fn exports_table_of_contents_as_nested_links() {
+        let html = render_html(
+            "[TOC]\n\n# Intro\n\n## Setup *fast*\n\n### Deep\n\n## Setup fast\n\n# Intro",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(!html.contains("[TOC]"));
+        assert!(html.contains("<h1 id=\"intro\">Intro</h1>"));
+        assert!(html.contains("<h2 id=\"setup-fast\">"));
+        assert!(html.contains("<h2 id=\"setup-fast-1\">"));
+        assert!(html.contains("<h1 id=\"intro-1\">"));
+        assert!(html.contains(
+            "<nav class=\"vlt-toc\">\n<ul>\n<li><a href=\"#intro\">Intro</a>\n<ul>\n<li><a href=\"#setup-fast\">Setup fast</a>\n<ul>\n<li><a href=\"#deep\">Deep</a></li>\n</ul>\n</li>\n<li><a href=\"#setup-fast-1\">Setup fast</a></li>\n</ul>\n</li>\n<li><a href=\"#intro-1\">Intro</a></li>\n</ul>\n</nav>"
+        ));
+    }
+
+    #[test]
+    fn export_without_toc_keeps_plain_headings() {
+        let html = render_html(
+            "# Intro\n\nText [toc] inline",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<h1>Intro</h1>"));
+        assert!(html.contains("Text [toc] inline"));
+    }
+
+    #[test]
+    fn exports_wiki_links_to_markdown_files() {
+        let html = render_html(
+            "See [[Other Note]] and [[dir/Spec.md#Setup|the spec]].",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<a href=\"Other%20Note.md\">Other Note</a>"));
+        assert!(html.contains("<a href=\"dir/Spec.md#Setup\">the spec</a>"));
+    }
+
+    #[test]
+    fn export_omits_front_matter() {
+        let html = render_html(
+            "---\ntitle: Secret\n---\n# Body",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(!html.contains("Secret"));
+        assert!(!html.contains("<hr"));
+        assert!(html.contains("<h1>Body</h1>"));
+    }
+
+    #[test]
+    fn exports_highlight_as_mark_tags() {
+        let html = render_html(
+            "a ==marked **bold**== b `==code==` and x == y\n\nTitle\n===",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<mark>marked <strong>bold</strong></mark>"));
+        assert!(html.contains("<code>==code==</code>"));
+        assert!(html.contains("x == y"));
+        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("mark { background-color: var(--vlt-highlight-bg);"));
     }
 
     #[test]

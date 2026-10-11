@@ -64,6 +64,8 @@ pub struct ThemeColors {
     pub source_mode_block_bg: Hsla,
     /// Background used for visible Markdown comment blocks.
     pub comment_bg: Hsla,
+    /// Background of `==highlighted==` inline text.
+    pub highlight_bg: Hsla,
     /// Default paragraph / body text colour.
     pub text_default: Hsla,
     /// Inline link text colour in rendered mode.
@@ -530,6 +532,7 @@ struct ThemeColorsDe {
     source_mode_block_bg: Option<Hsla>,
     block_focused_bg: Option<Hsla>,
     comment_bg: Option<Hsla>,
+    highlight_bg: Option<Hsla>,
     text_default: Hsla,
     text_link: Option<Hsla>,
     text_placeholder: Hsla,
@@ -632,6 +635,9 @@ impl<'de> Deserialize<'de> for ThemeColors {
             comment_bg: raw
                 .comment_bg
                 .unwrap_or_else(|| Hsla::from(rgba(0xfbbf2426))),
+            highlight_bg: raw
+                .highlight_bg
+                .unwrap_or_else(|| Hsla::from(rgba(0xfacc1559))),
             text_default: raw.text_default,
             text_link: raw
                 .text_link
@@ -1099,6 +1105,7 @@ impl Theme {
                 editor_background: Hsla::from(rgba(0x191919ff)),
                 source_mode_block_bg: Hsla::from(rgba(0x313131ff)),
                 comment_bg: Hsla::from(rgba(0xfbbf2426)),
+                highlight_bg: Hsla::from(rgba(0xfacc1559)),
                 text_default: Hsla::from(rgba(0xf0efedff)),
                 text_link: Hsla::from(rgba(0x60a5faff)),
                 text_placeholder: hsla(0., 0., 0.6, 1.0),
@@ -1345,6 +1352,7 @@ impl Theme {
                 editor_background: Hsla::from(rgba(0xf7f8fbff)),
                 source_mode_block_bg: Hsla::from(rgba(0xeef2f7ff)),
                 comment_bg: Hsla::from(rgba(0xfef3c766)),
+                highlight_bg: Hsla::from(rgba(0xfde04799)),
                 text_default: Hsla::from(rgba(0x1f2937ff)),
                 text_link: Hsla::from(rgba(0x2563ebff)),
                 text_placeholder: Hsla::from(rgba(0x6b7280cc)),

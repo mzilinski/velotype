@@ -64,6 +64,7 @@ fn build_text_runs(
     underline_thickness: Pixels,
     link_color: Hsla,
     code_bg: Hsla,
+    highlight_bg: Hsla,
     show_inline_code_backgrounds: bool,
     code_font: &Font,
     misspelled: &[Range<usize>],
@@ -157,6 +158,8 @@ fn build_text_runs(
 
         let mut background_color = if show_inline_code_backgrounds && inline_style.code {
             Some(code_bg)
+        } else if inline_style.highlight {
+            Some(highlight_bg)
         } else {
             base_run.background_color
         };
@@ -991,6 +994,7 @@ impl Element for BlockTextElement {
                     px(theme.dimensions.underline_thickness),
                     theme.colors.text_link,
                     theme.colors.code_bg,
+                    theme.colors.highlight_bg,
                     show_inline_code_backgrounds,
                     &crate::fonts::FontSettings::code_font(cx),
                     &misspelled,
@@ -1622,6 +1626,7 @@ mod tests {
                 px(1.0),
                 Hsla::from(rgba(0x0066ccff)),
                 Hsla::from(rgba(0x111111ff)),
+                Hsla::from(rgba(0xffff0080)),
                 true,
                 &base_run.font,
                 &[],

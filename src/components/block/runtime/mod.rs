@@ -19,7 +19,7 @@ use self::projection::{
 };
 use super::{
     BlockEvent, BlockKind, BlockRecord, CalloutVariant, FootnoteRegistry, InlineFootnoteHit,
-    UndoCaptureKind,
+    TableOfContentsEntry, UndoCaptureKind,
 };
 use super::{CodeHighlightResult, highlight_code_block};
 use super::{
@@ -68,6 +68,8 @@ impl EditMode {
         } else if matches!(
             kind,
             BlockKind::RawMarkdown
+                | BlockKind::FrontMatter
+                | BlockKind::TableOfContents
                 | BlockKind::Comment
                 | BlockKind::HtmlBlock
                 | BlockKind::MathBlock
@@ -180,6 +182,7 @@ pub struct Block {
     image_reference_definitions: Arc<ImageReferenceDefinitions>,
     link_reference_definitions: Arc<LinkReferenceDefinitions>,
     footnote_registry: Arc<FootnoteRegistry>,
+    toc_entries: Arc<Vec<TableOfContentsEntry>>,
     pub(crate) list_group_separator_candidate: bool,
     numbered_list_restart_requested: bool,
     quote_reparse_requested: bool,
@@ -278,6 +281,7 @@ impl Block {
             image_reference_definitions: Arc::default(),
             link_reference_definitions: Arc::default(),
             footnote_registry: Arc::default(),
+            toc_entries: Arc::default(),
             list_group_separator_candidate: false,
             numbered_list_restart_requested: false,
             quote_reparse_requested: false,
@@ -327,6 +331,20 @@ impl Block {
         self.sync_link_reference_definitions(link_reference_definitions);
         self.sync_footnote_registry(footnote_registry);
         self.sync_image_runtime();
+    }
+
+    /// Replaces the headings listed by a `[TOC]` block. Returns true when the
+    /// list changed and the block needs a repaint.
+    pub(crate) fn set_toc_entries(&mut self, entries: Arc<Vec<TableOfContentsEntry>>) -> bool {
+        if self.toc_entries == entries {
+            return false;
+        }
+        self.toc_entries = entries;
+        true
+    }
+
+    pub(crate) fn toc_entries(&self) -> &[TableOfContentsEntry] {
+        &self.toc_entries
     }
 
     pub(crate) fn uses_raw_text_editing(&self) -> bool {
@@ -1935,6 +1953,24 @@ impl Block {
         self.marked_range = None;
         self.cursor_blink_epoch = Instant::now();
         self.clear_vertical_motion();
+    }
+
+    /// Turns a paragraph holding `[TOC]` into a table-of-contents block.
+    pub(crate) fn convert_to_table_of_contents(&mut self, cx: &mut Context<Self>) {
+        self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+        self.clear_inline_projection();
+        let marker = self.display_text().trim().to_string();
+        self.record.kind = BlockKind::TableOfContents;
+        self.record.set_title(InlineTextTree::plain(marker));
+        self.quote_reparse_requested = false;
+        self.sync_edit_mode_from_kind();
+        self.sync_render_cache();
+        self.assign_collapsed_selection_offset(0, CollapsedCaretAffinity::Default, None);
+        self.marked_range = None;
+        self.cursor_blink_epoch = Instant::now();
+        self.clear_vertical_motion();
+        cx.emit(BlockEvent::Changed);
+        cx.notify();
     }
 
     pub(crate) fn enter_code_block(

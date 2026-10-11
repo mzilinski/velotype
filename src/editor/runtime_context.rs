@@ -1,6 +1,7 @@
 //! Runtime context synchronization for blocks, references, images, and focus.
 
 use super::*;
+use crate::components::TableOfContentsEntry;
 
 impl Editor {
     pub(super) fn current_edit_target_entity_id_from_state(&self, cx: &App) -> Option<EntityId> {
@@ -225,6 +226,47 @@ impl Editor {
                     self.sync_runtime_context_for_block(&cell, base_dir.as_deref(), cx);
                 }
             }
+        }
+        self.sync_table_of_contents(cx);
+    }
+
+    /// Pushes the current heading list into every `[TOC]` block.
+    pub(super) fn sync_table_of_contents(&mut self, cx: &mut Context<Self>) {
+        let visible = self.document.visible_blocks().to_vec();
+        let toc_blocks = visible
+            .iter()
+            .filter(|visible| visible.entity.read(cx).kind() == BlockKind::TableOfContents)
+            .map(|visible| visible.entity.clone())
+            .collect::<Vec<_>>();
+        if toc_blocks.is_empty() {
+            return;
+        }
+
+        let entries = Arc::new(
+            visible
+                .iter()
+                .filter_map(|visible| {
+                    let block = visible.entity.read(cx);
+                    let BlockKind::Heading { level } = block.kind() else {
+                        return None;
+                    };
+                    let text = block.record.title.visible_text();
+                    let text = text.trim();
+                    (!text.is_empty()).then(|| TableOfContentsEntry {
+                        level,
+                        text: SharedString::from(text.to_string()),
+                        target: visible.entity.entity_id(),
+                    })
+                })
+                .collect::<Vec<_>>(),
+        );
+        for block in toc_blocks {
+            let entries = entries.clone();
+            block.update(cx, move |block, cx| {
+                if block.set_toc_entries(entries) {
+                    cx.notify();
+                }
+            });
         }
     }
 

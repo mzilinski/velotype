@@ -81,6 +81,9 @@ pub struct Editor {
     pending_save: bool,
     pending_save_as: bool,
     pending_open_link: Option<PendingOpenLink>,
+    /// Markdown file queued by a wiki-link click; opened on the next render
+    /// because replacing the document needs the window.
+    pending_open_markdown_path: Option<PathBuf>,
     pending_window_edited: bool,
     pending_window_title_refresh: bool,
     document_dirty: bool,
@@ -342,6 +345,7 @@ impl Editor {
             pending_save: false,
             pending_save_as: false,
             pending_open_link: None,
+            pending_open_markdown_path: None,
             pending_window_edited: false,
             pending_window_title_refresh: false,
             document_dirty: false,

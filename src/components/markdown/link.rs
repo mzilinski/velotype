@@ -425,11 +425,50 @@ fn is_escaped(input: &str, index: usize) -> bool {
     backslashes % 2 == 1
 }
 
+/// Splits a `[[wiki]]` link target into the Markdown file it names and an
+/// optional `#heading` anchor. Targets without a Markdown extension get `.md`.
+pub(crate) fn wiki_link_file_target(target: &str) -> Option<(String, Option<&str>)> {
+    let (file, anchor) = match target.split_once('#') {
+        Some((file, anchor)) => (file, Some(anchor)),
+        None => (target, None),
+    };
+    let file = file.trim();
+    if file.is_empty() {
+        return None;
+    }
+
+    let lower = file.to_ascii_lowercase();
+    let file = if lower.ends_with(".md") || lower.ends_with(".markdown") {
+        file.to_string()
+    } else {
+        format!("{file}.md")
+    };
+    Some((file, anchor.filter(|anchor| !anchor.is_empty())))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         LinkReferenceDefinition, is_supported_autolink_target, parse_link_reference_definitions,
+        wiki_link_file_target,
     };
+
+    #[test]
+    fn resolves_wiki_link_file_targets() {
+        assert_eq!(
+            wiki_link_file_target("Note"),
+            Some(("Note.md".to_string(), None))
+        );
+        assert_eq!(
+            wiki_link_file_target("dir/Other.MD#Setup"),
+            Some(("dir/Other.MD".to_string(), Some("Setup")))
+        );
+        assert_eq!(
+            wiki_link_file_target("v1.2 notes#"),
+            Some(("v1.2 notes.md".to_string(), None))
+        );
+        assert_eq!(wiki_link_file_target("#only-anchor"), None);
+    }
 
     #[test]
     fn parses_link_reference_definitions_with_title_and_first_wins() {

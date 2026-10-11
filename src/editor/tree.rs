@@ -435,6 +435,7 @@ impl DocumentTree {
         let mut pending_empty_roots = 0usize;
         let mut wrote_non_empty_root = false;
         let mut previous_was_list_item = false;
+        let mut previous_was_front_matter = false;
 
         for block in blocks {
             let block_ref = block.read(cx);
@@ -445,7 +446,11 @@ impl DocumentTree {
 
             let current_is_list_item = block_ref.kind().is_list_item();
             if wrote_non_empty_root {
-                let separator_count = if previous_was_list_item && current_is_list_item {
+                // The importer keeps every blank line after front matter as an
+                // empty root, so no implicit separator is added after it.
+                let separator_count = if previous_was_front_matter
+                    || (previous_was_list_item && current_is_list_item)
+                {
                     pending_empty_roots
                 } else {
                     pending_empty_roots + 1
@@ -459,6 +464,7 @@ impl DocumentTree {
             wrote_non_empty_root = true;
             pending_empty_roots = 0;
             previous_was_list_item = current_is_list_item;
+            previous_was_front_matter = block_ref.kind() == BlockKind::FrontMatter;
         }
 
         if wrote_non_empty_root {
@@ -577,6 +583,8 @@ impl DocumentTree {
                 }
             }
             BlockKind::RawMarkdown
+            | BlockKind::FrontMatter
+            | BlockKind::TableOfContents
             | BlockKind::Comment
             | BlockKind::HtmlBlock
             | BlockKind::MathBlock

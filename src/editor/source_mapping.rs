@@ -408,6 +408,8 @@ impl Editor {
                     | BlockKind::MathBlock
                     | BlockKind::MermaidBlock
                     | BlockKind::RawMarkdown
+                    | BlockKind::FrontMatter
+                    | BlockKind::TableOfContents
                     | BlockKind::Separator
             ))
             .then(|| block_ref.record.title.markdown_offset_map());
@@ -432,6 +434,8 @@ impl Editor {
                 self.push_code_block_mapping(block, quote_depth, absolute_start, mappings, cx)
             }
             BlockKind::RawMarkdown
+            | BlockKind::FrontMatter
+            | BlockKind::TableOfContents
             | BlockKind::Comment
             | BlockKind::HtmlBlock
             | BlockKind::MathBlock
@@ -683,13 +687,15 @@ impl Editor {
         let mut pending_empty_roots = 0usize;
         let mut wrote_non_empty_root = false;
         let mut previous_was_list_item = false;
+        let mut previous_was_front_matter = false;
 
         for block in self.document.root_blocks() {
-            let (is_empty_root, current_is_list_item) = {
+            let (is_empty_root, current_is_list_item, current_is_front_matter) = {
                 let block_ref = block.read(cx);
                 (
                     Self::is_empty_root_paragraph(block_ref),
                     block_ref.kind().is_list_item(),
+                    block_ref.kind() == BlockKind::FrontMatter,
                 )
             };
             if is_empty_root {
@@ -704,7 +710,9 @@ impl Editor {
             }
 
             if wrote_non_empty_root {
-                let separator_count = if previous_was_list_item && current_is_list_item {
+                let separator_count = if previous_was_front_matter {
+                    pending_empty_roots
+                } else if previous_was_list_item && current_is_list_item {
                     if pending_empty_roots == 0 {
                         0
                     } else {
@@ -731,6 +739,7 @@ impl Editor {
             wrote_non_empty_root = true;
             pending_empty_roots = 0;
             previous_was_list_item = current_is_list_item;
+            previous_was_front_matter = current_is_front_matter;
             absolute += 1;
         }
 

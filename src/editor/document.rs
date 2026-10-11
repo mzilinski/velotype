@@ -11,7 +11,7 @@ use crate::components::{
     BlockKind, BlockRecord, CalloutVariant, CodeFenceOpening, InlineTextTree,
     parse_footnote_definition_head,
 };
-use crate::components::{HtmlSafetyClass, parse_html_document};
+use crate::components::{HtmlSafetyClass, front_matter_line_count, parse_html_document};
 use crate::components::{
     collect_pipeless_table_region, collect_root_table_candidate_region,
     collect_table_candidate_region, is_root_table_candidate_line, is_table_candidate_line,
@@ -932,7 +932,37 @@ impl Editor {
             .split('\n')
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
-        Self::build_blocks_from_lines_internal(cx, &lines, true)
+        let Some(front_matter_len) = front_matter_line_count(&lines) else {
+            return Self::build_blocks_from_lines_internal(cx, &lines, true);
+        };
+
+        // Front matter only exists at the document start. It becomes one
+        // verbatim block, and every blank line after it is kept as an empty
+        // root so the serializer can reproduce the exact spacing.
+        let mut roots = vec![Self::new_block(
+            cx,
+            BlockRecord::front_matter(lines[..front_matter_len].join("\n")),
+        )];
+        let rest = &lines[front_matter_len..];
+        let blank_run_len = rest
+            .iter()
+            .take_while(|line| line.trim().is_empty())
+            .count();
+        let preserved_empty_blocks = if blank_run_len == rest.len() {
+            // Trailing blank lines follow the same rule as any other final block.
+            blank_run_len.saturating_sub(1)
+        } else {
+            blank_run_len
+        };
+        for _ in 0..preserved_empty_blocks {
+            roots.push(native_block(cx, BlockKind::Paragraph, String::new()));
+        }
+        roots.extend(Self::build_blocks_from_lines_internal(
+            cx,
+            &rest[blank_run_len..],
+            true,
+        ));
+        roots
     }
 
     /// Builds runtime blocks from Markdown lines.
@@ -1050,6 +1080,15 @@ impl Editor {
 
             if parse_standalone_image(line).is_some() {
                 roots.push(standalone_image_block(cx, line.to_string()));
+                index += 1;
+                continue;
+            }
+
+            if BlockKind::parse_table_of_contents_line(line) {
+                roots.push(Self::new_block(
+                    cx,
+                    BlockRecord::table_of_contents(line.clone()),
+                ));
                 index += 1;
                 continue;
             }
@@ -3950,6 +3989,72 @@ mod tests {
             assert_eq!(visible[1].entity.read(cx).display_text(), "");
             assert_eq!(visible[2].entity.read(cx).display_text(), "");
             assert_eq!(editor.document.markdown_text(cx), "alpha\n\n\n");
+        });
+    }
+
+    #[gpui::test]
+    async fn front_matter_round_trips_byte_for_byte(cx: &mut TestAppContext) {
+        for markdown in [
+            "---\ntitle: Doc\ntags:\n  - a\n---\n# Heading\n\nBody",
+            "---\ntitle: Doc\n---\n\n\n# Heading",
+            "---\ntitle: Doc\n...\nBody",
+            "---\ntitle: Doc\n---",
+            "---\ntitle: Doc\n---\n\n\n",
+        ] {
+            let editor = cx.new(|cx| Editor::from_markdown(cx, markdown.to_string(), None));
+            editor.update(cx, |editor, cx| {
+                let visible = editor.document.visible_blocks();
+                assert_eq!(
+                    visible[0].entity.read(cx).kind(),
+                    BlockKind::FrontMatter,
+                    "{markdown:?}"
+                );
+                assert!(
+                    visible
+                        .iter()
+                        .all(|block| block.entity.read(cx).kind() != BlockKind::Separator),
+                    "{markdown:?}"
+                );
+                let expected = if markdown.ends_with("\n\n\n") {
+                    markdown.to_string()
+                } else {
+                    markdown.trim_end_matches('\n').to_string()
+                };
+                assert_eq!(editor.document.markdown_text(cx), expected);
+            });
+        }
+    }
+
+    #[gpui::test]
+    async fn front_matter_is_not_parsed_as_separator_and_setext_heading(cx: &mut TestAppContext) {
+        let editor =
+            cx.new(|cx| Editor::from_markdown(cx, "---\ntitle: Doc\n---\nBody".to_string(), None));
+
+        editor.update(cx, |editor, cx| {
+            let visible = editor.document.visible_blocks();
+            assert_eq!(visible.len(), 2);
+            assert_eq!(visible[0].entity.read(cx).kind(), BlockKind::FrontMatter);
+            assert_eq!(
+                visible[0].entity.read(cx).display_text(),
+                "---\ntitle: Doc\n---"
+            );
+            assert_eq!(visible[1].entity.read(cx).kind(), BlockKind::Paragraph);
+        });
+    }
+
+    #[gpui::test]
+    async fn separator_later_in_document_is_not_front_matter(cx: &mut TestAppContext) {
+        let editor =
+            cx.new(|cx| Editor::from_markdown(cx, "Intro\n\n---\ntitle\n---".to_string(), None));
+
+        editor.update(cx, |editor, cx| {
+            assert!(
+                editor
+                    .document
+                    .visible_blocks()
+                    .iter()
+                    .all(|block| block.entity.read(cx).kind() != BlockKind::FrontMatter)
+            );
         });
     }
 

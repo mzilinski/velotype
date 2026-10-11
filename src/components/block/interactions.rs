@@ -326,6 +326,19 @@ impl Block {
             return;
         }
 
+        if self.kind() == BlockKind::Paragraph
+            && self.selected_range.is_empty()
+            && self.cursor_offset() == self.visible_len()
+            && BlockKind::parse_table_of_contents_line(self.display_text())
+        {
+            self.convert_to_table_of_contents(cx);
+            cx.emit(BlockEvent::RequestNewline {
+                trailing: InlineTextTree::plain(String::new()),
+                source_already_mutated: true,
+            });
+            return;
+        }
+
         // `$$` then Enter opens a display-math block. Keying off the caret sitting
         // right after a leading `$$` (rather than the line being exactly `$$`)
         // means it also fires after pressing Home on an existing line and typing
@@ -1467,6 +1480,12 @@ impl Block {
         cx: &mut Context<Self>,
     ) {
         cx.stop_propagation();
+        if link.wiki {
+            cx.emit(BlockEvent::RequestOpenWikiLink {
+                target: link.open_target.clone(),
+            });
+            return;
+        }
         cx.emit(BlockEvent::RequestOpenLink {
             prompt_target: link.prompt_target.clone(),
             open_target: link.open_target.clone(),
@@ -1515,6 +1534,22 @@ impl Block {
                 self.open_rendered_link(&link, cx);
             }
         }
+    }
+
+    pub(crate) fn on_toc_entry_mouse_down(
+        &mut self,
+        _: &MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Keep the block unfocused so the rendered list stays in place while
+        // the editor moves focus to the heading on mouse up.
+        cx.stop_propagation();
+    }
+
+    pub(crate) fn on_toc_entry_mouse_up(&mut self, target: EntityId, cx: &mut Context<Self>) {
+        cx.stop_propagation();
+        cx.emit(BlockEvent::RequestJumpToHeading { target });
     }
 
     pub(crate) fn on_footnote_backref_mouse_down(

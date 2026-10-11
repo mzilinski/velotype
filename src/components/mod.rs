@@ -20,6 +20,8 @@ pub(crate) use markdown::code_highlight::*;
 #[allow(unused_imports)]
 pub(crate) use markdown::footnote::*;
 #[allow(unused_imports)]
+pub(crate) use markdown::front_matter::*;
+#[allow(unused_imports)]
 pub(crate) use markdown::html::*;
 #[allow(unused_imports)]
 pub(crate) use markdown::image::*;

@@ -527,6 +527,14 @@ impl Editor {
         .detach();
     }
 
+    fn sync_pending_open_markdown_path(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(path) = self.pending_open_markdown_path.take() {
+            // Same flow as dropping a file: prompts to save unsaved changes and
+            // reports a missing target through the open-failed prompt.
+            self.request_dropped_markdown_replace(path, window, cx);
+        }
+    }
+
     fn sync_window_edited_state(&mut self, window: &mut Window) {
         if self.pending_window_edited {
             self.pending_window_edited = false;
@@ -1478,6 +1486,7 @@ impl Render for Editor {
         self.sync_pending_save(window, cx);
         self.sync_pending_save_as(window, cx);
         self.sync_pending_open_link(window, cx);
+        self.sync_pending_open_markdown_path(window, cx);
         self.sync_window_edited_state(window);
 
         let viewport_bounds = self.scroll_handle.bounds();

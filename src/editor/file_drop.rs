@@ -132,6 +132,7 @@ impl Editor {
         self.pending_save = false;
         self.pending_save_as = false;
         self.pending_open_link = None;
+        self.pending_open_markdown_path = None;
         self.pending_close_after_save = false;
         self.close_dialog_restore_focus = None;
         self.show_unsaved_changes_dialog = false;
