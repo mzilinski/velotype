@@ -146,6 +146,20 @@ pub struct I18nStrings {
     pub open_folder_prompt: String,
     pub workspace_search_placeholder: String,
     pub workspace_search_no_results: String,
+    pub workspace_replace_placeholder: String,
+    pub workspace_search_whole_word: String,
+    pub workspace_search_regex: String,
+    pub workspace_search_match_case: String,
+    pub workspace_search_toggle_replace: String,
+    pub workspace_search_summary: String,
+    pub workspace_search_truncated: String,
+    pub workspace_search_invalid_regex: String,
+    pub workspace_replace_title: String,
+    pub workspace_replace_confirm_message: String,
+    pub workspace_replace_confirm_button: String,
+    pub workspace_replace_done_message: String,
+    pub workspace_replace_skipped: String,
+    pub workspace_replace_failed: String,
     pub preferences_shortcut_quick_open: String,
     pub preferences_shortcut_search_workspace: String,
     /// Native file-dialog prompt for opening Markdown files.
@@ -467,6 +481,20 @@ struct I18nStringsDe {
     open_folder_prompt: Option<String>,
     workspace_search_placeholder: Option<String>,
     workspace_search_no_results: Option<String>,
+    workspace_replace_placeholder: Option<String>,
+    workspace_search_whole_word: Option<String>,
+    workspace_search_regex: Option<String>,
+    workspace_search_match_case: Option<String>,
+    workspace_search_toggle_replace: Option<String>,
+    workspace_search_summary: Option<String>,
+    workspace_search_truncated: Option<String>,
+    workspace_search_invalid_regex: Option<String>,
+    workspace_replace_title: Option<String>,
+    workspace_replace_confirm_message: Option<String>,
+    workspace_replace_confirm_button: Option<String>,
+    workspace_replace_done_message: Option<String>,
+    workspace_replace_skipped: Option<String>,
+    workspace_replace_failed: Option<String>,
     preferences_shortcut_quick_open: Option<String>,
     preferences_shortcut_search_workspace: Option<String>,
     open_markdown_files_prompt: Option<String>,
@@ -704,6 +732,20 @@ const I18N_STRING_KEYS: &[&str] = &[
     "open_folder_prompt",
     "workspace_search_placeholder",
     "workspace_search_no_results",
+    "workspace_replace_placeholder",
+    "workspace_search_whole_word",
+    "workspace_search_regex",
+    "workspace_search_match_case",
+    "workspace_search_toggle_replace",
+    "workspace_search_summary",
+    "workspace_search_truncated",
+    "workspace_search_invalid_regex",
+    "workspace_replace_title",
+    "workspace_replace_confirm_message",
+    "workspace_replace_confirm_button",
+    "workspace_replace_done_message",
+    "workspace_replace_skipped",
+    "workspace_replace_failed",
     "preferences_shortcut_quick_open",
     "preferences_shortcut_search_workspace",
     "open_markdown_files_prompt",
@@ -1027,6 +1069,48 @@ impl I18nStringsDe {
             workspace_search_no_results: self
                 .workspace_search_no_results
                 .unwrap_or(defaults.workspace_search_no_results),
+            workspace_replace_placeholder: self
+                .workspace_replace_placeholder
+                .unwrap_or(defaults.workspace_replace_placeholder),
+            workspace_search_whole_word: self
+                .workspace_search_whole_word
+                .unwrap_or(defaults.workspace_search_whole_word),
+            workspace_search_regex: self
+                .workspace_search_regex
+                .unwrap_or(defaults.workspace_search_regex),
+            workspace_search_match_case: self
+                .workspace_search_match_case
+                .unwrap_or(defaults.workspace_search_match_case),
+            workspace_search_toggle_replace: self
+                .workspace_search_toggle_replace
+                .unwrap_or(defaults.workspace_search_toggle_replace),
+            workspace_search_summary: self
+                .workspace_search_summary
+                .unwrap_or(defaults.workspace_search_summary),
+            workspace_search_truncated: self
+                .workspace_search_truncated
+                .unwrap_or(defaults.workspace_search_truncated),
+            workspace_search_invalid_regex: self
+                .workspace_search_invalid_regex
+                .unwrap_or(defaults.workspace_search_invalid_regex),
+            workspace_replace_title: self
+                .workspace_replace_title
+                .unwrap_or(defaults.workspace_replace_title),
+            workspace_replace_confirm_message: self
+                .workspace_replace_confirm_message
+                .unwrap_or(defaults.workspace_replace_confirm_message),
+            workspace_replace_confirm_button: self
+                .workspace_replace_confirm_button
+                .unwrap_or(defaults.workspace_replace_confirm_button),
+            workspace_replace_done_message: self
+                .workspace_replace_done_message
+                .unwrap_or(defaults.workspace_replace_done_message),
+            workspace_replace_skipped: self
+                .workspace_replace_skipped
+                .unwrap_or(defaults.workspace_replace_skipped),
+            workspace_replace_failed: self
+                .workspace_replace_failed
+                .unwrap_or(defaults.workspace_replace_failed),
             preferences_shortcut_quick_open: self
                 .preferences_shortcut_quick_open
                 .unwrap_or(defaults.preferences_shortcut_quick_open),
@@ -1574,6 +1658,20 @@ impl I18nStrings {
             open_folder_prompt: "打开文件夹".into(),
             workspace_search_placeholder: "在文件夹中搜索…".into(),
             workspace_search_no_results: "此文件夹中没有匹配项".into(),
+            workspace_replace_placeholder: "在文件中替换".into(),
+            workspace_search_whole_word: "全字匹配 (Alt+W)".into(),
+            workspace_search_regex: "使用正则表达式 (Alt+R)".into(),
+            workspace_search_match_case: "区分大小写 (Alt+C)".into(),
+            workspace_search_toggle_replace: "切换替换".into(),
+            workspace_search_summary: "{files} 个文件中有 {matches} 处匹配".into(),
+            workspace_search_truncated: "仅列出前 {shown} 行".into(),
+            workspace_search_invalid_regex: "无效的正则表达式".into(),
+            workspace_replace_title: "在文件中替换".into(),
+            workspace_replace_confirm_message: "将 {files} 个文件中的 {matches} 处匹配替换为“{replacement}”？文件会立即保存，且无法撤销。".into(),
+            workspace_replace_confirm_button: "全部替换".into(),
+            workspace_replace_done_message: "已替换 {files} 个文件中的 {matches} 处匹配。".into(),
+            workspace_replace_skipped: "以下文件有未保存的更改，已跳过：".into(),
+            workspace_replace_failed: "无法写入：".into(),
             preferences_shortcut_quick_open: "快速打开".into(),
             preferences_shortcut_search_workspace: "在文件夹中搜索".into(),
             open_markdown_files_prompt: "打开 Markdown 文件".into(),
@@ -1829,6 +1927,20 @@ impl I18nStrings {
             open_folder_prompt: "Open Folder".into(),
             workspace_search_placeholder: "Search in folder…".into(),
             workspace_search_no_results: "No matches in this folder".into(),
+            workspace_replace_placeholder: "Replace in files".into(),
+            workspace_search_whole_word: "Match Whole Word (Alt+W)".into(),
+            workspace_search_regex: "Use Regular Expression (Alt+R)".into(),
+            workspace_search_match_case: "Match Case (Alt+C)".into(),
+            workspace_search_toggle_replace: "Toggle Replace".into(),
+            workspace_search_summary: "{matches} matches in {files} files".into(),
+            workspace_search_truncated: "only the first {shown} lines are listed".into(),
+            workspace_search_invalid_regex: "Invalid regular expression".into(),
+            workspace_replace_title: "Replace in Files".into(),
+            workspace_replace_confirm_message: "Replace {matches} matches in {files} files with “{replacement}”? The files are saved right away; this cannot be undone.".into(),
+            workspace_replace_confirm_button: "Replace All".into(),
+            workspace_replace_done_message: "Replaced {matches} matches in {files} files.".into(),
+            workspace_replace_skipped: "Skipped because they have unsaved changes:".into(),
+            workspace_replace_failed: "Could not be written:".into(),
             preferences_shortcut_quick_open: "Quick Open".into(),
             preferences_shortcut_search_workspace: "Search in Folder".into(),
             open_markdown_files_prompt: "Open Markdown Files".into(),
@@ -2086,6 +2198,20 @@ impl I18nStrings {
             open_folder_prompt: "Ordner öffnen".into(),
             workspace_search_placeholder: "Im Ordner suchen …".into(),
             workspace_search_no_results: "Keine Treffer in diesem Ordner".into(),
+            workspace_replace_placeholder: "In Dateien ersetzen".into(),
+            workspace_search_whole_word: "Nur ganzes Wort (Alt+W)".into(),
+            workspace_search_regex: "Regulären Ausdruck verwenden (Alt+R)".into(),
+            workspace_search_match_case: "Groß-/Kleinschreibung beachten (Alt+C)".into(),
+            workspace_search_toggle_replace: "Ersetzen ein-/ausblenden".into(),
+            workspace_search_summary: "{matches} Treffer in {files} Dateien".into(),
+            workspace_search_truncated: "nur die ersten {shown} Zeilen werden angezeigt".into(),
+            workspace_search_invalid_regex: "Ungültiger regulärer Ausdruck".into(),
+            workspace_replace_title: "In Dateien ersetzen".into(),
+            workspace_replace_confirm_message: "{matches} Treffer in {files} Dateien durch „{replacement}“ ersetzen? Die Dateien werden sofort gespeichert; das lässt sich nicht rückgängig machen.".into(),
+            workspace_replace_confirm_button: "Alle ersetzen".into(),
+            workspace_replace_done_message: "{matches} Treffer in {files} Dateien ersetzt.".into(),
+            workspace_replace_skipped: "Übersprungen, weil ungespeicherte Änderungen offen sind:".into(),
+            workspace_replace_failed: "Konnten nicht geschrieben werden:".into(),
             preferences_shortcut_quick_open: "Schnell öffnen".into(),
             preferences_shortcut_search_workspace: "Im Ordner suchen".into(),
             open_markdown_files_prompt: "Markdown-Dateien öffnen".into(),
