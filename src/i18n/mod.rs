@@ -286,6 +286,14 @@ pub struct I18nStrings {
     pub table_axis_move_row_down: String,
     /// Table-axis menu item for deleting a row.
     pub table_axis_delete_row: String,
+    /// Table-axis menu item for inserting an empty row above.
+    pub table_axis_insert_row_above: String,
+    /// Table-axis menu item for inserting an empty row below.
+    pub table_axis_insert_row_below: String,
+    /// Table-axis menu item for inserting an empty column to the left.
+    pub table_axis_insert_column_left: String,
+    /// Table-axis menu item for inserting an empty column to the right.
+    pub table_axis_insert_column_right: String,
     /// Table header-row menu item that toggles header styling on the top row.
     pub table_header_row: String,
     /// Title of the table-insert dialog.
@@ -501,6 +509,10 @@ struct I18nStringsDe {
     table_axis_move_row_up: Option<String>,
     table_axis_move_row_down: Option<String>,
     table_axis_delete_row: Option<String>,
+    table_axis_insert_row_above: Option<String>,
+    table_axis_insert_row_below: Option<String>,
+    table_axis_insert_column_left: Option<String>,
+    table_axis_insert_column_right: Option<String>,
     table_header_row: Option<String>,
     table_insert_title: Option<String>,
     table_insert_description: Option<String>,
@@ -693,6 +705,10 @@ const I18N_STRING_KEYS: &[&str] = &[
     "table_axis_move_row_up",
     "table_axis_move_row_down",
     "table_axis_delete_row",
+    "table_axis_insert_row_above",
+    "table_axis_insert_row_below",
+    "table_axis_insert_column_left",
+    "table_axis_insert_column_right",
     "table_header_row",
     "table_insert_title",
     "table_insert_description",
@@ -1171,6 +1187,18 @@ impl I18nStringsDe {
             table_axis_delete_row: self
                 .table_axis_delete_row
                 .unwrap_or(defaults.table_axis_delete_row),
+            table_axis_insert_row_above: self
+                .table_axis_insert_row_above
+                .unwrap_or(defaults.table_axis_insert_row_above),
+            table_axis_insert_row_below: self
+                .table_axis_insert_row_below
+                .unwrap_or(defaults.table_axis_insert_row_below),
+            table_axis_insert_column_left: self
+                .table_axis_insert_column_left
+                .unwrap_or(defaults.table_axis_insert_column_left),
+            table_axis_insert_column_right: self
+                .table_axis_insert_column_right
+                .unwrap_or(defaults.table_axis_insert_column_right),
             table_header_row: self.table_header_row.unwrap_or(defaults.table_header_row),
             table_insert_title: self
                 .table_insert_title
@@ -1412,6 +1440,10 @@ impl I18nStrings {
             table_axis_move_row_up: "向上移动此行".into(),
             table_axis_move_row_down: "向下移动此行".into(),
             table_axis_delete_row: "删除此行".into(),
+            table_axis_insert_row_above: "在上方插入行".into(),
+            table_axis_insert_row_below: "在下方插入行".into(),
+            table_axis_insert_column_left: "在左侧插入列".into(),
+            table_axis_insert_column_right: "在右侧插入列".into(),
             table_header_row: "标题行".into(),
             table_insert_title: "插入表格".into(),
             table_insert_description: "创建 1 个表头行，并配置正文行数与列数。".into(),
@@ -1633,6 +1665,10 @@ impl I18nStrings {
             table_axis_move_row_up: "Move Row Up".into(),
             table_axis_move_row_down: "Move Row Down".into(),
             table_axis_delete_row: "Delete Row".into(),
+            table_axis_insert_row_above: "Insert Row Above".into(),
+            table_axis_insert_row_below: "Insert Row Below".into(),
+            table_axis_insert_column_left: "Insert Column Left".into(),
+            table_axis_insert_column_right: "Insert Column Right".into(),
             table_header_row: "Header Row".into(),
             table_insert_title: "Insert Table".into(),
             table_insert_description:

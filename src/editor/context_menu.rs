@@ -467,6 +467,78 @@ impl Editor {
         self.on_apply_column_alignment(TableColumnAlignment::Right, cx);
     }
 
+    /// Resolves the table targeted by the open axis menu when it matches `kind`.
+    fn axis_menu_table(
+        &self,
+        kind: TableAxisKind,
+        cx: &App,
+    ) -> Option<(TableAxisSelection, Entity<crate::components::Block>)> {
+        let selection = self.active_axis_menu_selection()?;
+        if selection.kind != kind {
+            return None;
+        }
+        let table_block = self.table_block_by_id(selection.table_block_id, cx)?;
+        Some((selection, table_block))
+    }
+
+    pub(super) fn on_insert_table_row_above(
+        &mut self,
+        _event: &ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Markdown tables have exactly one header row, so nothing can be
+        // inserted above it (visual index 0).
+        let Some((selection, table_block)) = self.axis_menu_table(TableAxisKind::Row, cx) else {
+            return;
+        };
+        if selection.index == 0 {
+            return;
+        }
+        self.close_context_menu(cx);
+        self.insert_table_row(&table_block, selection.index - 1, cx);
+    }
+
+    pub(super) fn on_insert_table_row_below(
+        &mut self,
+        _event: &ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((selection, table_block)) = self.axis_menu_table(TableAxisKind::Row, cx) else {
+            return;
+        };
+        self.close_context_menu(cx);
+        // Visual row `n` is body row `n - 1`, so "below" is body index `n`.
+        self.insert_table_row(&table_block, selection.index, cx);
+    }
+
+    pub(super) fn on_insert_table_column_left(
+        &mut self,
+        _event: &ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((selection, table_block)) = self.axis_menu_table(TableAxisKind::Column, cx) else {
+            return;
+        };
+        self.close_context_menu(cx);
+        self.insert_table_column(&table_block, selection.index, cx);
+    }
+
+    pub(super) fn on_insert_table_column_right(
+        &mut self,
+        _event: &ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((selection, table_block)) = self.axis_menu_table(TableAxisKind::Column, cx) else {
+            return;
+        };
+        self.close_context_menu(cx);
+        self.insert_table_column(&table_block, selection.index + 1, cx);
+    }
+
     pub(super) fn on_move_table_row_up(
         &mut self,
         _event: &ClickEvent,
@@ -865,6 +937,24 @@ impl Editor {
                             .into_any_element(),
                         Self::render_axis_menu_item(
                             theme,
+                            "table-axis-insert-column-left",
+                            s.table_axis_insert_column_left.clone(),
+                            true,
+                            false,
+                            Self::on_insert_table_column_left,
+                            cx,
+                        ),
+                        Self::render_axis_menu_item(
+                            theme,
+                            "table-axis-insert-column-right",
+                            s.table_axis_insert_column_right.clone(),
+                            true,
+                            false,
+                            Self::on_insert_table_column_right,
+                            cx,
+                        ),
+                        Self::render_axis_menu_item(
+                            theme,
                             "table-axis-move-column-left",
                             s.table_axis_move_column_left.clone(),
                             selection.index > 0,
@@ -936,6 +1026,24 @@ impl Editor {
                                     .into_any_element(),
                             );
                         }
+                        items.push(Self::render_axis_menu_item(
+                            theme,
+                            "table-axis-insert-row-above",
+                            s.table_axis_insert_row_above.clone(),
+                            selection.index > 0,
+                            false,
+                            Self::on_insert_table_row_above,
+                            cx,
+                        ));
+                        items.push(Self::render_axis_menu_item(
+                            theme,
+                            "table-axis-insert-row-below",
+                            s.table_axis_insert_row_below.clone(),
+                            true,
+                            false,
+                            Self::on_insert_table_row_below,
+                            cx,
+                        ));
                         items.push(Self::render_axis_menu_item(
                             theme,
                             "table-axis-move-row-up",

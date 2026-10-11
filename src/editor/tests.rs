@@ -3478,3 +3478,37 @@ async fn toggle_view_mode_preserves_callout_table_cell_position(cx: &mut TestApp
         assert_eq!(editor.pending_focus, Some(restored_cell.entity_id()));
     });
 }
+
+#[gpui::test]
+async fn insert_table_row_and_column_in_the_middle(cx: &mut TestAppContext) {
+    let markdown = ["| A | B |", "| --- | :---: |", "| 1 | 2 |", "| 3 | 4 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+
+        editor.insert_table_row(&table, 1, cx);
+        {
+            let runtime = table.read(cx).table_runtime.as_ref().expect("runtime");
+            assert_eq!(editor.pending_focus, Some(runtime.rows[1][0].entity_id()));
+        }
+
+        editor.insert_table_column(&table, 1, cx);
+        {
+            let runtime = table.read(cx).table_runtime.as_ref().expect("runtime");
+            assert_eq!(editor.pending_focus, Some(runtime.header[1].entity_id()));
+        }
+
+        assert_eq!(
+            editor.document.markdown_text(cx),
+            [
+                "| A |  | B |",
+                "| --- | --- | :---: |",
+                "| 1 |  | 2 |",
+                "|  |  |  |",
+                "| 3 |  | 4 |",
+            ]
+            .join("\n")
+        );
+    });
+}
