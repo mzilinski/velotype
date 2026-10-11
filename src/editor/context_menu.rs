@@ -60,7 +60,7 @@ impl Editor {
         target: TableInsertTarget,
         cx: &mut Context<Self>,
     ) {
-        if self.view_mode != ViewMode::Rendered {
+        if self.view_mode != ViewMode::Rendered || self.read_only {
             return;
         }
 
@@ -82,7 +82,7 @@ impl Editor {
         selection: TableAxisSelection,
         cx: &mut Context<Self>,
     ) {
-        if self.view_mode != ViewMode::Rendered {
+        if self.view_mode != ViewMode::Rendered || self.read_only {
             return;
         }
 
