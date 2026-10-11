@@ -109,6 +109,27 @@ impl ImagePasteBehavior {
     }
 }
 
+/// Writing aids toggled from the View menu.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct WritingPreferences {
+    /// Close brackets/quotes as they are typed and wrap selections.
+    pub(crate) auto_pair: bool,
+    /// Dim every block except the one being edited.
+    pub(crate) focus_mode: bool,
+    /// Keep the caret line vertically centered while typing.
+    pub(crate) typewriter_mode: bool,
+}
+
+impl Default for WritingPreferences {
+    fn default() -> Self {
+        Self {
+            auto_pair: true,
+            focus_mode: false,
+            typewriter_mode: false,
+        }
+    }
+}
+
 /// User preferences persisted under the app config directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct AppPreferences {
@@ -116,6 +137,7 @@ pub(crate) struct AppPreferences {
     pub(crate) default_language_id: String,
     pub(crate) default_theme_id: String,
     pub(crate) show_table_headers: bool,
+    pub(crate) writing: WritingPreferences,
     pub(crate) image_paste_behavior: ImagePasteBehavior,
     pub(crate) keybindings: BTreeMap<String, Vec<String>>,
     pub(crate) status_bar: StatusBarPreferences,
@@ -129,6 +151,7 @@ impl Default for AppPreferences {
             default_language_id: DEFAULT_LANGUAGE_ID.into(),
             default_theme_id: DEFAULT_THEME_ID.into(),
             show_table_headers: true,
+            writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
@@ -151,6 +174,7 @@ struct StatusBarSettings {
 /// value back to the preferences file.
 pub struct EditorSettings {
     show_table_headers: bool,
+    writing: WritingPreferences,
     status_bar_settings: StatusBarSettings,
 }
 
@@ -158,16 +182,24 @@ impl Global for EditorSettings {}
 
 impl EditorSettings {
     pub fn init(cx: &mut App, show_table_headers: bool) {
-        let status_bar = read_app_preferences()
-            .ok()
-            .map(|p| p.status_bar)
+        let preferences = read_app_preferences().ok();
+        let status_bar = preferences
+            .as_ref()
+            .map(|p| p.status_bar.clone())
             .unwrap_or_default();
-        Self::set_global(cx, show_table_headers, &status_bar);
+        let writing = preferences.map(|p| p.writing).unwrap_or_default();
+        Self::set_global(cx, show_table_headers, writing, &status_bar);
     }
 
-    fn set_global(cx: &mut App, show_table_headers: bool, status_bar: &StatusBarPreferences) {
+    fn set_global(
+        cx: &mut App,
+        show_table_headers: bool,
+        writing: WritingPreferences,
+        status_bar: &StatusBarPreferences,
+    ) {
         cx.set_global(Self {
             show_table_headers,
+            writing,
             status_bar_settings: StatusBarSettings {
                 status_bar_enabled: status_bar.enabled,
                 status_bar_show_word_count: status_bar.show_word_count,
@@ -198,7 +230,8 @@ impl EditorSettings {
                 custom_buttons: Vec::new(),
             })
             .unwrap_or_default();
-        Self::set_global(cx, show_table_headers, &status_bar);
+        let writing = Self::writing(cx);
+        Self::set_global(cx, show_table_headers, writing, &status_bar);
         match read_app_preferences() {
             Ok(mut preferences) => {
                 preferences.show_table_headers = show_table_headers;
@@ -207,6 +240,44 @@ impl EditorSettings {
                 }
             }
             Err(err) => eprintln!("failed to read table header preference: {err}"),
+        }
+    }
+
+    /// Current writing aids; defaults apply when the global is not installed
+    /// (e.g. in unit tests).
+    pub(crate) fn writing(cx: &App) -> WritingPreferences {
+        cx.try_global::<Self>()
+            .map(|settings| settings.writing)
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn auto_pair(cx: &App) -> bool {
+        Self::writing(cx).auto_pair
+    }
+
+    pub(crate) fn focus_mode(cx: &App) -> bool {
+        Self::writing(cx).focus_mode
+    }
+
+    pub(crate) fn typewriter_mode(cx: &App) -> bool {
+        Self::writing(cx).typewriter_mode
+    }
+
+    /// Applies `update` to the writing aids and persists the result.
+    pub(crate) fn update_writing(cx: &mut App, update: impl FnOnce(&mut WritingPreferences)) {
+        let mut writing = Self::writing(cx);
+        update(&mut writing);
+        let show_table_headers = Self::show_table_headers(cx);
+        let status_bar = Self::status_bar_preferences(cx);
+        Self::set_global(cx, show_table_headers, writing, &status_bar);
+        match read_app_preferences() {
+            Ok(mut preferences) => {
+                preferences.writing = writing;
+                if let Err(err) = save_app_preferences(&preferences) {
+                    eprintln!("failed to save writing preferences: {err}");
+                }
+            }
+            Err(err) => eprintln!("failed to read writing preferences: {err}"),
         }
     }
 
@@ -261,6 +332,9 @@ struct StartupPreferencesFile {
 struct EditorPreferencesFile {
     show_table_headers: bool,
     image_paste_behavior: String,
+    auto_pair: bool,
+    focus_mode: bool,
+    typewriter_mode: bool,
 }
 
 #[derive(Serialize)]
@@ -312,6 +386,9 @@ impl From<&AppPreferences> for PreferencesFile {
             editor: EditorPreferencesFile {
                 show_table_headers: value.show_table_headers,
                 image_paste_behavior: value.image_paste_behavior.as_str().into(),
+                auto_pair: value.writing.auto_pair,
+                focus_mode: value.writing.focus_mode,
+                typewriter_mode: value.writing.typewriter_mode,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -405,6 +482,19 @@ fn app_preferences_from_toml_value(
         .and_then(|value| value.as_str())
         .map(ImagePasteBehavior::from_str)
         .unwrap_or(ImagePasteBehavior::None);
+    let default_writing = WritingPreferences::default();
+    let editor_flag = |key: &str, fallback: bool| {
+        value
+            .get("editor")
+            .and_then(|editor| editor.get(key))
+            .and_then(|value| value.as_bool())
+            .unwrap_or(fallback)
+    };
+    let writing = WritingPreferences {
+        auto_pair: editor_flag("auto_pair", default_writing.auto_pair),
+        focus_mode: editor_flag("focus_mode", default_writing.focus_mode),
+        typewriter_mode: editor_flag("typewriter_mode", default_writing.typewriter_mode),
+    };
 
     let status_bar = value
         .get("status_bar")
@@ -482,6 +572,7 @@ fn app_preferences_from_toml_value(
         default_language_id,
         default_theme_id,
         show_table_headers,
+        writing,
         image_paste_behavior,
         keybindings,
         status_bar,
@@ -1485,6 +1576,10 @@ impl PreferencesWindow {
                 strings.preferences_shortcut_quit_application.clone()
             }
             ShortcutCommand::CloseWindow => strings.preferences_shortcut_close_window.clone(),
+            ShortcutCommand::ToggleAutoPair => strings.menu_auto_pair.clone(),
+            ShortcutCommand::ToggleFocusMode => strings.menu_focus_mode.clone(),
+            ShortcutCommand::ToggleTypewriterMode => strings.menu_typewriter_mode.clone(),
+            ShortcutCommand::ToggleReadOnly => strings.menu_read_only.clone(),
             ShortcutCommand::DismissTransientUi => {
                 strings.preferences_shortcut_dismiss_transient_ui.clone()
             }
@@ -2197,9 +2292,10 @@ pub(crate) fn open_preferences_window(cx: &mut App) -> WindowHandle<PreferencesW
 mod tests {
     use super::{
         AppPreferences, EditorSettings, ImagePasteBehavior, StartupOpenPreference,
-        StatusBarPreferences, load_or_create_app_preferences_with_dirs_and_locales,
-        open_preferences_window_with_state, read_app_preferences_with_dirs,
-        save_app_preferences_with_dirs, save_preferences_from_window_with_dirs,
+        StatusBarPreferences, WritingPreferences,
+        load_or_create_app_preferences_with_dirs_and_locales, open_preferences_window_with_state,
+        read_app_preferences_with_dirs, save_app_preferences_with_dirs,
+        save_preferences_from_window_with_dirs,
     };
     use crate::config::VelotypeConfigDirs;
     use crate::fonts::FontPreferences;
@@ -2346,6 +2442,11 @@ mod tests {
             default_language_id: "zh-CN".into(),
             default_theme_id: "velotype-light".into(),
             show_table_headers: false,
+            writing: WritingPreferences {
+                auto_pair: false,
+                focus_mode: true,
+                typewriter_mode: true,
+            },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
@@ -2367,6 +2468,9 @@ mod tests {
         assert!(text.contains("default_language_id = \"zh-CN\""));
         assert!(text.contains("default_theme_id = \"velotype-light\""));
         assert!(text.contains("show_table_headers = false"));
+        assert!(text.contains("auto_pair = false"));
+        assert!(text.contains("focus_mode = true"));
+        assert!(text.contains("typewriter_mode = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));
@@ -2437,6 +2541,7 @@ mod tests {
             default_language_id: "zh-CN".into(),
             default_theme_id: "velotype".into(),
             show_table_headers: true,
+            writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),

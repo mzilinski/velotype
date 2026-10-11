@@ -63,6 +63,16 @@ impl Editor {
             ));
         }
 
+        if self.is_read_only() {
+            right_items.push(
+                div()
+                    .text_size(px(d.status_bar_text_size))
+                    .text_color(c.status_bar_text_dim)
+                    .child(strings.status_read_only.clone())
+                    .into_any_element(),
+            );
+        }
+
         if prefs.show_word_count {
             let text = self.serialized_document_text(cx);
             let total_count = count_words(&text);

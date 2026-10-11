@@ -437,6 +437,14 @@ impl Block {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if crate::config::EditorSettings::auto_pair(cx)
+            && let Some(pair) = self.empty_pair_around_cursor()
+        {
+            self.prepare_undo_capture(UndoCaptureKind::CoalescibleText, cx);
+            self.replace_text_in_visible_range(pair, "", None, false, cx);
+            return;
+        }
+
         if self.is_table_cell() {
             if self.selected_range.is_empty() {
                 let previous = self.previous_boundary(self.cursor_offset());
@@ -1569,7 +1577,7 @@ impl Block {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.kind().is_task_list_item() || self.is_source_raw_mode() {
+        if !self.kind().is_task_list_item() || self.is_source_raw_mode() || self.read_only {
             return;
         }
 

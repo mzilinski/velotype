@@ -114,6 +114,8 @@ pub struct Block {
     pub selected_range: Range<usize>,
     pub selection_reversed: bool,
     pub(crate) editor_selection_range: Option<Range<usize>>,
+    /// Set by the editor in read-only mode; every text edit is rejected.
+    pub(crate) read_only: bool,
     pub marked_range: Option<Range<usize>>,
     pub last_layout: Option<Vec<WrappedLine>>,
     pub last_bounds: Option<Bounds<Pixels>>,
@@ -220,6 +222,7 @@ impl Block {
             selected_range: 0..0,
             selection_reversed: false,
             editor_selection_range: None,
+            read_only: false,
             marked_range: None,
             last_layout: None,
             last_bounds: None,
@@ -1631,6 +1634,9 @@ impl Block {
         mark_inserted_text: bool,
         cx: &mut Context<Self>,
     ) {
+        if self.read_only {
+            return;
+        }
         if self.kind().is_separator() && !self.uses_raw_text_editing() {
             return;
         }
