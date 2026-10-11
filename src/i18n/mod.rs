@@ -2019,6 +2019,7 @@ impl I18nStrings {
             context_spelling_add: "Zum Wörterbuch hinzufügen".into(),
             context_spelling_ignore: "Ignorieren".into(),
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
+            spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             open_markdown_files_prompt: "Markdown-Dateien öffnen".into(),
             add_language_config_prompt: "Sprachdatei auswählen".into(),
             add_theme_config_prompt: "Design-Datei auswählen".into(),
