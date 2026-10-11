@@ -1658,6 +1658,7 @@ mod tests {
                 "Language",
                 "Theme",
                 "Workspace",
+                "View",
                 "Help"
             ]
         );
