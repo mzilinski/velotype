@@ -16,10 +16,11 @@ use crate::components::markdown::paste::should_split_plain_multiline_paste;
 use crate::components::{
     BlockDown, BlockUp, BoldSelection, CodeSelection, Copy, Cut, Delete, DeleteBack,
     DismissTransientUi, End, ExitCodeBlock, FocusNext, FocusPrev, Home, IndentBlock,
-    ItalicSelection, MoveLeft, MoveRight, Newline, OutdentBlock, Paste, SelectAll, SelectEnd,
-    SelectHome, SelectLeft, SelectRight, SetHeading1, SetHeading2, SetHeading3, SetHeading4,
-    SetHeading5, SetHeading6, SetParagraph, UnderlineSelection, WordDeleteBack, WordDeleteForward,
-    WordMoveLeft, WordMoveRight, WordSelectLeft, WordSelectRight,
+    ItalicSelection, MoveLeft, MoveRight, Newline, OutdentBlock, Paste, PasteAsPlainText,
+    SelectAll, SelectEnd, SelectHome, SelectLeft, SelectRight, SetHeading1, SetHeading2,
+    SetHeading3, SetHeading4, SetHeading5, SetHeading6, SetParagraph, UnderlineSelection,
+    WordDeleteBack, WordDeleteForward, WordMoveLeft, WordMoveRight, WordSelectLeft,
+    WordSelectRight,
 };
 use crate::components::{
     HighlightSelection, StrikethroughSelection, SubscriptSelection, SuperscriptSelection,
@@ -928,6 +929,36 @@ impl Block {
     }
 
     pub(crate) fn on_paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
+        self.paste_from_clipboard(false, window, cx);
+    }
+
+    /// Paste as Plain Text: like paste, but HTML on the clipboard is ignored.
+    pub(crate) fn on_paste_as_plain_text(
+        &mut self,
+        _: &PasteAsPlainText,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.paste_from_clipboard(true, window, cx);
+    }
+
+    /// HTML copied from a browser or office app as Markdown, when it carries
+    /// formatting beyond the plain text and this block renders rich text.
+    fn rich_paste_markdown(&self, plain: Option<&str>) -> Option<String> {
+        if self.uses_raw_text_editing() || self.is_table_cell() {
+            return None;
+        }
+        let html = crate::clipboard::read_html()?;
+        let markdown = crate::clipboard::html_to_markdown(&html)?;
+        crate::clipboard::html_adds_formatting(&markdown, plain).then_some(markdown)
+    }
+
+    fn paste_from_clipboard(
+        &mut self,
+        plain_only: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.kind().is_separator() && !self.uses_raw_text_editing() {
             return;
         }
@@ -943,10 +974,11 @@ impl Block {
                 return;
             }
 
-            let Some(text) = item.text() else {
-                return;
-            };
-            if let Some(source) = Self::pasted_image_source_from_text(&text) {
+            let plain = item.text();
+            if let Some(source) = plain
+                .as_deref()
+                .and_then(Self::pasted_image_source_from_text)
+            {
                 let (leading, trailing) = self.paste_image_split();
                 cx.emit(BlockEvent::RequestPasteImage {
                     leading,
@@ -955,6 +987,14 @@ impl Block {
                 });
                 return;
             }
+            let rich = if plain_only {
+                None
+            } else {
+                self.rich_paste_markdown(plain.as_deref())
+            };
+            let Some(text) = rich.or(plain) else {
+                return;
+            };
 
             // Only rendered rich-text blocks apply paste correction. Raw/code
             // contexts preserve bytes, and table cells flatten newlines so the

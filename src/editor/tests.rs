@@ -3614,3 +3614,52 @@ async fn paragraph_and_format_menu_commands_reach_the_focused_block(cx: &mut Tes
     let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
     assert_eq!(source, "> ~~first~~ line\n\nsecond");
 }
+
+#[gpui::test]
+async fn edit_menu_paste_and_copy_variants_use_the_focused_block(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+
+    let (editor, cx) = cx.add_window_view(|_window, cx| {
+        Editor::from_markdown(cx, "Some **bold** text\n\n".to_string(), None)
+    });
+    activate_visual_window(cx);
+    let dispatch = |action: &dyn gpui::Action, cx: &mut VisualTestContext| {
+        let action = action.boxed_clone();
+        cx.update(|window, cx| {
+            let weak = editor.downgrade();
+            crate::app_menu::dispatch_menu_action_for_editor(action.as_ref(), &weak, window, cx);
+        });
+        cx.run_until_parked();
+    };
+
+    // Select the whole first paragraph and copy it without Markdown syntax.
+    editor.update(cx, |editor, cx| {
+        let block = editor.document.first_root().cloned().expect("first block");
+        let len = block.read(cx).display_text().len();
+        editor.focus_block_range(&block, 0..len, cx);
+    });
+    cx.run_until_parked();
+    dispatch(&crate::components::CopyAsPlainText, cx);
+    assert_eq!(
+        cx.read_from_clipboard()
+            .and_then(|item| item.text())
+            .as_deref(),
+        Some("Some bold text")
+    );
+
+    // Paste as Plain Text into the trailing empty paragraph.
+    cx.write_to_clipboard(gpui::ClipboardItem::new_string("plain *paste*".to_string()));
+    editor.update(cx, |editor, cx| {
+        let block = editor
+            .document
+            .root_blocks()
+            .last()
+            .cloned()
+            .expect("last block");
+        editor.focus_block_range(&block, 0..0, cx);
+    });
+    cx.run_until_parked();
+    dispatch(&crate::components::PasteAsPlainText, cx);
+    let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
+    assert_eq!(source, "Some **bold** text\n\nplain *paste*");
+}

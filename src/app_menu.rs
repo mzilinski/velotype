@@ -772,6 +772,42 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
     }
 }
 
+/// Edit menu: history, clipboard (with the plain-text and HTML variants),
+/// selection and find.
+fn edit_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+    use crate::components::{
+        Copy, CopyAsHtml, CopyAsPlainText, Cut, FindAndReplace, FindInDocument, Paste,
+        PasteAsPlainText, Redo, SearchInWorkspace, SelectAll, Undo,
+    };
+    Menu {
+        name: strings.menu_edit.clone().into(),
+        items: vec![
+            MenuItem::action(strings.preferences_shortcut_undo.clone(), Undo),
+            MenuItem::action(strings.preferences_shortcut_redo.clone(), Redo),
+            MenuItem::separator(),
+            MenuItem::action(strings.preferences_shortcut_cut.clone(), Cut),
+            MenuItem::action(strings.preferences_shortcut_copy.clone(), Copy),
+            MenuItem::action(strings.preferences_shortcut_paste.clone(), Paste),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_copy_as_plain_text.clone(), CopyAsPlainText),
+            MenuItem::action(strings.menu_copy_as_html.clone(), CopyAsHtml),
+            MenuItem::action(strings.menu_paste_as_plain_text.clone(), PasteAsPlainText),
+            MenuItem::separator(),
+            MenuItem::action(strings.preferences_shortcut_select_all.clone(), SelectAll),
+            MenuItem::separator(),
+            MenuItem::action(strings.preferences_shortcut_find.clone(), FindInDocument),
+            MenuItem::action(
+                strings.preferences_shortcut_find_replace.clone(),
+                FindAndReplace,
+            ),
+            MenuItem::action(
+                strings.preferences_shortcut_search_workspace.clone(),
+                SearchInWorkspace,
+            ),
+        ],
+    }
+}
+
 /// Paragraph menu in the layout of Typora.
 fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
     use crate::components::{
@@ -901,8 +937,24 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         StrikethroughSelection, SubscriptSelection, SuperscriptSelection, ToggleBulletList,
         ToggleOrderedList, ToggleQuote, ToggleTaskList, ToggleTaskStatus, UnderlineSelection,
     };
+    use crate::components::{
+        Copy, CopyAsHtml, CopyAsPlainText, Cut, FindAndReplace, FindInDocument, Paste,
+        PasteAsPlainText, Redo, SearchInWorkspace, SelectAll, Undo,
+    };
     let any = action.as_any();
-    any.is::<SetHeading1>()
+    any.is::<Undo>()
+        || any.is::<Redo>()
+        || any.is::<Cut>()
+        || any.is::<Copy>()
+        || any.is::<Paste>()
+        || any.is::<CopyAsPlainText>()
+        || any.is::<CopyAsHtml>()
+        || any.is::<PasteAsPlainText>()
+        || any.is::<SelectAll>()
+        || any.is::<FindInDocument>()
+        || any.is::<FindAndReplace>()
+        || any.is::<SearchInWorkspace>()
+        || any.is::<SetHeading1>()
         || any.is::<SetHeading2>()
         || any.is::<SetHeading3>()
         || any.is::<SetHeading4>()
@@ -1103,7 +1155,11 @@ fn build_menus(
     };
 
     // Built before the File menu moves strings out.
-    let document_menus = [paragraph_menu(&strings), format_menu(&strings)];
+    let document_menus = [
+        edit_menu(&strings),
+        paragraph_menu(&strings),
+        format_menu(&strings),
+    ];
     #[cfg(target_os = "macos")]
     let initial_menus = {
         // On macOS, the first menu is the app menu (macOS overrides its title
@@ -1611,29 +1667,29 @@ mod tests {
     // On macOS the menu bar is: [Velotype app menu, File, Export, Language, Theme, Workspace, Help]
     // On other platforms:       [File, Export, Language, Theme, Workspace, Help]
     #[cfg(target_os = "macos")]
+    const EXPORT_IDX: usize = 5;
+    #[cfg(not(target_os = "macos"))]
     const EXPORT_IDX: usize = 4;
-    #[cfg(not(target_os = "macos"))]
-    const EXPORT_IDX: usize = 3;
 
     #[cfg(target_os = "macos")]
+    const LANGUAGE_IDX: usize = 6;
+    #[cfg(not(target_os = "macos"))]
     const LANGUAGE_IDX: usize = 5;
-    #[cfg(not(target_os = "macos"))]
-    const LANGUAGE_IDX: usize = 4;
 
     #[cfg(target_os = "macos")]
+    const THEME_IDX: usize = 7;
+    #[cfg(not(target_os = "macos"))]
     const THEME_IDX: usize = 6;
-    #[cfg(not(target_os = "macos"))]
-    const THEME_IDX: usize = 5;
 
     #[cfg(target_os = "macos")]
+    const WORKSPACE_IDX: usize = 8;
+    #[cfg(not(target_os = "macos"))]
     const WORKSPACE_IDX: usize = 7;
-    #[cfg(not(target_os = "macos"))]
-    const WORKSPACE_IDX: usize = 6;
 
     #[cfg(target_os = "macos")]
-    const HELP_IDX: usize = 9;
+    const HELP_IDX: usize = 10;
     #[cfg(not(target_os = "macos"))]
-    const HELP_IDX: usize = 8;
+    const HELP_IDX: usize = 9;
 
     #[test]
     fn build_menus_uses_english_fallback_by_default() {
@@ -1652,6 +1708,7 @@ mod tests {
             vec![
                 "Velotype",
                 "File",
+                "Edit",
                 "Paragraph",
                 "Format",
                 "Export",
@@ -1667,6 +1724,7 @@ mod tests {
             menu_names,
             vec![
                 "File",
+                "Edit",
                 "Paragraph",
                 "Format",
                 "Export",
@@ -1750,6 +1808,7 @@ mod tests {
             vec![
                 "Velotype",
                 "文件",
+                "编辑",
                 "段落",
                 "格式",
                 "导出",
@@ -1765,6 +1824,7 @@ mod tests {
             menu_names,
             vec![
                 "文件",
+                "编辑",
                 "段落",
                 "格式",
                 "导出",

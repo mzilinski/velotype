@@ -2051,6 +2051,11 @@ impl Render for Editor {
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<WordDeleteForward>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Cut>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Paste>))
+            .capture_action(
+                cx.listener(
+                    Self::swallow_edit_when_read_only::<crate::components::PasteAsPlainText>,
+                ),
+            )
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Undo>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Redo>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<BoldSelection>))
@@ -2098,6 +2103,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_and_replace))
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
+            .on_action(cx.listener(Self::on_copy_as_plain_text))
+            .on_action(cx.listener(Self::on_copy_as_html))
             .on_action(cx.listener(Self::on_increase_heading_level))
             .on_action(cx.listener(Self::on_decrease_heading_level))
             .on_action(cx.listener(Self::on_toggle_quote))

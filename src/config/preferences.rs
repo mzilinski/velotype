@@ -1753,6 +1753,9 @@ impl PreferencesWindow {
                 strings.preferences_shortcut_underline_selection.clone()
             }
             ShortcutCommand::CodeSelection => strings.preferences_shortcut_code_selection.clone(),
+            ShortcutCommand::PasteAsPlainText => strings.menu_paste_as_plain_text.clone(),
+            ShortcutCommand::CopyAsPlainText => strings.menu_copy_as_plain_text.clone(),
+            ShortcutCommand::CopyAsHtml => strings.menu_copy_as_html.clone(),
             ShortcutCommand::IncreaseHeadingLevel => strings.menu_heading_increase.clone(),
             ShortcutCommand::DecreaseHeadingLevel => strings.menu_heading_decrease.clone(),
             ShortcutCommand::ToggleQuote => strings.menu_quote.clone(),
