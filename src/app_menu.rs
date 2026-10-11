@@ -772,6 +772,173 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
     }
 }
 
+/// Paragraph menu in the layout of Typora.
+fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+    use crate::components::{
+        DecreaseHeadingLevel, IncreaseHeadingLevel, InsertCallout, InsertCodeBlock, InsertFootnote,
+        InsertFrontMatter, InsertHorizontalRule, InsertLinkReference, InsertMathBlock, InsertTable,
+        InsertTableOfContents, SetHeading1, SetHeading2, SetHeading3, SetHeading4, SetHeading5,
+        SetHeading6, SetParagraph, ToggleBulletList, ToggleOrderedList, ToggleQuote,
+        ToggleTaskList, ToggleTaskStatus,
+    };
+    let heading = |level: u8| {
+        strings
+            .preferences_shortcut_set_heading
+            .replace("{level}", &level.to_string())
+    };
+    let callouts = [
+        ("note", &strings.menu_callout_note),
+        ("tip", &strings.menu_callout_tip),
+        ("important", &strings.menu_callout_important),
+        ("warning", &strings.menu_callout_warning),
+        ("caution", &strings.menu_callout_caution),
+    ];
+    Menu {
+        name: strings.menu_paragraph.clone().into(),
+        items: vec![
+            MenuItem::action(heading(1), SetHeading1),
+            MenuItem::action(heading(2), SetHeading2),
+            MenuItem::action(heading(3), SetHeading3),
+            MenuItem::action(heading(4), SetHeading4),
+            MenuItem::action(heading(5), SetHeading5),
+            MenuItem::action(heading(6), SetHeading6),
+            MenuItem::separator(),
+            MenuItem::action(
+                strings.preferences_shortcut_set_paragraph.clone(),
+                SetParagraph,
+            ),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_heading_increase.clone(), IncreaseHeadingLevel),
+            MenuItem::action(strings.menu_heading_decrease.clone(), DecreaseHeadingLevel),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_insert_table.clone(), InsertTable),
+            MenuItem::action(strings.menu_math_block.clone(), InsertMathBlock),
+            MenuItem::action(strings.menu_code_block.clone(), InsertCodeBlock),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_quote.clone(), ToggleQuote),
+            MenuItem::action(strings.menu_ordered_list.clone(), ToggleOrderedList),
+            MenuItem::action(strings.menu_bullet_list.clone(), ToggleBulletList),
+            MenuItem::action(strings.menu_task_list.clone(), ToggleTaskList),
+            MenuItem::action(strings.menu_task_status.clone(), ToggleTaskStatus),
+            MenuItem::submenu(Menu {
+                name: strings.menu_callout.clone().into(),
+                items: callouts
+                    .into_iter()
+                    .map(|(kind, label)| {
+                        MenuItem::action(
+                            label.clone(),
+                            InsertCallout {
+                                kind: kind.to_string(),
+                            },
+                        )
+                    })
+                    .collect(),
+            }),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_link_reference.clone(), InsertLinkReference),
+            MenuItem::action(strings.menu_footnote.clone(), InsertFootnote),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_horizontal_rule.clone(), InsertHorizontalRule),
+            MenuItem::action(
+                strings.menu_table_of_contents.clone(),
+                InsertTableOfContents,
+            ),
+            MenuItem::action(strings.menu_front_matter.clone(), InsertFrontMatter),
+        ],
+    }
+}
+
+/// Format menu in the layout of Typora.
+fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+    use crate::components::{
+        BoldSelection, ClearFormat, CodeSelection, CommentSelection, HighlightSelection,
+        InlineMathSelection, InsertLink, ItalicSelection, StrikethroughSelection,
+        SubscriptSelection, SuperscriptSelection, UnderlineSelection,
+    };
+    Menu {
+        name: strings.menu_format.clone().into(),
+        items: vec![
+            MenuItem::action(
+                strings.preferences_shortcut_bold_selection.clone(),
+                BoldSelection,
+            ),
+            MenuItem::action(
+                strings.preferences_shortcut_italic_selection.clone(),
+                ItalicSelection,
+            ),
+            MenuItem::action(
+                strings.preferences_shortcut_underline_selection.clone(),
+                UnderlineSelection,
+            ),
+            MenuItem::action(
+                strings.preferences_shortcut_code_selection.clone(),
+                CodeSelection,
+            ),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_inline_math.clone(), InlineMathSelection),
+            MenuItem::action(strings.menu_strikethrough.clone(), StrikethroughSelection),
+            MenuItem::action(strings.menu_highlight.clone(), HighlightSelection),
+            MenuItem::action(strings.menu_superscript.clone(), SuperscriptSelection),
+            MenuItem::action(strings.menu_subscript.clone(), SubscriptSelection),
+            MenuItem::action(strings.menu_comment.clone(), CommentSelection),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_link.clone(), InsertLink),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_clear_format.clone(), ClearFormat),
+        ],
+    }
+}
+
+/// Paragraph and Format commands act on the focused block, so a menu click
+/// re-dispatches them through the window focus path (block, then editor).
+fn is_document_command_action(action: &dyn Action) -> bool {
+    use crate::components::{
+        BoldSelection, ClearFormat, CodeSelection, CommentSelection, DecreaseHeadingLevel,
+        HighlightSelection, IncreaseHeadingLevel, InlineMathSelection, InsertCallout,
+        InsertCodeBlock, InsertFootnote, InsertFrontMatter, InsertHorizontalRule, InsertLink,
+        InsertLinkReference, InsertMathBlock, InsertTable, InsertTableOfContents, ItalicSelection,
+        SetHeading1, SetHeading2, SetHeading3, SetHeading4, SetHeading5, SetHeading6, SetParagraph,
+        StrikethroughSelection, SubscriptSelection, SuperscriptSelection, ToggleBulletList,
+        ToggleOrderedList, ToggleQuote, ToggleTaskList, ToggleTaskStatus, UnderlineSelection,
+    };
+    let any = action.as_any();
+    any.is::<SetHeading1>()
+        || any.is::<SetHeading2>()
+        || any.is::<SetHeading3>()
+        || any.is::<SetHeading4>()
+        || any.is::<SetHeading5>()
+        || any.is::<SetHeading6>()
+        || any.is::<SetParagraph>()
+        || any.is::<IncreaseHeadingLevel>()
+        || any.is::<DecreaseHeadingLevel>()
+        || any.is::<InsertTable>()
+        || any.is::<InsertMathBlock>()
+        || any.is::<InsertCodeBlock>()
+        || any.is::<ToggleQuote>()
+        || any.is::<ToggleOrderedList>()
+        || any.is::<ToggleBulletList>()
+        || any.is::<ToggleTaskList>()
+        || any.is::<ToggleTaskStatus>()
+        || any.is::<InsertCallout>()
+        || any.is::<InsertLinkReference>()
+        || any.is::<InsertFootnote>()
+        || any.is::<InsertHorizontalRule>()
+        || any.is::<InsertTableOfContents>()
+        || any.is::<InsertFrontMatter>()
+        || any.is::<BoldSelection>()
+        || any.is::<ItalicSelection>()
+        || any.is::<UnderlineSelection>()
+        || any.is::<CodeSelection>()
+        || any.is::<InlineMathSelection>()
+        || any.is::<StrikethroughSelection>()
+        || any.is::<HighlightSelection>()
+        || any.is::<SuperscriptSelection>()
+        || any.is::<SubscriptSelection>()
+        || any.is::<CommentSelection>()
+        || any.is::<InsertLink>()
+        || any.is::<ClearFormat>()
+}
+
 /// Executes a menu action against a specific editor when the action is
 /// editor-scoped, falling back to app-wide behavior for global actions.
 pub(crate) fn dispatch_menu_action_for_editor(
@@ -780,6 +947,11 @@ pub(crate) fn dispatch_menu_action_for_editor(
     window: &mut Window,
     cx: &mut App,
 ) {
+    if is_document_command_action(action) {
+        let action = action.boxed_clone();
+        window.defer(cx, move |window, cx| window.dispatch_action(action, cx));
+        return;
+    }
     if !is_window_context_menu_action(action) {
         let deferred_action = action.boxed_clone();
         cx.defer(move |cx| {
@@ -930,6 +1102,8 @@ fn build_menus(
             .collect()
     };
 
+    // Built before the File menu moves strings out.
+    let document_menus = [paragraph_menu(&strings), format_menu(&strings)];
     #[cfg(target_os = "macos")]
     let initial_menus = {
         // On macOS, the first menu is the app menu (macOS overrides its title
@@ -1028,6 +1202,7 @@ fn build_menus(
     ];
 
     let mut menus = initial_menus;
+    menus.extend(document_menus);
     menus.extend([
         Menu {
             name: strings.menu_export.into(),
@@ -1436,29 +1611,29 @@ mod tests {
     // On macOS the menu bar is: [Velotype app menu, File, Export, Language, Theme, Workspace, Help]
     // On other platforms:       [File, Export, Language, Theme, Workspace, Help]
     #[cfg(target_os = "macos")]
-    const EXPORT_IDX: usize = 2;
+    const EXPORT_IDX: usize = 4;
     #[cfg(not(target_os = "macos"))]
-    const EXPORT_IDX: usize = 1;
+    const EXPORT_IDX: usize = 3;
 
     #[cfg(target_os = "macos")]
-    const LANGUAGE_IDX: usize = 3;
+    const LANGUAGE_IDX: usize = 5;
     #[cfg(not(target_os = "macos"))]
-    const LANGUAGE_IDX: usize = 2;
+    const LANGUAGE_IDX: usize = 4;
 
     #[cfg(target_os = "macos")]
-    const THEME_IDX: usize = 4;
+    const THEME_IDX: usize = 6;
     #[cfg(not(target_os = "macos"))]
-    const THEME_IDX: usize = 3;
+    const THEME_IDX: usize = 5;
 
     #[cfg(target_os = "macos")]
-    const WORKSPACE_IDX: usize = 5;
+    const WORKSPACE_IDX: usize = 7;
     #[cfg(not(target_os = "macos"))]
-    const WORKSPACE_IDX: usize = 4;
+    const WORKSPACE_IDX: usize = 6;
 
     #[cfg(target_os = "macos")]
-    const HELP_IDX: usize = 7;
+    const HELP_IDX: usize = 9;
     #[cfg(not(target_os = "macos"))]
-    const HELP_IDX: usize = 6;
+    const HELP_IDX: usize = 8;
 
     #[test]
     fn build_menus_uses_english_fallback_by_default() {
@@ -1477,6 +1652,8 @@ mod tests {
             vec![
                 "Velotype",
                 "File",
+                "Paragraph",
+                "Format",
                 "Export",
                 "Language",
                 "Theme",
@@ -1489,6 +1666,8 @@ mod tests {
             menu_names,
             vec![
                 "File",
+                "Paragraph",
+                "Format",
                 "Export",
                 "Language",
                 "Theme",
@@ -1570,6 +1749,8 @@ mod tests {
             vec![
                 "Velotype",
                 "文件",
+                "段落",
+                "格式",
                 "导出",
                 "语言",
                 "主题",
@@ -1581,7 +1762,17 @@ mod tests {
         #[cfg(not(target_os = "macos"))]
         assert_eq!(
             menu_names,
-            vec!["文件", "导出", "语言", "主题", "工作区", "视图", "帮助"]
+            vec![
+                "文件",
+                "段落",
+                "格式",
+                "导出",
+                "语言",
+                "主题",
+                "工作区",
+                "视图",
+                "帮助"
+            ]
         );
 
         #[cfg(target_os = "macos")]

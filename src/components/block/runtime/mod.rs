@@ -45,6 +45,14 @@ pub(crate) enum InlineFormat {
     Underline,
     /// Toggle inline code formatting.
     Code,
+    /// Toggle strikethrough formatting.
+    Strikethrough,
+    /// Toggle highlight (`==mark==`) formatting.
+    Highlight,
+    /// Toggle superscript formatting.
+    Superscript,
+    /// Toggle subscript formatting.
+    Subscript,
 }
 
 /// Editing semantics for the current block.
@@ -2033,6 +2041,10 @@ impl Block {
             InlineFormat::Italic => next_title.toggle_italic(selection.clone()),
             InlineFormat::Underline => next_title.toggle_underline(selection.clone()),
             InlineFormat::Code => next_title.toggle_code(selection.clone()),
+            InlineFormat::Strikethrough => next_title.toggle_strikethrough(selection.clone()),
+            InlineFormat::Highlight => next_title.toggle_highlight(selection.clone()),
+            InlineFormat::Superscript => next_title.toggle_superscript(selection.clone()),
+            InlineFormat::Subscript => next_title.toggle_subscript(selection.clone()),
         };
         if !changed {
             return;
