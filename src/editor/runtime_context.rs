@@ -102,6 +102,7 @@ impl Editor {
         let image_reference_definitions = self.image_reference_definitions.clone();
         let link_reference_definitions = self.link_reference_definitions.clone();
         let footnote_registry = self.footnote_registry.clone();
+        let read_only = self.read_only;
         block.update(cx, move |block, cx| {
             block.set_runtime_context(
                 next_base_dir.clone(),
@@ -109,6 +110,7 @@ impl Editor {
                 link_reference_definitions.clone(),
                 footnote_registry.clone(),
             );
+            block.read_only = read_only;
             cx.notify();
         });
     }

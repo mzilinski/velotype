@@ -36,6 +36,7 @@ mod render;
 mod runtime_context;
 mod selection;
 mod source_mapping;
+mod spelling;
 mod status_bar;
 mod table_edit;
 #[cfg(test)]
@@ -44,6 +45,7 @@ mod tree;
 mod update;
 mod window_state;
 mod workspace;
+mod writing;
 
 use self::status_bar::StatusBarState;
 use self::workspace::WorkspaceState;
@@ -111,6 +113,10 @@ pub struct Editor {
     workspace: WorkspaceState,
     status_bar: StatusBarState,
     context_menu: Option<ContextMenuState>,
+    /// Read-only mode for this window: blocks reject edits.
+    read_only: bool,
+    /// Caret (block, selection, text length) last centered in typewriter mode.
+    typewriter_last_caret: Option<(EntityId, std::ops::Range<usize>, usize)>,
     table_insert_dialog: Option<TableInsertDialogState>,
     /// Open find & replace bar, if any.
     find: Option<find::FindState>,
@@ -349,6 +355,8 @@ impl Editor {
             workspace: WorkspaceState::default(),
             status_bar: StatusBarState::default(),
             context_menu: None,
+            read_only: false,
+            typewriter_last_caret: None,
             table_insert_dialog: None,
             find: None,
             context_menu_submenu_close_task: None,

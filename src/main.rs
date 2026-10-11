@@ -28,6 +28,7 @@ mod file_url;
 mod fonts;
 mod i18n;
 mod net;
+mod spellcheck;
 mod theme;
 mod window_chrome;
 
@@ -193,6 +194,9 @@ fn main() {
         ThemeManager::init_with_theme_id(cx, &preferences.default_theme_id);
         fonts::FontSettings::init(cx, preferences.fonts.clone());
         config::EditorSettings::init(cx, preferences.show_table_headers);
+        let spellcheck_language = Some(preferences.writing.spellcheck_language.as_str())
+            .filter(|language| !language.is_empty());
+        spellcheck::SpellChecker::init(cx, spellcheck_language);
         net::install_http_client(cx);
         init_editor(cx, &preferences.keybindings);
         init_app_menu(cx);

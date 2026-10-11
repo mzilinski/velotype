@@ -3151,3 +3151,111 @@ async fn editing_heading_prefix_changes_level_or_kind(cx: &mut TestAppContext) {
         assert_eq!(block.display_text(), "Title");
     });
 }
+
+fn typed_paragraph_window(
+    cx: &mut TestAppContext,
+    record: BlockRecord,
+) -> (gpui::Entity<Block>, &mut gpui::VisualTestContext) {
+    cx.update(|cx| {
+        I18nManager::init(cx);
+        ThemeManager::init(cx);
+    });
+    cx.add_window_view(|_window, cx| Block::with_record(cx, record))
+}
+
+fn type_text(block: &gpui::Entity<Block>, cx: &mut gpui::VisualTestContext, text: &str) {
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            for ch in text.chars() {
+                block.replace_text_in_range(None, &ch.to_string(), window, cx);
+            }
+        });
+    });
+}
+
+#[gpui::test]
+async fn auto_pair_closes_brackets_and_quotes(cx: &mut TestAppContext) {
+    let (block, cx) = typed_paragraph_window(cx, BlockRecord::paragraph(""));
+
+    type_text(&block, cx, "f(");
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.display_text(), "f()");
+        assert_eq!(block.selected_range, 2..2);
+    });
+
+    // Typing the closer steps over the auto-inserted one.
+    type_text(&block, cx, "x)");
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.display_text(), "f(x)");
+        assert_eq!(block.selected_range, 4..4);
+    });
+
+    // No pairing for an apostrophe glued to a word or before text.
+    type_text(&block, cx, " don't");
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.display_text(), "f(x) don't")
+    });
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            block.move_to(0, cx);
+            block.replace_text_in_range(None, "[", window, cx);
+        })
+    });
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.display_text(), "[f(x) don't")
+    });
+}
+
+#[gpui::test]
+async fn auto_pair_wraps_selection_and_backspace_removes_empty_pair(cx: &mut TestAppContext) {
+    let (block, cx) = typed_paragraph_window(cx, BlockRecord::paragraph("say word now"));
+
+    // Wrapping a selection with `*` makes it italic Markdown.
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            block.move_to(4, cx);
+            block.select_to(8, cx);
+            block.replace_text_in_range(None, "*", window, cx);
+        })
+    });
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.record.title.serialize_markdown(), "say *word* now");
+    });
+
+    let (block, cx) = typed_paragraph_window(cx, BlockRecord::paragraph(""));
+    type_text(&block, cx, "(");
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            block.on_delete_back(&DeleteBack, window, cx)
+        })
+    });
+    block.read_with(cx, |block, _| assert_eq!(block.display_text(), ""));
+}
+
+#[gpui::test]
+async fn auto_pair_pairs_backticks_only_in_code_blocks(cx: &mut TestAppContext) {
+    let (paragraph, cx) = typed_paragraph_window(cx, BlockRecord::paragraph(""));
+    type_text(&paragraph, cx, "`");
+    paragraph.read_with(cx, |block, _| assert_eq!(block.display_text(), "`"));
+
+    let (code, cx) = typed_paragraph_window(
+        cx,
+        BlockRecord::with_plain_text(BlockKind::CodeBlock { language: None }, ""),
+    );
+    type_text(&code, cx, "{`");
+    code.read_with(cx, |block, _| assert_eq!(block.display_text(), "{``}"));
+}
+
+#[gpui::test]
+async fn read_only_block_rejects_text_edits(cx: &mut TestAppContext) {
+    let (block, cx) = typed_paragraph_window(cx, BlockRecord::paragraph("keep"));
+    block.update(cx, |block, _| block.read_only = true);
+    type_text(&block, cx, "x(");
+    cx.update(|window, cx| {
+        block.update(cx, |block, cx| {
+            block.move_to(4, cx);
+            block.on_delete_back(&DeleteBack, window, cx);
+        })
+    });
+    block.read_with(cx, |block, _| assert_eq!(block.display_text(), "keep"));
+}

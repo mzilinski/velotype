@@ -118,6 +118,8 @@ pub struct Block {
     pub(crate) search_highlights: Vec<Range<usize>>,
     /// Index into `search_highlights` of the current find match, if it is here.
     pub(crate) active_search_highlight: Option<usize>,
+    /// Set by the editor in read-only mode; every text edit is rejected.
+    pub(crate) read_only: bool,
     pub marked_range: Option<Range<usize>>,
     pub last_layout: Option<Vec<WrappedLine>>,
     pub last_bounds: Option<Bounds<Pixels>>,
@@ -226,6 +228,7 @@ impl Block {
             editor_selection_range: None,
             search_highlights: Vec::new(),
             active_search_highlight: None,
+            read_only: false,
             marked_range: None,
             last_layout: None,
             last_bounds: None,
@@ -1730,6 +1733,9 @@ impl Block {
         mark_inserted_text: bool,
         cx: &mut Context<Self>,
     ) {
+        if self.read_only {
+            return;
+        }
         if self.kind().is_separator() && !self.uses_raw_text_editing() {
             return;
         }

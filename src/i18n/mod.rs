@@ -121,6 +121,17 @@ pub struct I18nStrings {
     pub menu_uninstall_cli_tool: String,
     /// Workspace menu item for opening or closing the workspace drawer.
     pub menu_toggle_workspace: String,
+    pub menu_view: String,
+    pub menu_auto_pair: String,
+    pub menu_focus_mode: String,
+    pub menu_typewriter_mode: String,
+    pub menu_read_only: String,
+    pub status_read_only: String,
+    pub menu_spellcheck: String,
+    pub menu_spellcheck_language: String,
+    pub context_spelling_add: String,
+    pub context_spelling_ignore: String,
+    pub context_spelling_no_suggestions: String,
     /// Native file-dialog prompt for opening Markdown files.
     pub open_markdown_files_prompt: String,
     /// Native file-dialog prompt for importing a language pack.
@@ -413,6 +424,17 @@ struct I18nStringsDe {
     menu_install_cli_tool: Option<String>,
     menu_uninstall_cli_tool: Option<String>,
     menu_toggle_workspace: Option<String>,
+    menu_view: Option<String>,
+    menu_auto_pair: Option<String>,
+    menu_focus_mode: Option<String>,
+    menu_typewriter_mode: Option<String>,
+    menu_read_only: Option<String>,
+    status_read_only: Option<String>,
+    menu_spellcheck: Option<String>,
+    menu_spellcheck_language: Option<String>,
+    context_spelling_add: Option<String>,
+    context_spelling_ignore: Option<String>,
+    context_spelling_no_suggestions: Option<String>,
     open_markdown_files_prompt: Option<String>,
     add_language_config_prompt: Option<String>,
     add_theme_config_prompt: Option<String>,
@@ -622,6 +644,17 @@ const I18N_STRING_KEYS: &[&str] = &[
     "menu_install_cli_tool",
     "menu_uninstall_cli_tool",
     "menu_toggle_workspace",
+    "menu_view",
+    "menu_auto_pair",
+    "menu_focus_mode",
+    "menu_typewriter_mode",
+    "menu_read_only",
+    "status_read_only",
+    "menu_spellcheck",
+    "menu_spellcheck_language",
+    "context_spelling_add",
+    "context_spelling_ignore",
+    "context_spelling_no_suggestions",
     "open_markdown_files_prompt",
     "add_language_config_prompt",
     "add_theme_config_prompt",
@@ -897,6 +930,27 @@ impl I18nStringsDe {
             menu_toggle_workspace: self
                 .menu_toggle_workspace
                 .unwrap_or(defaults.menu_toggle_workspace),
+            menu_view: self.menu_view.unwrap_or(defaults.menu_view),
+            menu_auto_pair: self.menu_auto_pair.unwrap_or(defaults.menu_auto_pair),
+            menu_focus_mode: self.menu_focus_mode.unwrap_or(defaults.menu_focus_mode),
+            menu_typewriter_mode: self
+                .menu_typewriter_mode
+                .unwrap_or(defaults.menu_typewriter_mode),
+            menu_read_only: self.menu_read_only.unwrap_or(defaults.menu_read_only),
+            status_read_only: self.status_read_only.unwrap_or(defaults.status_read_only),
+            menu_spellcheck: self.menu_spellcheck.unwrap_or(defaults.menu_spellcheck),
+            menu_spellcheck_language: self
+                .menu_spellcheck_language
+                .unwrap_or(defaults.menu_spellcheck_language),
+            context_spelling_add: self
+                .context_spelling_add
+                .unwrap_or(defaults.context_spelling_add),
+            context_spelling_ignore: self
+                .context_spelling_ignore
+                .unwrap_or(defaults.context_spelling_ignore),
+            context_spelling_no_suggestions: self
+                .context_spelling_no_suggestions
+                .unwrap_or(defaults.context_spelling_no_suggestions),
             open_markdown_files_prompt: self
                 .open_markdown_files_prompt
                 .unwrap_or(defaults.open_markdown_files_prompt),
@@ -1402,6 +1456,17 @@ impl I18nStrings {
             menu_install_cli_tool: "安装CLI命令".into(),
             menu_uninstall_cli_tool: "卸载CLI命令".into(),
             menu_toggle_workspace: "切换工作区".into(),
+            menu_view: "视图".into(),
+            menu_auto_pair: "自动配对括号和引号".into(),
+            menu_focus_mode: "专注模式".into(),
+            menu_typewriter_mode: "打字机模式".into(),
+            menu_read_only: "只读模式".into(),
+            status_read_only: "只读".into(),
+            menu_spellcheck: "拼写检查".into(),
+            menu_spellcheck_language: "拼写检查语言".into(),
+            context_spelling_add: "添加到词典".into(),
+            context_spelling_ignore: "忽略".into(),
+            context_spelling_no_suggestions: "无建议".into(),
             open_markdown_files_prompt: "打开 Markdown 文件".into(),
             add_language_config_prompt: "选择语言配置文件".into(),
             add_theme_config_prompt: "选择主题配置文件".into(),
@@ -1629,6 +1694,17 @@ impl I18nStrings {
             menu_install_cli_tool: "Install CLI Command".into(),
             menu_uninstall_cli_tool: "Uninstall CLI Command".into(),
             menu_toggle_workspace: "Toggle Workspace".into(),
+            menu_view: "View".into(),
+            menu_auto_pair: "Auto-Pair Brackets and Quotes".into(),
+            menu_focus_mode: "Focus Mode".into(),
+            menu_typewriter_mode: "Typewriter Mode".into(),
+            menu_read_only: "Read-Only Mode".into(),
+            status_read_only: "Read-only".into(),
+            menu_spellcheck: "Spell Check".into(),
+            menu_spellcheck_language: "Spelling Language".into(),
+            context_spelling_add: "Add to Dictionary".into(),
+            context_spelling_ignore: "Ignore".into(),
+            context_spelling_no_suggestions: "No Suggestions".into(),
             open_markdown_files_prompt: "Open Markdown Files".into(),
             add_language_config_prompt: "Choose Language Config".into(),
             add_theme_config_prompt: "Choose Theme Config".into(),

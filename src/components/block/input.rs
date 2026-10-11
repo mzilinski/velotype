@@ -104,12 +104,32 @@ impl EntityInputHandler for Block {
             return;
         }
 
-        self.prepare_undo_capture(UndoCaptureKind::CoalescibleText, cx);
         let visible_range = range_utf16
             .as_ref()
             .map(|range| self.range_from_utf16(range))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
+        if crate::config::EditorSettings::auto_pair(cx) {
+            match self.auto_pair_edit(new_text, &visible_range) {
+                Some(AutoPairEdit::SkipOver) => {
+                    self.move_to(visible_range.end + new_text.len(), cx);
+                    return;
+                }
+                Some(AutoPairEdit::Insert { text, selected }) => {
+                    self.prepare_undo_capture(UndoCaptureKind::CoalescibleText, cx);
+                    self.replace_text_in_visible_range(
+                        visible_range,
+                        &text,
+                        Some(selected),
+                        false,
+                        cx,
+                    );
+                    return;
+                }
+                None => {}
+            }
+        }
+        self.prepare_undo_capture(UndoCaptureKind::CoalescibleText, cx);
         self.replace_text_in_visible_range(visible_range, new_text, None, false, cx);
     }
 
@@ -232,5 +252,99 @@ impl EntityInputHandler for Block {
         };
         let utf8_index = ranges[line_idx].start + utf8_offset_in_line;
         Some(Self::utf8_to_utf16_in(self.display_text(), utf8_index))
+    }
+}
+
+/// Result of Typora-style auto-pairing for one typed character.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum AutoPairEdit {
+    /// Replace the target range with `text`, selecting `selected` (relative
+    /// to the start of `text`) afterwards.
+    Insert {
+        text: String,
+        selected: Range<usize>,
+    },
+    /// The typed closer already follows the caret: step over it.
+    SkipOver,
+}
+
+/// Closing partner for brackets and quotes; backticks pair only in raw text,
+/// where they cannot open an inline code span mid-typing.
+fn auto_pair_closer(open: char, raw: bool) -> Option<char> {
+    match open {
+        '(' => Some(')'),
+        '[' => Some(']'),
+        '{' => Some('}'),
+        '"' => Some('"'),
+        '\'' => Some('\''),
+        '`' if raw => Some('`'),
+        _ => None,
+    }
+}
+
+impl Block {
+    /// Decides how a single typed character interacts with auto-pairing:
+    /// wrap a selection, insert an opener with its closer, or step over a
+    /// closer that is already there. `None` means a plain insertion.
+    pub(crate) fn auto_pair_edit(&self, typed: &str, range: &Range<usize>) -> Option<AutoPairEdit> {
+        let mut chars = typed.chars();
+        let ch = chars.next()?;
+        if chars.next().is_some() || self.marked_range.is_some() {
+            return None;
+        }
+        let raw = self.uses_raw_text_editing();
+        let code = self.kind().is_code_block();
+        let text = self.display_text();
+        if range.end > text.len() {
+            return None;
+        }
+
+        if !range.is_empty() {
+            let close = auto_pair_closer(ch, true)
+                .or_else(|| (!code && matches!(ch, '*' | '_' | '~' | '=')).then_some(ch))?;
+            let inner = &text[range.clone()];
+            if inner.contains('\n') && !raw {
+                return None;
+            }
+            return Some(AutoPairEdit::Insert {
+                text: format!("{ch}{inner}{close}"),
+                selected: ch.len_utf8()..ch.len_utf8() + inner.len(),
+            });
+        }
+
+        let cursor = range.start;
+        let next = text[cursor..].chars().next();
+        let previous = text[..cursor].chars().next_back();
+        if matches!(ch, ')' | ']' | '}' | '"' | '\'' | '`') && next == Some(ch) {
+            return Some(AutoPairEdit::SkipOver);
+        }
+        let close = auto_pair_closer(ch, raw)?;
+        let next_allows_pair =
+            next.is_none_or(|next| next.is_whitespace() || ")]},.;:!?".contains(next));
+        // Don't pair the apostrophe in "don't" or quotes glued to a word.
+        let quote_after_word =
+            matches!(ch, '"' | '\'' | '`') && previous.is_some_and(char::is_alphanumeric);
+        if !next_allows_pair || quote_after_word {
+            return None;
+        }
+        Some(AutoPairEdit::Insert {
+            text: format!("{ch}{close}"),
+            selected: ch.len_utf8()..ch.len_utf8(),
+        })
+    }
+
+    /// Range covering an empty auto-pair around the caret (`(|)`), which
+    /// Backspace removes as a whole.
+    pub(crate) fn empty_pair_around_cursor(&self) -> Option<Range<usize>> {
+        if !self.selected_range.is_empty() || self.marked_range.is_some() {
+            return None;
+        }
+        let cursor = self.selected_range.start;
+        let text = self.display_text();
+        let open = text.get(..cursor)?.chars().next_back()?;
+        let close = auto_pair_closer(open, true)?;
+        text.get(cursor..)?
+            .starts_with(close)
+            .then(|| cursor - open.len_utf8()..cursor + close.len_utf8())
     }
 }

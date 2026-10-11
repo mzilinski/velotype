@@ -9,7 +9,11 @@ use gpui::*;
 use super::{Editor, InfoDialogKind, MountedRun, workspace::workspace_panel_width_for_viewport};
 use crate::app_menu::dispatch_menu_action_for_editor;
 use crate::components::CalloutVariant;
-use crate::components::{AddLanguageConfig, AddThemeConfig, Block, NoRecentFiles};
+use crate::components::{
+    AddLanguageConfig, AddThemeConfig, Block, BoldSelection, CodeSelection, Cut, Delete,
+    DeleteBack, ExitCodeBlock, IndentBlock, ItalicSelection, Newline, NoRecentFiles, OutdentBlock,
+    Paste, Redo, UnderlineSelection, Undo, WordDeleteBack, WordDeleteForward,
+};
 use crate::fonts::FontSettings;
 use crate::i18n::{I18nManager, I18nStrings};
 use crate::theme::{Theme, ThemeDimensions, ThemeManager};
@@ -433,6 +437,12 @@ impl Editor {
 
     fn apply_pending_scroll_into_view(&mut self, window: &Window, cx: &mut Context<Self>) {
         if self.scrollbar_drag.is_some() {
+            return;
+        }
+
+        if self.apply_typewriter_scroll(window, cx) {
+            self.pending_scroll_active_block_into_view = false;
+            self.schedule_scroll_recheck(cx);
             return;
         }
 
@@ -1526,6 +1536,11 @@ impl Render for Editor {
         // row's, since that row re-applies it.
         let mut row_top_gaps: Vec<f32> = Vec::new();
         let mut index = 0usize;
+        // Focus mode dims every row that does not contain the edited block.
+        let focus_mode_index = self.focus_mode_visible_index(window, cx);
+        let dim_row = |start: usize, end: usize| {
+            focus_mode_index.is_some_and(|focused| !(start..end).contains(&focused))
+        };
         while index < visible_blocks.len() {
             let first_visible = visible_blocks[index].clone();
             let first_spacing = spacing_for(index);
@@ -1624,6 +1639,11 @@ impl Render for Editor {
                 row_elements.push(
                     div()
                         .w(px(centered_width))
+                        .opacity(if dim_row(index, group_end) {
+                            super::writing::FOCUS_MODE_DIMMED_OPACITY
+                        } else {
+                            1.0
+                        })
                         .max_w(relative(1.0))
                         .flex_shrink_0()
                         .mt(px(top_gap))
@@ -1680,6 +1700,11 @@ impl Render for Editor {
                 row_elements.push(
                     div()
                         .w(px(centered_width))
+                        .opacity(if dim_row(index, group_end) {
+                            super::writing::FOCUS_MODE_DIMMED_OPACITY
+                        } else {
+                            1.0
+                        })
                         .max_w(relative(1.0))
                         .flex_shrink_0()
                         .mt(px(top_gap))
@@ -1711,6 +1736,11 @@ impl Render for Editor {
             };
             row_starts.push(index);
             row_top_gaps.push(top_gap);
+            let row = if dim_row(index, index + 1) {
+                row.opacity(super::writing::FOCUS_MODE_DIMMED_OPACITY)
+            } else {
+                row
+            };
             row_elements.push(row.into_any_element());
             previous_row_spacing = Some(first_spacing);
             index += 1;
@@ -2003,6 +2033,23 @@ impl Render for Editor {
                     window.refresh();
                 }
             })
+            // Read-only guards run first so no editing action reaches a block.
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Newline>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<DeleteBack>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Delete>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<WordDeleteBack>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<WordDeleteForward>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Cut>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Paste>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Undo>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Redo>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<BoldSelection>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<ItalicSelection>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<UnderlineSelection>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<CodeSelection>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<IndentBlock>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<OutdentBlock>))
+            .capture_action(cx.listener(Self::swallow_edit_when_read_only::<ExitCodeBlock>))
             .capture_action(cx.listener(Self::on_copy_capture))
             .capture_action(cx.listener(Self::on_cut_capture))
             .capture_action(cx.listener(Self::on_delete_capture))

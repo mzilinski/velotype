@@ -75,6 +75,11 @@ actions!(
         ShowAbout,
         InstallCliTool,
         UninstallCliTool,
+        ToggleAutoPair,
+        ToggleFocusMode,
+        ToggleTypewriterMode,
+        ToggleReadOnly,
+        ToggleSpellcheck,
         DismissTransientUi,
         ToggleViewMode,
         ToggleWorkspace,
@@ -101,6 +106,15 @@ pub struct SelectTheme {
 pub struct SelectLanguage {
     /// Stable language id from the built-in language catalog.
     pub language_id: String,
+}
+
+/// Selects the spell-check dictionary language.
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+#[action(namespace = velotype)]
+#[serde(deny_unknown_fields)]
+pub struct SelectSpellcheckLanguage {
+    /// BCP-47 language tag such as `de-DE`.
+    pub language: String,
 }
 
 /// Opens a previously recorded Markdown file path.
@@ -176,6 +190,11 @@ pub(crate) enum ShortcutCommand {
     OpenFile,
     QuitApplication,
     CloseWindow,
+    ToggleAutoPair,
+    ToggleFocusMode,
+    ToggleTypewriterMode,
+    ToggleReadOnly,
+    ToggleSpellcheck,
     DismissTransientUi,
     ToggleViewMode,
     ToggleWorkspace,
@@ -582,6 +601,41 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         context: None,
     },
     ShortcutDefinition {
+        command: ShortcutCommand::ToggleAutoPair,
+        id: "toggle_auto_pair",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleFocusMode,
+        id: "toggle_focus_mode",
+        category: ShortcutCategory::Navigation,
+        default_keys: &["f8"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleTypewriterMode,
+        id: "toggle_typewriter_mode",
+        category: ShortcutCategory::Navigation,
+        default_keys: &["f9"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleReadOnly,
+        id: "toggle_read_only",
+        category: ShortcutCategory::Edit,
+        default_keys: &["cmd-alt-r", "ctrl-alt-r"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleSpellcheck,
+        id: "toggle_spellcheck",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: None,
+    },
+    ShortcutDefinition {
         command: ShortcutCommand::ToggleViewMode,
         id: "toggle_view_mode",
         category: ShortcutCategory::Navigation,
@@ -837,6 +891,13 @@ fn key_binding_for(
         ShortcutCommand::QuitApplication => KeyBinding::new(key, QuitApplication, context),
         ShortcutCommand::CloseWindow => KeyBinding::new(key, CloseWindow, context),
         ShortcutCommand::DismissTransientUi => KeyBinding::new(key, DismissTransientUi, context),
+        ShortcutCommand::ToggleAutoPair => KeyBinding::new(key, ToggleAutoPair, context),
+        ShortcutCommand::ToggleFocusMode => KeyBinding::new(key, ToggleFocusMode, context),
+        ShortcutCommand::ToggleTypewriterMode => {
+            KeyBinding::new(key, ToggleTypewriterMode, context)
+        }
+        ShortcutCommand::ToggleReadOnly => KeyBinding::new(key, ToggleReadOnly, context),
+        ShortcutCommand::ToggleSpellcheck => KeyBinding::new(key, ToggleSpellcheck, context),
         ShortcutCommand::ToggleViewMode => KeyBinding::new(key, ToggleViewMode, context),
         ShortcutCommand::ToggleWorkspace => KeyBinding::new(key, ToggleWorkspace, context),
         ShortcutCommand::FindInDocument => KeyBinding::new(key, FindInDocument, context),
