@@ -220,6 +220,16 @@ fn rewrite_inline_math_line(line: &str, theme: &Theme) -> String {
             continue;
         }
 
+        // pulldown-cmark has no `==highlight==` extension; emit inline `<mark>`
+        // tags and keep the body as Markdown so nested emphasis still renders.
+        if let Some((end, body)) = locate_inline_highlight_source(line, index) {
+            output.push_str("<mark>");
+            output.push_str(&rewrite_inline_math_line(body, theme));
+            output.push_str("</mark>");
+            index = end;
+            continue;
+        }
+
         let Some(ch) = line[index..].chars().next() else {
             break;
         };
@@ -277,6 +287,33 @@ fn locate_inline_script_source(line: &str, index: usize) -> Option<(usize, Strin
     } else {
         None
     }
+}
+
+fn locate_inline_highlight_source(line: &str, index: usize) -> Option<(usize, &str)> {
+    if !line[index..].starts_with("==")
+        || is_escaped_ascii(line, index)
+        || previous_char(line, index) == Some('=')
+    {
+        return None;
+    }
+    let body_start = index + 2;
+    let first = line[body_start..].chars().next()?;
+    if first == '=' {
+        return None;
+    }
+
+    let mut cursor = body_start + first.len_utf8();
+    while cursor < line.len() {
+        if line[cursor..].starts_with("==")
+            && !is_escaped_ascii(line, cursor)
+            && previous_char(line, cursor).is_some_and(|ch| !ch.is_whitespace())
+        {
+            return Some((cursor + 2, &line[body_start..cursor]));
+        }
+        cursor += line[cursor..].chars().next()?.len_utf8();
+    }
+
+    None
 }
 
 fn locate_script_close(line: &str, index: usize, marker: char) -> Option<(usize, String)> {
@@ -707,6 +744,7 @@ fn theme_css(theme: &Theme, fonts: &FontSettings) -> String {
   --vlt-code-bg: {};
   --vlt-code-text: {};
   --vlt-comment-bg: {};
+  --vlt-highlight-bg: {};
   --vlt-table-head-bg: {};
   --vlt-table-cell-bg: {};
   --vlt-quote-border: {};
@@ -849,6 +887,7 @@ th, td {{
 }}
 th {{ background-color: var(--vlt-table-head-bg); font-weight: 600; }}
 td {{ background-color: var(--vlt-table-cell-bg); }}
+mark {{ background-color: var(--vlt-highlight-bg); color: inherit; border-radius: 2px; }}
 img {{ max-width: 100%; height: auto; display: block; margin: 1rem auto; }}
 hr {{ border: 0; border-top: 1px solid; border-color: var(--vlt-border); }}
 .footnote-definition {{
@@ -865,6 +904,7 @@ hr {{ border: 0; border-top: 1px solid; border-color: var(--vlt-border); }}
         css_color(c.code_bg),
         css_color(c.code_text),
         css_color(c.comment_bg),
+        css_color(c.highlight_bg),
         css_color(c.table_header_bg),
         css_color(c.table_cell_bg),
         css_color(c.border_quote),
@@ -1336,6 +1376,21 @@ mod tests {
 
         assert!(html.contains("x<sup>2</sup>"));
         assert!(html.contains("H<sub>2</sub>O"));
+    }
+
+    #[test]
+    fn exports_highlight_as_mark_tags() {
+        let html = render_html(
+            "a ==marked **bold**== b `==code==` and x == y\n\nTitle\n===",
+            &Theme::default_theme(),
+            "Doc",
+        );
+
+        assert!(html.contains("<mark>marked <strong>bold</strong></mark>"));
+        assert!(html.contains("<code>==code==</code>"));
+        assert!(html.contains("x == y"));
+        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("mark { background-color: var(--vlt-highlight-bg);"));
     }
 
     #[test]

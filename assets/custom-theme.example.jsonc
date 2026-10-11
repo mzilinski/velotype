@@ -33,6 +33,8 @@
       "source_mode_block_bg": null,
       // Background used for visible Markdown comment blocks.
       "comment_bg": null,
+      // Background of ==highlighted== inline text.
+      "highlight_bg": null,
       // Default body text color for paragraphs and regular inline content.
       "text_default": null,
       // Link text color in rendered Markdown and safe HTML content.

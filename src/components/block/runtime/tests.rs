@@ -1003,6 +1003,41 @@ async fn strikethrough_projection_only_expands_touched_span(cx: &mut TestAppCont
 }
 
 #[gpui::test]
+async fn highlight_projection_only_expands_touched_span(cx: &mut TestAppContext) {
+    let block = cx.new(|cx| {
+        Block::with_record(
+            cx,
+            BlockRecord::new(
+                BlockKind::Paragraph,
+                InlineTextTree::from_markdown("a ==mark== b"),
+            ),
+        )
+    });
+
+    block.update(cx, |block, _cx| {
+        block.selected_range = 0..0;
+        block.sync_inline_projection_for_focus(true);
+    });
+    assert_eq!(
+        block.read_with(cx, |block, _cx| block.display_text().to_string()),
+        "a mark b"
+    );
+
+    block.update(cx, |block, _cx| {
+        block.selected_range = 3..3;
+        block.sync_inline_projection_for_focus(true);
+    });
+    assert_eq!(
+        block.read_with(cx, |block, _cx| block.display_text().to_string()),
+        "a ==mark== b"
+    );
+    assert_eq!(
+        block.read_with(cx, |block, _cx| block.record.title.serialize_markdown()),
+        "a ==mark== b"
+    );
+}
+
+#[gpui::test]
 async fn script_projection_expands_only_touched_span(cx: &mut TestAppContext) {
     let block = cx.new(|cx| {
         Block::with_record(
