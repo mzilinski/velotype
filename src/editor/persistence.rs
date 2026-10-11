@@ -80,6 +80,7 @@ impl Editor {
         self.pending_window_title_refresh = true;
         self.pending_close_after_save = false;
         self.close_dialog_restore_focus = None;
+        self.discard_session_draft(cx);
         self.sync_workspace_after_document_path_change(cx);
         cx.notify();
     }
@@ -123,6 +124,7 @@ impl Editor {
         let weak_editor_for_write_error = weak_editor.clone();
         let window_handle = window.window_handle();
         let should_close_after_save = self.pending_close_after_save;
+        let tab_hosted = self.is_tab_hosted();
 
         cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut path = match prompt.await {
@@ -188,12 +190,15 @@ impl Editor {
             let path_for_state = path.clone();
             let _ = weak_editor.update(cx, move |this, cx| {
                 this.apply_successful_save(path_for_state, cx);
+                if should_close_after_save && tab_hosted {
+                    cx.emit(super::EditorTabEvent::CloseConfirmed);
+                }
             });
             let _ = cx.update_window(
                 window_handle,
                 move |_view: AnyView, window: &mut Window, _cx: &mut App| {
                     window.set_window_edited(false);
-                    if should_close_after_save {
+                    if should_close_after_save && !tab_hosted {
                         window.remove_window();
                     }
                 },
@@ -207,7 +212,7 @@ impl Editor {
             let should_close_after_save = self.pending_close_after_save;
             if self.save_to_existing_path(&path, window, cx) {
                 if should_close_after_save {
-                    window.remove_window();
+                    self.finish_confirmed_close(window, cx);
                 }
             } else if should_close_after_save {
                 self.abort_pending_close_after_save(cx);

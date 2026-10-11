@@ -1618,6 +1618,10 @@ impl PreferencesWindow {
             ShortcutCommand::SetHeading4 => Self::heading_shortcut_label(strings, 4),
             ShortcutCommand::SetHeading5 => Self::heading_shortcut_label(strings, 5),
             ShortcutCommand::SetHeading6 => Self::heading_shortcut_label(strings, 6),
+            ShortcutCommand::NewTab => strings.preferences_shortcut_new_tab.clone(),
+            ShortcutCommand::CloseTab => strings.preferences_shortcut_close_tab.clone(),
+            ShortcutCommand::NextTab => strings.preferences_shortcut_next_tab.clone(),
+            ShortcutCommand::PrevTab => strings.preferences_shortcut_prev_tab.clone(),
         }
     }
 

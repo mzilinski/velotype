@@ -87,6 +87,10 @@ actions!(
         FindAndReplace,
         FindNext,
         FindPrevious,
+        NewTab,
+        CloseTab,
+        NextTab,
+        PrevTab,
     ]
 );
 
@@ -202,6 +206,10 @@ pub(crate) enum ShortcutCommand {
     FindAndReplace,
     FindNext,
     FindPrevious,
+    NewTab,
+    CloseTab,
+    NextTab,
+    PrevTab,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -226,11 +234,19 @@ const QUIT_APPLICATION_DEFAULT_KEYS: &[&str] = &["cmd-q"];
 #[cfg(not(target_os = "macos"))]
 const QUIT_APPLICATION_DEFAULT_KEYS: &[&str] = &[];
 
-// On macOS cmd-w closes the current window; no app-level binding needed on other platforms.
+// On macOS cmd-w closes the active tab (closing the window with its last tab), so
+// closing the whole window moves to cmd-shift-w. Other platforms keep ctrl-q.
 #[cfg(target_os = "macos")]
-const CLOSE_WINDOW_DEFAULT_KEYS: &[&str] = &["cmd-w"];
+const CLOSE_WINDOW_DEFAULT_KEYS: &[&str] = &["cmd-shift-w"];
 #[cfg(not(target_os = "macos"))]
 const CLOSE_WINDOW_DEFAULT_KEYS: &[&str] = &["ctrl-q"];
+
+// ctrl-w already toggles the workspace drawer on Windows/Linux, so tabs close with
+// the conventional ctrl-f4 there.
+#[cfg(target_os = "macos")]
+const CLOSE_TAB_DEFAULT_KEYS: &[&str] = &["cmd-w"];
+#[cfg(not(target_os = "macos"))]
+const CLOSE_TAB_DEFAULT_KEYS: &[&str] = &["ctrl-f4"];
 
 const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
     ShortcutDefinition {
@@ -677,6 +693,36 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         default_keys: &["cmd-shift-g", "shift-f3"],
         context: None,
     },
+    ShortcutDefinition {
+        command: ShortcutCommand::NewTab,
+        id: "new_tab",
+        category: ShortcutCategory::File,
+        default_keys: &["cmd-t", "ctrl-t"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::CloseTab,
+        id: "close_tab",
+        category: ShortcutCategory::File,
+        default_keys: CLOSE_TAB_DEFAULT_KEYS,
+        context: None,
+    },
+    // ctrl-tab is taken by the view-mode toggle, so tab cycling uses the
+    // browser-style ctrl-pagedown/pageup and the macOS cmd-shift-] / [ pair.
+    ShortcutDefinition {
+        command: ShortcutCommand::NextTab,
+        id: "next_tab",
+        category: ShortcutCategory::Navigation,
+        default_keys: &["ctrl-pagedown", "cmd-}"],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::PrevTab,
+        id: "prev_tab",
+        category: ShortcutCategory::Navigation,
+        default_keys: &["ctrl-pageup", "cmd-{"],
+        context: None,
+    },
 ];
 
 pub(crate) fn shortcut_definitions() -> &'static [ShortcutDefinition] {
@@ -904,6 +950,10 @@ fn key_binding_for(
         ShortcutCommand::FindAndReplace => KeyBinding::new(key, FindAndReplace, context),
         ShortcutCommand::FindNext => KeyBinding::new(key, FindNext, context),
         ShortcutCommand::FindPrevious => KeyBinding::new(key, FindPrevious, context),
+        ShortcutCommand::NewTab => KeyBinding::new(key, NewTab, context),
+        ShortcutCommand::CloseTab => KeyBinding::new(key, CloseTab, context),
+        ShortcutCommand::NextTab => KeyBinding::new(key, NextTab, context),
+        ShortcutCommand::PrevTab => KeyBinding::new(key, PrevTab, context),
     }
 }
 
@@ -969,6 +1019,35 @@ mod tests {
             resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::ToggleWorkspace),
             vec!["ctrl-w".to_string()]
         );
+    }
+
+    #[test]
+    fn tab_shortcuts_have_defaults_that_do_not_conflict() {
+        let config = BTreeMap::new();
+        assert_eq!(
+            resolved_shortcut_keys(&config, ShortcutCommand::NewTab),
+            vec!["cmd-t".to_string(), "ctrl-t".to_string()]
+        );
+        assert_eq!(
+            resolved_shortcut_keys(&config, ShortcutCommand::NextTab),
+            vec!["ctrl-pagedown".to_string(), "cmd-}".to_string()]
+        );
+        assert_eq!(
+            resolved_shortcut_keys(&config, ShortcutCommand::PrevTab),
+            vec!["ctrl-pageup".to_string(), "cmd-{".to_string()]
+        );
+        for command in [
+            ShortcutCommand::NewTab,
+            ShortcutCommand::CloseTab,
+            ShortcutCommand::NextTab,
+            ShortcutCommand::PrevTab,
+        ] {
+            let keys = resolved_shortcut_keys(&config, command);
+            assert!(
+                shortcut_conflict_for(command, &keys, &config).is_none(),
+                "{command:?} default keys must not collide with another shortcut"
+            );
+        }
     }
 
     #[test]
@@ -1045,6 +1124,10 @@ mod tests {
         {
             assert_eq!(
                 resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::CloseWindow),
+                vec!["cmd-shift-w".to_string()]
+            );
+            assert_eq!(
+                resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::CloseTab),
                 vec!["cmd-w".to_string()]
             );
             assert_eq!(
@@ -1058,6 +1141,10 @@ mod tests {
             assert_eq!(
                 resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::CloseWindow),
                 vec!["ctrl-q".to_string()]
+            );
+            assert_eq!(
+                resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::CloseTab),
+                vec!["ctrl-f4".to_string()]
             );
             assert!(
                 resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::QuitApplication)

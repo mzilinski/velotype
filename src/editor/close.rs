@@ -4,10 +4,14 @@
 //! false and shows an overlay offering three choices: save-and-close,
 //! discard-and-close, or keep editing.  Focus is restored to the
 //! previously active block when the dialog is dismissed without closing.
+//!
+//! A tab-hosted editor reports the outcome to its [`super::EditorWindow`]
+//! instead of removing the window itself, so the host can close just the tab
+//! or continue with the next dirty tab of a closing window.
 
 use gpui::*;
 
-use super::Editor;
+use super::{Editor, EditorTabEvent};
 
 impl Editor {
     pub(crate) fn request_close_current_window(
@@ -18,6 +22,11 @@ impl Editor {
         self.close_menu_bar(cx);
         self.hide_info_dialog(cx);
         self.pending_close_after_save = false;
+
+        if self.is_tab_hosted() {
+            cx.emit(EditorTabEvent::RequestCloseWindow);
+            return;
+        }
 
         if self.on_window_should_close(window, cx) {
             self.close_dialog_restore_focus = None;
@@ -47,6 +56,7 @@ impl Editor {
         self.hide_unsaved_changes_dialog(cx);
         if had_pending_close {
             self.restore_focus_after_close_dialog(cx);
+            self.notify_close_cancelled(cx);
         } else {
             self.close_dialog_restore_focus = None;
         }
@@ -64,7 +74,14 @@ impl Editor {
         self.close_menu_bar(cx);
         self.hide_info_dialog(cx);
         if !self.show_unsaved_changes_dialog {
-            self.close_dialog_restore_focus = self.document.focused_block_entity_id(window, cx);
+            // A focus request still queued for the next frame (e.g. a tab that
+            // was just switched to for this prompt) must not steal focus from
+            // the dialog; it becomes the focus to restore instead.
+            let queued_focus = self.pending_focus.take();
+            self.close_dialog_restore_focus = self
+                .document
+                .focused_block_entity_id(window, cx)
+                .or(queued_focus);
             self.show_unsaved_changes_dialog = true;
             window.blur();
             cx.notify();
@@ -83,6 +100,7 @@ impl Editor {
         self.close_menu_bar(cx);
         self.hide_unsaved_changes_dialog(cx);
         self.restore_focus_after_close_dialog(cx);
+        self.notify_close_cancelled(cx);
     }
 
     pub(crate) fn on_discard_and_close(
@@ -95,7 +113,7 @@ impl Editor {
         self.close_dialog_restore_focus = None;
         self.close_menu_bar(cx);
         self.hide_unsaved_changes_dialog(cx);
-        window.remove_window();
+        self.finish_confirmed_close(window, cx);
     }
 
     pub(crate) fn on_save_and_close(

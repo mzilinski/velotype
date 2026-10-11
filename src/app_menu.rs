@@ -10,18 +10,19 @@ use anyhow::Context as _;
 use gpui::*;
 
 use crate::components::{
-    AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseWindow, ExportHtml, ExportPdf,
-    InstallCliTool, NewWindow, NoRecentFiles, OpenFile, OpenPreferences, OpenRecentFile,
-    QuitApplication, SaveDocument, SaveDocumentAs, SelectLanguage, SelectSpellcheckLanguage,
-    SelectTheme, ShowAbout, ToggleAutoPair, ToggleFocusMode, ToggleReadOnly, ToggleSpellcheck,
-    ToggleTypewriterMode, ToggleWorkspace, UninstallCliTool,
+    AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseTab, CloseWindow, ExportHtml,
+    ExportPdf, InstallCliTool, NewTab, NewWindow, NextTab, NoRecentFiles, OpenFile,
+    OpenPreferences, OpenRecentFile, PrevTab, QuitApplication, SaveDocument, SaveDocumentAs,
+    SelectLanguage, SelectSpellcheckLanguage, SelectTheme, ShowAbout, ToggleAutoPair,
+    ToggleFocusMode, ToggleReadOnly, ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace,
+    UninstallCliTool,
 };
 use crate::config::{
-    apply_configured_language, apply_configured_theme, import_language_config_and_select,
-    import_theme_config_and_select, open_preferences_window, read_recent_files, record_recent_file,
-    remove_recent_file,
+    SessionDrafts, apply_configured_language, apply_configured_theme,
+    import_language_config_and_select, import_theme_config_and_select, open_preferences_window,
+    read_recent_files, record_recent_file, remove_recent_file,
 };
-use crate::editor::{Editor, InfoDialogKind};
+use crate::editor::{Editor, EditorWindow, InfoDialogKind};
 use crate::export::ExportFormat;
 use crate::i18n::I18nManager;
 use crate::theme::ThemeManager;
@@ -54,35 +55,88 @@ fn window_title(file_path: Option<&Path>) -> SharedString {
     }
 }
 
-/// Opens an editor window for the given Markdown content and optional path.
+/// Opens a new editor window whose first tab shows the given Markdown content
+/// and optional path.
 pub(crate) fn open_editor_window(
     cx: &mut App,
     markdown: String,
     file_path: Option<PathBuf>,
-) -> WindowHandle<Editor> {
+) -> WindowHandle<EditorWindow> {
     let bounds = Bounds::centered(None, size(px(1080.), px(720.)), cx);
     let title = window_title(file_path.as_deref());
     let handle = cx
-        .open_window(
-            velotype_window_options(title, bounds),
-            move |_window, cx| cx.new(move |cx| Editor::from_markdown(cx, markdown, file_path)),
-        )
+        .open_window(velotype_window_options(title, bounds), move |window, cx| {
+            let editor = cx.new(move |cx| Editor::from_markdown(cx, markdown, file_path));
+            cx.new(|cx| EditorWindow::new(editor, window, cx))
+        })
         .unwrap();
 
     handle
-        .update(cx, |editor, window, cx| {
+        .update(cx, |host, window, cx| {
             window.activate_window();
-            editor.force_install_close_guard(cx, window);
+            host.force_install_close_guard(window, cx);
         })
         .expect("newly opened editor window should be updateable");
 
     handle
 }
 
-pub(crate) fn open_file_in_new_window(cx: &mut App, path: &Path) -> anyhow::Result<()> {
+/// The editor window that "open" requests should target: the active window
+/// when it is an editor window, otherwise the most recent one.
+fn current_editor_window(cx: &mut App) -> Option<WindowHandle<EditorWindow>> {
+    current_window_candidates(cx)
+        .into_iter()
+        .find_map(|window| window.downcast::<EditorWindow>())
+}
+
+/// Shows the given document in a tab of the current editor window, opening a
+/// new window only when there is none (or it cannot be updated right now).
+pub(crate) fn open_markdown_in_current_window(
+    cx: &mut App,
+    markdown: String,
+    file_path: Option<PathBuf>,
+) {
+    let mut document = Some((markdown, file_path));
+    if let Some(handle) = current_editor_window(cx) {
+        let _ = handle.update(cx, |host, window, cx| {
+            if let Some((markdown, file_path)) = document.take() {
+                window.activate_window();
+                host.open_document(markdown, file_path, window, cx);
+            }
+        });
+    }
+    if let Some((markdown, file_path)) = document {
+        open_editor_window(cx, markdown, file_path);
+    }
+}
+
+/// Reopens the untitled drafts kept when the previous session closed as
+/// unsaved tabs of the current editor window (opening one if needed).
+pub(crate) fn restore_session_drafts(cx: &mut App) {
+    let Some(store) = SessionDrafts::get(cx) else {
+        return;
+    };
+    let drafts = store.take_all();
+    if drafts.is_empty() {
+        return;
+    }
+
+    let handle = match current_editor_window(cx) {
+        Some(handle) => handle,
+        None => open_editor_window(cx, String::new(), None),
+    };
+    let _ = handle.update(cx, |host, window, cx| {
+        for markdown in drafts {
+            host.open_draft(markdown, window, cx);
+        }
+    });
+}
+
+/// Reads `path` and opens it in a tab of the current editor window.
+pub(crate) fn open_file_in_tab(cx: &mut App, path: &Path) -> anyhow::Result<()> {
     let markdown = std::fs::read_to_string(path)
         .with_context(|| format!("failed to read '{}'", path.display()))?;
-    open_editor_window(cx, markdown, Some(path.to_path_buf()));
+    open_markdown_in_current_window(cx, markdown, Some(path.to_path_buf()));
     record_recent_file_and_refresh(path, cx);
     Ok(())
 }
@@ -338,7 +392,25 @@ fn with_active_editor<R>(
     cx: &mut App,
     update: impl FnOnce(&mut Editor, &mut Window, &mut Context<Editor>) -> R,
 ) -> Option<R> {
-    let window = cx.active_window()?.downcast::<Editor>()?;
+    let window = cx.active_window()?;
+    if let Some(host) = window.downcast::<EditorWindow>() {
+        return host
+            .update(cx, |host, window, cx| {
+                host.active_editor()
+                    .clone()
+                    .update(cx, |editor, cx| update(editor, window, cx))
+            })
+            .ok();
+    }
+    let window = window.downcast::<Editor>()?;
+    window.update(cx, update).ok()
+}
+
+fn with_active_editor_window<R>(
+    cx: &mut App,
+    update: impl FnOnce(&mut EditorWindow, &mut Window, &mut Context<EditorWindow>) -> R,
+) -> Option<R> {
+    let window = cx.active_window()?.downcast::<EditorWindow>()?;
     window.update(cx, update).ok()
 }
 
@@ -393,7 +465,7 @@ fn open_recent_file_with_error_window(
         return;
     }
 
-    if let Err(err) = open_file_in_new_window(cx, &path) {
+    if let Err(err) = open_file_in_tab(cx, &path) {
         let title = cx
             .global::<I18nManager>()
             .strings()
@@ -457,6 +529,11 @@ fn current_window_candidates(cx: &mut App) -> Vec<AnyWindowHandle> {
 }
 
 fn request_close_editor_window(window: AnyWindowHandle, cx: &mut App) -> bool {
+    if let Some(host) = window.downcast::<EditorWindow>() {
+        return host
+            .update(cx, |host, window, cx| host.request_close_window(window, cx))
+            .is_ok();
+    }
     let Some(window) = window.downcast::<Editor>() else {
         return false;
     };
@@ -489,16 +566,39 @@ pub(crate) fn request_quit_application(cx: &mut App) {
         return;
     }
 
-    for window in candidates {
-        let Some(window) = window.downcast::<Editor>() else {
+    // Ask for unsaved-changes decisions before any window keeps its drafts,
+    // so an aborted quit never leaves drafts stored for windows still open.
+    for window in &candidates {
+        let Some(host) = window.downcast::<EditorWindow>() else {
             continue;
         };
-
-        let should_close = window
-            .update(cx, |editor, window, cx| {
-                editor.on_window_should_close(window, cx)
-            })
+        let needs_prompt = host
+            .update(cx, |host, _window, cx| host.needs_close_prompt(cx))
             .unwrap_or(false);
+        if needs_prompt {
+            let _ = host.update(cx, |host, window, cx| {
+                window.activate_window();
+                host.on_window_should_close(window, cx)
+            });
+            return;
+        }
+    }
+
+    for window in candidates {
+        let should_close = if let Some(host) = window.downcast::<EditorWindow>() {
+            host.update(cx, |host, window, cx| {
+                host.on_window_should_close(window, cx)
+            })
+            .unwrap_or(false)
+        } else if let Some(window) = window.downcast::<Editor>() {
+            window
+                .update(cx, |editor, window, cx| {
+                    editor.on_window_should_close(window, cx)
+                })
+                .unwrap_or(false)
+        } else {
+            continue;
+        };
         if !should_close {
             return;
         }
@@ -600,6 +700,22 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         request_quit_application(cx);
     } else if action.as_any().is::<CloseWindow>() {
         request_close_current_editor_window(cx);
+    } else if action.as_any().is::<NewTab>() {
+        if with_active_editor_window(cx, |host, window, cx| host.new_tab(window, cx)).is_none() {
+            open_markdown_in_current_window(cx, String::new(), None);
+        }
+    } else if action.as_any().is::<CloseTab>() {
+        let _ = with_active_editor_window(cx, |host, window, cx| {
+            host.request_close_tab(host.active_index(), window, cx);
+        });
+    } else if action.as_any().is::<NextTab>() {
+        let _ = with_active_editor_window(cx, |host, window, cx| {
+            host.activate_next_tab(window, cx);
+        });
+    } else if action.as_any().is::<PrevTab>() {
+        let _ = with_active_editor_window(cx, |host, window, cx| {
+            host.activate_previous_tab(window, cx);
+        });
     }
 }
 
@@ -629,7 +745,10 @@ pub(crate) fn dispatch_menu_action_for_editor(
     } else if action.as_any().is::<OpenPreferences>() {
         open_preferences_window(cx);
     } else if let Some(action) = action.as_any().downcast_ref::<OpenRecentFile>() {
-        open_recent_file_with_error_window(cx, PathBuf::from(&action.path), current_window);
+        // The file opens as a tab of this window, which is mid-update while the
+        // in-window menu click is dispatched; finish that update first.
+        let path = PathBuf::from(&action.path);
+        cx.defer(move |cx| open_recent_file_with_error_window(cx, path, current_window));
     } else if action.as_any().is::<NoRecentFiles>() {
     } else if action.as_any().is::<AddLanguageConfig>() {
         prompt_and_import_language_config_with_error_window(cx, current_window);
@@ -774,6 +893,9 @@ fn build_menus(
                         items: recent_items,
                     }),
                     MenuItem::separator(),
+                    MenuItem::action(strings.menu_new_tab.clone(), NewTab),
+                    MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
+                    MenuItem::separator(),
                     MenuItem::action(strings.menu_save.clone(), SaveDocument),
                     MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
                 ],
@@ -794,6 +916,9 @@ fn build_menus(
                     items: recent_items,
                 }),
                 MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
+                MenuItem::separator(),
+                MenuItem::action(strings.menu_new_tab.clone(), NewTab),
+                MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_save.clone(), SaveDocument),
                 MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
@@ -951,7 +1076,7 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
         Ok(Ok(Some(paths))) => {
             let _ = cx.update(move |cx| {
                 for path in paths {
-                    if let Err(err) = open_file_in_new_window(cx, &path) {
+                    if let Err(err) = open_file_in_tab(cx, &path) {
                         let title = cx
                             .global::<I18nManager>()
                             .strings()
@@ -1169,6 +1294,18 @@ pub(crate) fn init(cx: &mut App) {
     });
     cx.on_action(|_: &CloseWindow, cx| {
         dispatch_menu_action(&CloseWindow, cx);
+    });
+    cx.on_action(|_: &NewTab, cx| {
+        dispatch_menu_action(&NewTab, cx);
+    });
+    cx.on_action(|_: &CloseTab, cx| {
+        dispatch_menu_action(&CloseTab, cx);
+    });
+    cx.on_action(|_: &NextTab, cx| {
+        dispatch_menu_action(&NextTab, cx);
+    });
+    cx.on_action(|_: &PrevTab, cx| {
+        dispatch_menu_action(&PrevTab, cx);
     });
 
     install_menus(cx);

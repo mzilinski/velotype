@@ -1,7 +1,7 @@
 //! Velotype - a block-based Markdown editor built with GPUI.
 //!
-//! Reads file paths from command-line arguments and opens one GPUI window per
-//! file. With no arguments, a single empty window is created.
+//! Reads file paths from command-line arguments and opens them as tabs of one
+//! GPUI window. With no arguments, a single empty window is created.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -42,6 +42,11 @@ use theme::ThemeManager;
 struct VelotypeAssets;
 
 fn open_startup_window(cx: &mut App, startup_open: config::StartupOpenPreference) {
+    open_startup_document(cx, startup_open);
+    app_menu::restore_session_drafts(cx);
+}
+
+fn open_startup_document(cx: &mut App, startup_open: config::StartupOpenPreference) {
     if startup_open == config::StartupOpenPreference::LastOpenedFile
         && let Some(path) = config::first_existing_recent_markdown_file()
     {
@@ -197,6 +202,7 @@ fn main() {
         let spellcheck_language = Some(preferences.writing.spellcheck_language.as_str())
             .filter(|language| !language.is_empty());
         spellcheck::SpellChecker::init(cx, spellcheck_language);
+        config::SessionDrafts::init(cx);
         net::install_http_client(cx);
         init_editor(cx, &preferences.keybindings);
         init_app_menu(cx);
@@ -205,7 +211,7 @@ fn main() {
         cx.spawn(async move |cx| {
             while let Some(path) = open_file_rx.next().await {
                 let _ = cx.update(move |cx| {
-                    if let Err(err) = app_menu::open_file_in_new_window(cx, &path) {
+                    if let Err(err) = app_menu::open_file_in_tab(cx, &path) {
                         eprintln!("failed to open '{}': {err}", path.display());
                     }
                 });
@@ -235,6 +241,7 @@ fn main() {
             return;
         }
 
+        let mut startup_window: Option<WindowHandle<editor::EditorWindow>> = None;
         for path in &input_paths {
             let absolute_path = if path.is_absolute() {
                 path.clone()
@@ -260,8 +267,18 @@ fn main() {
                     String::new()
                 }
             };
-            open_editor_window(cx, markdown, Some(absolute_path));
+            match startup_window {
+                Some(handle) => {
+                    let _ = handle.update(cx, |host, window, cx| {
+                        host.open_document(markdown, Some(absolute_path), window, cx);
+                    });
+                }
+                None => {
+                    startup_window = Some(open_editor_window(cx, markdown, Some(absolute_path)))
+                }
+            }
         }
+        app_menu::restore_session_drafts(cx);
         app_menu::install_menus(cx);
         cx.refresh_windows();
     });

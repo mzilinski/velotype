@@ -1,4 +1,8 @@
-//! External Markdown file drops for replacing the current editor window.
+//! External Markdown file drops.
+//!
+//! A tab-hosted editor asks its window to open every dropped Markdown file in a
+//! tab. A standalone editor replaces its document, prompting first when it has
+//! unsaved changes.
 
 use std::path::{Path, PathBuf};
 
@@ -31,6 +35,29 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.is_tab_hosted() {
+            let markdown_paths: Vec<PathBuf> = paths
+                .paths()
+                .iter()
+                .filter(|path| Self::is_markdown_file_path(path))
+                .cloned()
+                .collect();
+            if markdown_paths.is_empty() {
+                let strings = cx.global::<I18nManager>().strings().clone();
+                self.show_drop_open_failed_prompt(
+                    strings.drop_no_markdown_file_message,
+                    window,
+                    cx,
+                );
+            } else {
+                cx.emit(super::EditorTabEvent::OpenPaths {
+                    paths: markdown_paths,
+                    open_workspace: false,
+                });
+            }
+            return;
+        }
+
         let Some(path) = Self::first_dropped_markdown_path(paths.paths()) else {
             let strings = cx.global::<I18nManager>().strings().clone();
             self.show_drop_open_failed_prompt(strings.drop_no_markdown_file_message, window, cx);

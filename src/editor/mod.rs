@@ -1,9 +1,10 @@
 //! Top-level editor controller and window state.
 //!
-//! [`Editor`] owns window-level concerns such as view mode, save/close flow,
-//! scroll state, and focus deferral. The runtime block tree itself lives in
-//! [`DocumentTree`], which centralizes structural mutations and cached visible
-//! order metadata.
+//! [`Editor`] owns per-document concerns such as view mode, save/close flow,
+//! scroll state, and focus deferral. Each window is rooted in an
+//! [`EditorWindow`] that shows one editor per tab (see `tabs`). The runtime
+//! block tree itself lives in [`DocumentTree`], which centralizes structural
+//! mutations and cached visible order metadata.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -39,6 +40,7 @@ mod source_mapping;
 mod spelling;
 mod status_bar;
 mod table_edit;
+mod tabs;
 #[cfg(test)]
 mod tests;
 mod tree;
@@ -48,6 +50,8 @@ mod workspace;
 mod writing;
 
 use self::status_bar::StatusBarState;
+pub(crate) use self::tabs::EditorTabEvent;
+pub use self::tabs::EditorWindow;
 use self::workspace::WorkspaceState;
 
 /// Link navigation request deferred until a `Window` is available.
@@ -156,6 +160,12 @@ pub struct Editor {
     image_reference_definitions: Arc<ImageReferenceDefinitions>,
     link_reference_definitions: Arc<LinkReferenceDefinitions>,
     footnote_registry: Arc<FootnoteRegistry>,
+    /// Window that shows this editor as one of its tabs. `None` for a
+    /// standalone editor that owns its window directly.
+    tab_host: Option<WeakEntity<EditorWindow>>,
+    /// Id of this untitled document in the session draft store, once it has
+    /// been kept there while its window closed.
+    draft_id: Option<String>,
 }
 
 /// Runtime binding between a table block and one cell editor.
@@ -386,6 +396,8 @@ impl Editor {
             image_reference_definitions: Arc::default(),
             link_reference_definitions: Arc::default(),
             footnote_registry: Arc::default(),
+            tab_host: None,
+            draft_id: None,
         };
         editor.rebuild_table_runtimes(cx);
         editor.rebuild_image_runtimes(cx);

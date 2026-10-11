@@ -797,7 +797,7 @@ async fn app_menu_opened_windows_activate_and_close_independently(cx: &mut TestA
 
     assert!(
         second_window
-            .update(cx, |editor, _window, _cx| editor.close_guard_installed)
+            .update(cx, |host, _window, _cx| host.close_guard_installed)
             .expect("second editor window should be open")
     );
 
@@ -844,9 +844,9 @@ async fn app_menu_opened_file_window_reinstalls_close_guard_after_registration(
     assert_ne!(first_window.window_id(), second_window.window_id());
 
     second_window
-        .update(cx, |editor, window, cx| {
-            assert!(editor.close_guard_installed);
-            assert!(editor.on_window_should_close(window, cx));
+        .update(cx, |host, window, cx| {
+            assert!(host.close_guard_installed);
+            assert!(host.on_window_should_close(window, cx));
         })
         .expect("second editor window should be open");
 
@@ -882,20 +882,22 @@ async fn app_menu_opened_dirty_file_window_prompts_only_that_window(cx: &mut Tes
     cx.run_until_parked();
 
     second_window
-        .update(cx, |editor, window, cx| {
-            editor.mark_dirty(cx);
-            assert!(!editor.on_window_should_close(window, cx));
+        .update(cx, |host, window, cx| {
+            host.active_editor()
+                .clone()
+                .update(cx, |editor, cx| editor.mark_dirty(cx));
+            assert!(!host.on_window_should_close(window, cx));
         })
         .expect("second editor window should be open");
 
     first_window
-        .update(cx, |editor, _window, _cx| {
-            assert!(!editor.show_unsaved_changes_dialog);
+        .update(cx, |host, _window, cx| {
+            assert!(!host.active_editor().read(cx).show_unsaved_changes_dialog);
         })
         .expect("first editor window should be open");
     second_window
-        .update(cx, |editor, _window, _cx| {
-            assert!(editor.show_unsaved_changes_dialog);
+        .update(cx, |host, _window, cx| {
+            assert!(host.active_editor().read(cx).show_unsaved_changes_dialog);
         })
         .expect("second editor window should be open");
 
@@ -915,20 +917,22 @@ async fn app_menu_opened_dirty_window_close_guard_prompts_only_that_window(
     cx.run_until_parked();
 
     second_window
-        .update(cx, |editor, window, cx| {
-            editor.mark_dirty(cx);
-            assert!(!editor.on_window_should_close(window, cx));
+        .update(cx, |host, window, cx| {
+            host.active_editor()
+                .clone()
+                .update(cx, |editor, cx| editor.mark_dirty(cx));
+            assert!(!host.on_window_should_close(window, cx));
         })
         .expect("second editor window should be open");
 
     first_window
-        .update(cx, |editor, _window, _cx| {
-            assert!(!editor.show_unsaved_changes_dialog);
+        .update(cx, |host, _window, cx| {
+            assert!(!host.active_editor().read(cx).show_unsaved_changes_dialog);
         })
         .expect("first editor window should be open");
     second_window
-        .update(cx, |editor, _window, _cx| {
-            assert!(editor.show_unsaved_changes_dialog);
+        .update(cx, |host, _window, cx| {
+            assert!(host.active_editor().read(cx).show_unsaved_changes_dialog);
         })
         .expect("second editor window should be open");
 }

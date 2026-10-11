@@ -368,7 +368,8 @@ impl Editor {
     }
 
     pub(crate) fn install_close_guard(&mut self, cx: &mut Context<Self>, window: &mut Window) {
-        if self.close_guard_installed {
+        // A tab host owns the single should-close guard of its window.
+        if self.close_guard_installed || self.is_tab_hosted() {
             return;
         }
 
@@ -2116,13 +2117,20 @@ impl Render for Editor {
         } else {
             base
         };
+        let tab_strip =
+            self.render_tab_strip(&theme, &strings, titlebar_height + menu_bar_height, cx);
+        let tab_strip_height = if tab_strip.is_some() {
+            super::tabs::TAB_STRIP_HEIGHT
+        } else {
+            0.0
+        };
         let workspace_width =
             workspace_panel_width_for_viewport(f32::from(window.viewport_size().width));
         let main_content = div()
             .w_full()
             .flex_1()
             .min_h(px(0.0))
-            .pt(px(titlebar_height + menu_bar_height))
+            .pt(px(titlebar_height + menu_bar_height + tab_strip_height))
             .flex()
             .min_w(px(0.0));
         let main_content = if let Some(workspace_panel) =
@@ -2133,6 +2141,11 @@ impl Render for Editor {
             main_content
         };
         let base = base.child(main_content.child(content_area));
+        let base = if let Some(tab_strip) = tab_strip {
+            base.child(tab_strip)
+        } else {
+            base
+        };
         let base = if let Some(status_bar) = self.render_status_bar(&theme, &strings, window, cx) {
             base.child(status_bar)
         } else {
