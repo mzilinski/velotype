@@ -1494,6 +1494,10 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleWorkspace => {
                 strings.preferences_shortcut_toggle_workspace.clone()
             }
+            ShortcutCommand::NewTab => strings.preferences_shortcut_new_tab.clone(),
+            ShortcutCommand::CloseTab => strings.preferences_shortcut_close_tab.clone(),
+            ShortcutCommand::NextTab => strings.preferences_shortcut_next_tab.clone(),
+            ShortcutCommand::PrevTab => strings.preferences_shortcut_prev_tab.clone(),
         }
     }
 

@@ -93,6 +93,12 @@ pub struct I18nStrings {
     pub menu_new_window: String,
     /// File menu item for closing the current window.
     pub menu_close_window: String,
+    /// File menu item for opening a new tab in the current window.
+    pub menu_new_tab: String,
+    /// File menu item for closing the active tab.
+    pub menu_close_tab: String,
+    /// Tab label used for documents that have not been saved to a file yet.
+    pub tab_untitled: String,
     /// File menu item for opening Markdown files.
     pub menu_open_file: String,
     /// File menu item for opening a recent file submenu.
@@ -236,6 +242,10 @@ pub struct I18nStrings {
     pub preferences_shortcut_dismiss_transient_ui: String,
     pub preferences_shortcut_toggle_view_mode: String,
     pub preferences_shortcut_toggle_workspace: String,
+    pub preferences_shortcut_new_tab: String,
+    pub preferences_shortcut_close_tab: String,
+    pub preferences_shortcut_next_tab: String,
+    pub preferences_shortcut_prev_tab: String,
     /// Workspace drawer Files tab.
     pub workspace_tab_files: String,
     /// Workspace drawer Outline tab.
@@ -370,6 +380,9 @@ struct I18nStringsDe {
     menu_add_theme_config: Option<String>,
     menu_new_window: Option<String>,
     menu_close_window: Option<String>,
+    menu_new_tab: Option<String>,
+    menu_close_tab: Option<String>,
+    tab_untitled: Option<String>,
     menu_open_file: Option<String>,
     menu_open_recent_file: Option<String>,
     menu_preferences: Option<String>,
@@ -476,6 +489,10 @@ struct I18nStringsDe {
     preferences_shortcut_dismiss_transient_ui: Option<String>,
     preferences_shortcut_toggle_view_mode: Option<String>,
     preferences_shortcut_toggle_workspace: Option<String>,
+    preferences_shortcut_new_tab: Option<String>,
+    preferences_shortcut_close_tab: Option<String>,
+    preferences_shortcut_next_tab: Option<String>,
+    preferences_shortcut_prev_tab: Option<String>,
     workspace_tab_files: Option<String>,
     workspace_tab_outline: Option<String>,
     workspace_no_file_title: Option<String>,
@@ -562,6 +579,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "menu_add_theme_config",
     "menu_new_window",
     "menu_close_window",
+    "menu_new_tab",
+    "menu_close_tab",
+    "tab_untitled",
     "menu_open_file",
     "menu_open_recent_file",
     "menu_preferences",
@@ -668,6 +688,10 @@ const I18N_STRING_KEYS: &[&str] = &[
     "preferences_shortcut_dismiss_transient_ui",
     "preferences_shortcut_toggle_view_mode",
     "preferences_shortcut_toggle_workspace",
+    "preferences_shortcut_new_tab",
+    "preferences_shortcut_close_tab",
+    "preferences_shortcut_next_tab",
+    "preferences_shortcut_prev_tab",
     "workspace_tab_files",
     "workspace_tab_outline",
     "workspace_no_file_title",
@@ -808,6 +832,9 @@ impl I18nStringsDe {
                 .unwrap_or(defaults.menu_add_theme_config),
             menu_new_window: self.menu_new_window.unwrap_or(defaults.menu_new_window),
             menu_close_window: self.menu_close_window.unwrap_or(defaults.menu_close_window),
+            menu_new_tab: self.menu_new_tab.unwrap_or(defaults.menu_new_tab),
+            menu_close_tab: self.menu_close_tab.unwrap_or(defaults.menu_close_tab),
+            tab_untitled: self.tab_untitled.unwrap_or(defaults.tab_untitled),
             menu_open_file: self.menu_open_file.unwrap_or(defaults.menu_open_file),
             menu_open_recent_file: self
                 .menu_open_recent_file
@@ -1104,6 +1131,18 @@ impl I18nStringsDe {
             preferences_shortcut_toggle_workspace: self
                 .preferences_shortcut_toggle_workspace
                 .unwrap_or(defaults.preferences_shortcut_toggle_workspace),
+            preferences_shortcut_new_tab: self
+                .preferences_shortcut_new_tab
+                .unwrap_or(defaults.preferences_shortcut_new_tab),
+            preferences_shortcut_close_tab: self
+                .preferences_shortcut_close_tab
+                .unwrap_or(defaults.preferences_shortcut_close_tab),
+            preferences_shortcut_next_tab: self
+                .preferences_shortcut_next_tab
+                .unwrap_or(defaults.preferences_shortcut_next_tab),
+            preferences_shortcut_prev_tab: self
+                .preferences_shortcut_prev_tab
+                .unwrap_or(defaults.preferences_shortcut_prev_tab),
             workspace_tab_files: self
                 .workspace_tab_files
                 .unwrap_or(defaults.workspace_tab_files),
@@ -1286,6 +1325,9 @@ impl I18nStrings {
             menu_add_theme_config: "添加主题配置".into(),
             menu_new_window: "新建窗口".into(),
             menu_close_window: "关闭窗口".into(),
+            menu_new_tab: "新建标签页".into(),
+            menu_close_tab: "关闭标签页".into(),
+            tab_untitled: "未命名".into(),
             menu_open_file: "打开文件".into(),
             menu_open_recent_file: "打开最近文件".into(),
             menu_preferences: "偏好设置".into(),
@@ -1386,6 +1428,10 @@ impl I18nStrings {
             preferences_shortcut_dismiss_transient_ui: "关闭临时界面".into(),
             preferences_shortcut_toggle_view_mode: "切换视图模式".into(),
             preferences_shortcut_toggle_workspace: "切换工作区".into(),
+            preferences_shortcut_new_tab: "新建标签页".into(),
+            preferences_shortcut_close_tab: "关闭标签页".into(),
+            preferences_shortcut_next_tab: "下一个标签页".into(),
+            preferences_shortcut_prev_tab: "上一个标签页".into(),
             workspace_tab_files: "文件".into(),
             workspace_tab_outline: "大纲".into(),
             workspace_no_file_title: "未打开 Markdown 文件".into(),
@@ -1496,6 +1542,9 @@ impl I18nStrings {
             menu_add_theme_config: "Add Theme Config".into(),
             menu_new_window: "New Window".into(),
             menu_close_window: "Close Window".into(),
+            menu_new_tab: "New Tab".into(),
+            menu_close_tab: "Close Tab".into(),
+            tab_untitled: "Untitled".into(),
             menu_open_file: "Open File".into(),
             menu_open_recent_file: "Open Recent File".into(),
             menu_preferences: "Preferences".into(),
@@ -1607,6 +1656,10 @@ impl I18nStrings {
             preferences_shortcut_dismiss_transient_ui: "Dismiss Temporary UI".into(),
             preferences_shortcut_toggle_view_mode: "Toggle View Mode".into(),
             preferences_shortcut_toggle_workspace: "Toggle Workspace".into(),
+            preferences_shortcut_new_tab: "New Tab".into(),
+            preferences_shortcut_close_tab: "Close Tab".into(),
+            preferences_shortcut_next_tab: "Next Tab".into(),
+            preferences_shortcut_prev_tab: "Previous Tab".into(),
             workspace_tab_files: "Files".into(),
             workspace_tab_outline: "Outline".into(),
             workspace_no_file_title: "No Markdown File Open".into(),
