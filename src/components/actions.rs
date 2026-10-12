@@ -776,14 +776,14 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         command: ShortcutCommand::IncreaseHeadingLevel,
         id: "increase_heading_level",
         category: ShortcutCategory::Block,
-        default_keys: &["cmd-=", "ctrl-="],
+        default_keys: &["alt-shift-up", "cmd-alt-up"],
         context: BLOCK_CONTEXT,
     },
     ShortcutDefinition {
         command: ShortcutCommand::DecreaseHeadingLevel,
         id: "decrease_heading_level",
         category: ShortcutCategory::Block,
-        default_keys: &["cmd--", "ctrl--"],
+        default_keys: &["alt-shift-down", "cmd-alt-down"],
         context: BLOCK_CONTEXT,
     },
     ShortcutDefinition {
@@ -1119,14 +1119,28 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         command: ShortcutCommand::ZoomIn,
         id: "zoom_in",
         category: ShortcutCategory::Navigation,
-        default_keys: &["cmd-shift-=", "ctrl-shift-=", "cmd-+", "ctrl-+"],
+        default_keys: &[
+            "cmd-+",
+            "ctrl-+",
+            "cmd-=",
+            "ctrl-=",
+            "cmd-shift-=",
+            "ctrl-shift-=",
+        ],
         context: None,
     },
     ShortcutDefinition {
         command: ShortcutCommand::ZoomOut,
         id: "zoom_out",
         category: ShortcutCategory::Navigation,
-        default_keys: &["cmd-shift--", "ctrl-shift--", "cmd-_", "ctrl-_"],
+        default_keys: &[
+            "cmd--",
+            "ctrl--",
+            "cmd-_",
+            "ctrl-_",
+            "cmd-shift--",
+            "ctrl-shift--",
+        ],
         context: None,
     },
     ShortcutDefinition {
@@ -1224,7 +1238,7 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         command: ShortcutCommand::ToggleViewMode,
         id: "toggle_view_mode",
         category: ShortcutCategory::Navigation,
-        default_keys: &["ctrl-tab", "cmd-tab"],
+        default_keys: &["cmd-/", "ctrl-/"],
         context: None,
     },
     ShortcutDefinition {
@@ -1276,20 +1290,20 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         default_keys: CLOSE_TAB_DEFAULT_KEYS,
         context: None,
     },
-    // ctrl-tab is taken by the view-mode toggle, so tab cycling uses the
-    // browser-style ctrl-pagedown/pageup and the macOS cmd-shift-] / [ pair.
+    // Like browsers and Typora: ctrl-tab cycles tabs (ctrl-pagedown/pageup
+    // and the macOS cmd-shift-] / [ pair work too).
     ShortcutDefinition {
         command: ShortcutCommand::NextTab,
         id: "next_tab",
         category: ShortcutCategory::Navigation,
-        default_keys: &["ctrl-pagedown", "cmd-}"],
+        default_keys: &["ctrl-tab", "ctrl-pagedown", "cmd-}"],
         context: None,
     },
     ShortcutDefinition {
         command: ShortcutCommand::PrevTab,
         id: "prev_tab",
         category: ShortcutCategory::Navigation,
-        default_keys: &["ctrl-pageup", "cmd-{"],
+        default_keys: &["ctrl-shift-tab", "ctrl-pageup", "cmd-{"],
         context: None,
     },
 ];
@@ -1651,8 +1665,36 @@ mod tests {
     fn toggle_view_mode_has_default_shortcuts() {
         assert_eq!(
             resolved_shortcut_keys(&BTreeMap::new(), ShortcutCommand::ToggleViewMode),
-            vec!["ctrl-tab".to_string(), "cmd-tab".to_string()]
+            vec!["cmd-/".to_string(), "ctrl-/".to_string()]
         );
+    }
+
+    #[test]
+    fn zoom_heading_and_view_shortcuts_do_not_conflict() {
+        let config = BTreeMap::new();
+        assert!(
+            resolved_shortcut_keys(&config, ShortcutCommand::ZoomOut)
+                .contains(&"ctrl--".to_string())
+        );
+        assert!(
+            resolved_shortcut_keys(&config, ShortcutCommand::ZoomIn)
+                .contains(&"ctrl-+".to_string())
+        );
+        for command in [
+            ShortcutCommand::ZoomIn,
+            ShortcutCommand::ZoomOut,
+            ShortcutCommand::ResetZoom,
+            ShortcutCommand::ToggleViewMode,
+            ShortcutCommand::IncreaseHeadingLevel,
+            ShortcutCommand::DecreaseHeadingLevel,
+            ShortcutCommand::SetParagraph,
+        ] {
+            let keys = resolved_shortcut_keys(&config, command);
+            assert!(
+                shortcut_conflict_for(command, &keys, &config).is_none(),
+                "{command:?} default keys must not collide with another shortcut"
+            );
+        }
     }
 
     #[test]
@@ -1672,11 +1714,19 @@ mod tests {
         );
         assert_eq!(
             resolved_shortcut_keys(&config, ShortcutCommand::NextTab),
-            vec!["ctrl-pagedown".to_string(), "cmd-}".to_string()]
+            vec![
+                "ctrl-tab".to_string(),
+                "ctrl-pagedown".to_string(),
+                "cmd-}".to_string()
+            ]
         );
         assert_eq!(
             resolved_shortcut_keys(&config, ShortcutCommand::PrevTab),
-            vec!["ctrl-pageup".to_string(), "cmd-{".to_string()]
+            vec![
+                "ctrl-shift-tab".to_string(),
+                "ctrl-pageup".to_string(),
+                "cmd-{".to_string()
+            ]
         );
         for command in [
             ShortcutCommand::NewTab,

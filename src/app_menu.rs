@@ -1114,6 +1114,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
     any.is::<crate::components::OpenEmojiPicker>()
+        || any.is::<crate::components::ToggleViewMode>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
@@ -1280,6 +1281,8 @@ struct ViewMenuState {
     always_on_top: bool,
     /// Line endings of the active document.
     crlf: bool,
+    /// The active document shows its Markdown source.
+    source_mode: bool,
 }
 
 impl Default for ViewMenuState {
@@ -1288,6 +1291,7 @@ impl Default for ViewMenuState {
             status_bar: true,
             always_on_top: false,
             crlf: false,
+            source_mode: false,
         }
     }
 }
@@ -1580,6 +1584,11 @@ fn build_menus_with_view(
                 };
                 vec![
                     MenuItem::action(
+                        checked(&strings.menu_source_mode, view.source_mode),
+                        crate::components::ToggleViewMode,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
                         checked(&strings.menu_focus_mode, writing.focus_mode),
                         ToggleFocusMode,
                     ),
@@ -1665,6 +1674,7 @@ pub(crate) fn install_menus(cx: &mut App) {
         status_bar: crate::config::EditorSettings::status_bar_preferences(cx).enabled,
         always_on_top: crate::window_pin::AlwaysOnTop::enabled(cx),
         crlf: crate::editor::menu_line_ending_is_crlf(cx),
+        source_mode: crate::editor::menu_source_mode(cx),
     };
     let menus = build_menus_with_view(
         cx.global::<ThemeManager>(),
@@ -2035,6 +2045,7 @@ mod tests {
             status_bar: false,
             always_on_top: true,
             crlf: true,
+            source_mode: true,
         };
         let menus =
             super::build_menus_with_view(&theme_manager, &i18n_manager, &[], writing, &[], view);
@@ -2050,6 +2061,7 @@ mod tests {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        assert!(names.contains(&"✓ Source Code Mode".to_string()));
         assert!(names.contains(&"Status Bar".to_string()));
         assert!(names.contains(&"Toggle Fullscreen".to_string()));
         assert!(names.contains(&"Actual Size (125 %)".to_string()));
