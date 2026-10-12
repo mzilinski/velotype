@@ -37,6 +37,8 @@ impl ExportFormat {
     }
 }
 
+#[cfg(test)]
+pub(crate) use html::render_html;
 pub(crate) use html::{render_html_with_base_dir_and_fonts, render_html_without_styles};
 
 pub(crate) fn render_pdf_with_fonts(

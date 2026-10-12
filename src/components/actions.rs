@@ -126,6 +126,7 @@ actions!(
         ImportWithPandoc,
         AddLanguageConfig,
         AddThemeConfig,
+        OpenThemeFolder,
         ToggleFollowSystemAppearance,
         QuitApplication,
         CloseWindow,

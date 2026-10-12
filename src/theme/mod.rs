@@ -3,5 +3,6 @@
 //! Themes are JSON-serializable so editor colors, spacing, and typography can
 //! be swapped without changing the runtime logic.
 
+pub(crate) mod css_theme;
 mod theme;
 pub use theme::*;

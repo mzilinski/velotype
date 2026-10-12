@@ -91,7 +91,7 @@ fn render_html_document(
     let body = render_browser_html_body(markdown, theme, base_dir);
 
     format!(
-        "<!doctype html>\n<html lang=\"{}\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{}</title>\n<style>\n{}\n</style>\n</head>\n<body>\n<main class=\"vlt-document\">\n{}</main>\n</body>\n</html>\n",
+        "<!doctype html>\n<html lang=\"{}\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{}</title>\n<style>\n{}\n</style>\n</head>\n<body>\n<main class=\"vlt-document\" id=\"write\">\n{}</main>\n</body>\n</html>\n",
         document_lang,
         escape_html(title),
         css,
@@ -1051,6 +1051,15 @@ fn collect_display_math_region(lines: &[&str], start: usize) -> usize {
 }
 
 fn theme_css(theme: &Theme, fonts: &FontSettings) -> String {
+    let css = velotype_theme_css(theme, fonts);
+    match &theme.css {
+        // A Typora theme: its own style sheet after Velotype's base styles.
+        Some(typora) => format!("{css}\n/* Typora theme: {} */\n{typora}\n", theme.name),
+        None => css,
+    }
+}
+
+fn velotype_theme_css(theme: &Theme, fonts: &FontSettings) -> String {
     let c = &theme.colors;
     let d = &theme.dimensions;
     let t = &theme.typography;
@@ -1436,7 +1445,7 @@ mod tests {
         assert!(html.contains("<title>Doc</title>"));
         assert!(html.contains("<style>"));
         assert!(html.contains("--vlt-bg:"));
-        assert!(html.contains("<main class=\"vlt-document\">"));
+        assert!(html.contains("<main class=\"vlt-document\" id=\"write\">"));
         assert!(html.contains("<h1 id=\"title\">Title</h1>"));
         assert!(html.contains("<p>text</p>"));
     }

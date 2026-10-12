@@ -663,6 +663,17 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         prompt_and_import_language_config(cx);
     } else if action.as_any().is::<AddThemeConfig>() {
         prompt_and_import_theme_config(cx);
+    } else if action.as_any().is::<crate::components::OpenThemeFolder>() {
+        // Typora CSS themes and Velotype JSON themes placed here are listed in
+        // the Theme menu after a restart (or right away when imported).
+        match crate::config::VelotypeConfigDirs::from_system() {
+            Ok(dirs) => {
+                let dir = dirs.themes_dir();
+                let _ = std::fs::create_dir_all(&dir);
+                cx.open_with_system(&dir);
+            }
+            Err(err) => eprintln!("failed to locate the theme folder: {err}"),
+        }
     } else if action.as_any().is::<SaveDocument>() {
         let _ = with_active_editor(cx, |editor, window, cx| editor.save_document(window, cx));
     } else if action.as_any().is::<SaveDocumentAs>() {
@@ -1421,6 +1432,10 @@ fn build_menus_with_view(
         strings.menu_add_theme_config.clone(),
         AddThemeConfig,
     ));
+    theme_items.push(MenuItem::action(
+        strings.menu_open_theme_folder.clone(),
+        crate::components::OpenThemeFolder,
+    ));
 
     let mut language_items = i18n_manager
         .available_languages()
@@ -2071,6 +2086,9 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &crate::components::ToggleToolbar, cx| {
         dispatch_menu_action(&crate::components::ToggleToolbar, cx)
     });
+    cx.on_action(|_: &crate::components::OpenThemeFolder, cx| {
+        dispatch_menu_action(&crate::components::OpenThemeFolder, cx)
+    });
     cx.on_action(|_: &ToggleSmartQuotes, cx| dispatch_menu_action(&ToggleSmartQuotes, cx));
     cx.on_action(|_: &ToggleSmartDashes, cx| dispatch_menu_action(&ToggleSmartDashes, cx));
     cx.on_action(|_: &ToggleFocusMode, cx| dispatch_menu_action(&ToggleFocusMode, cx));
@@ -2570,16 +2588,20 @@ mod tests {
         assert_eq!(action_name(&theme_items[0]), "\u{2713} Velotype");
         assert_eq!(action_name(&theme_items[1]), "Velotype Light");
         assert!(matches!(
-            theme_items[theme_items.len() - 3],
+            theme_items[theme_items.len() - 4],
             MenuItem::Separator
         ));
         assert_eq!(
-            action_name(&theme_items[theme_items.len() - 2]),
+            action_name(&theme_items[theme_items.len() - 3]),
             "Follow System Appearance"
         );
         assert_eq!(
-            action_name(&theme_items[theme_items.len() - 1]),
+            action_name(&theme_items[theme_items.len() - 2]),
             "Add Theme Config"
+        );
+        assert_eq!(
+            action_name(&theme_items[theme_items.len() - 1]),
+            "Open Theme Folder"
         );
         match &theme_items[0] {
             MenuItem::Action { action, .. } => {
@@ -2587,7 +2609,7 @@ mod tests {
             }
             _ => panic!("expected select theme action item"),
         }
-        match &theme_items[theme_items.len() - 1] {
+        match &theme_items[theme_items.len() - 2] {
             MenuItem::Action { action, .. } => {
                 assert!(action.as_any().is::<AddThemeConfig>());
             }
@@ -2605,7 +2627,7 @@ mod tests {
         let i18n_manager = I18nManager::default();
         let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let theme_items = &menus[THEME_IDX].items;
-        let follow = &theme_items[theme_items.len() - 2];
+        let follow = &theme_items[theme_items.len() - 3];
 
         assert_eq!(action_name(follow), "\u{2713} Follow System Appearance");
         match follow {
