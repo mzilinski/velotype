@@ -104,7 +104,7 @@ impl Editor {
         cx: &App,
     ) -> anyhow::Result<()> {
         let markdown = self.serialized_document_text(cx);
-        let theme = cx.global::<ThemeManager>().current().clone();
+        let theme = cx.global::<ThemeManager>().unzoomed().clone();
         let title = self.export_title();
         let source_base_dir = self.file_path.as_ref().and_then(|path| path.parent());
         let fonts = FontSettings::current(cx);
@@ -134,7 +134,7 @@ impl Editor {
         }
 
         let markdown = self.serialized_document_text(cx);
-        let theme = cx.global::<ThemeManager>().current().clone();
+        let theme = cx.global::<ThemeManager>().unzoomed().clone();
         let title = self.export_title();
         let fonts = FontSettings::current(cx);
         let pdf_options = match format {

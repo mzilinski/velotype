@@ -18,6 +18,9 @@ use crate::components::{
     ShowAbout, ToggleAutoPair, ToggleFocusMode, ToggleFollowSystemAppearance, ToggleReadOnly,
     ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace, UninstallCliTool,
 };
+use crate::components::{
+    ResetZoom, ToggleAlwaysOnTop, ToggleFullScreen, ToggleStatusBar, ZoomIn, ZoomOut,
+};
 use crate::config::{
     SessionDrafts, apply_configured_language, apply_configured_theme,
     import_language_config_and_select, import_theme_config_and_select, open_preferences_window,
@@ -90,6 +93,9 @@ pub(crate) fn open_editor_window(
         .update(cx, |host, window, cx| {
             window.activate_window();
             host.force_install_close_guard(window, cx);
+            if crate::window_pin::AlwaysOnTop::enabled(cx) {
+                crate::window_pin::set_always_on_top(window, true);
+            }
             if restored_folder.is_some() {
                 host.set_workspace_folder(restored_folder, cx);
             }
@@ -400,6 +406,15 @@ fn show_window_prompt(window: Option<AnyWindowHandle>, title: &str, detail: &str
 }
 
 /// Flips one writing aid, persists it, and repaints windows and menus.
+/// Applies a document zoom level (View > Zoom) to every window and persists it.
+fn set_zoom(cx: &mut App, percent: u16) {
+    crate::config::EditorSettings::update_writing(cx, |writing| writing.zoom_percent = percent);
+    cx.global_mut::<ThemeManager>()
+        .set_zoom(f32::from(percent) / 100.0);
+    install_menus(cx);
+    cx.refresh_windows();
+}
+
 fn toggle_writing_aid(cx: &mut App, update: impl FnOnce(&mut crate::config::WritingPreferences)) {
     crate::config::EditorSettings::update_writing(cx, update);
     install_menus(cx);
@@ -667,6 +682,32 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         toggle_writing_aid(cx, |writing| {
             writing.typewriter_mode = !writing.typewriter_mode
         });
+    } else if action.as_any().is::<ToggleStatusBar>() {
+        let enabled = crate::config::EditorSettings::status_bar_preferences(cx).enabled;
+        crate::config::EditorSettings::set_status_bar_enabled(cx, !enabled);
+        install_menus(cx);
+        cx.refresh_windows();
+    } else if action.as_any().is::<ToggleFullScreen>() {
+        if let Some(window) = cx.active_window() {
+            let _ = window.update(cx, |_, window, _| window.toggle_fullscreen());
+        }
+    } else if action.as_any().is::<ToggleAlwaysOnTop>() {
+        let on_top = !crate::window_pin::AlwaysOnTop::enabled(cx);
+        cx.set_global(crate::window_pin::AlwaysOnTop(on_top));
+        for window in cx.windows() {
+            let _ = window.update(cx, |_, window, _| {
+                crate::window_pin::set_always_on_top(window, on_top)
+            });
+        }
+        install_menus(cx);
+    } else if action.as_any().is::<ResetZoom>() {
+        set_zoom(cx, 100);
+    } else if action.as_any().is::<ZoomIn>() {
+        let current = crate::config::EditorSettings::writing(cx).zoom_percent;
+        set_zoom(cx, crate::config::step_zoom(current, true));
+    } else if action.as_any().is::<ZoomOut>() {
+        let current = crate::config::EditorSettings::writing(cx).zoom_percent;
+        set_zoom(cx, crate::config::step_zoom(current, false));
     } else if action.as_any().is::<ToggleSpellcheck>() {
         toggle_writing_aid(cx, |writing| writing.spellcheck = !writing.spellcheck);
     } else if let Some(action) = action.as_any().downcast_ref::<SelectSpellcheckLanguage>() {
@@ -1154,12 +1195,47 @@ pub(crate) fn dispatch_menu_action_for_editor(
     }
 }
 
+/// Window state shown as check marks in the View menu.
+#[derive(Clone, Copy)]
+struct ViewMenuState {
+    status_bar: bool,
+    always_on_top: bool,
+}
+
+impl Default for ViewMenuState {
+    fn default() -> Self {
+        Self {
+            status_bar: true,
+            always_on_top: false,
+        }
+    }
+}
+
+#[cfg(test)]
 fn build_menus(
     theme_manager: &ThemeManager,
     i18n_manager: &I18nManager,
     recent_files: &[PathBuf],
     writing: crate::config::WritingPreferences,
     active_spell_languages: &[String],
+) -> Vec<Menu> {
+    build_menus_with_view(
+        theme_manager,
+        i18n_manager,
+        recent_files,
+        writing,
+        active_spell_languages,
+        ViewMenuState::default(),
+    )
+}
+
+fn build_menus_with_view(
+    theme_manager: &ThemeManager,
+    i18n_manager: &I18nManager,
+    recent_files: &[PathBuf],
+    writing: crate::config::WritingPreferences,
+    active_spell_languages: &[String],
+    view: ViewMenuState,
 ) -> Vec<Menu> {
     let current_theme_id = theme_manager.current_theme_id().to_string();
     let current_language_id = i18n_manager.current_language_id().to_string();
@@ -1411,7 +1487,31 @@ fn build_menus(
                         checked(&strings.menu_auto_pair, writing.auto_pair),
                         ToggleAutoPair,
                     ),
+                    MenuItem::action(
+                        checked(&strings.menu_status_bar, view.status_bar),
+                        ToggleStatusBar,
+                    ),
                     MenuItem::separator(),
+                    MenuItem::action(strings.menu_toggle_full_screen.clone(), ToggleFullScreen),
+                ]
+                .into_iter()
+                .chain(crate::window_pin::SUPPORTED.then(|| {
+                    MenuItem::action(
+                        checked(&strings.menu_always_on_top, view.always_on_top),
+                        ToggleAlwaysOnTop,
+                    )
+                }))
+                .chain([
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        checked(
+                            &format!("{} ({} %)", strings.menu_actual_size, writing.zoom_percent),
+                            writing.zoom_percent == 100,
+                        ),
+                        ResetZoom,
+                    ),
+                    MenuItem::action(strings.menu_zoom_in.clone(), ZoomIn),
+                    MenuItem::action(strings.menu_zoom_out.clone(), ZoomOut),
                     MenuItem::separator(),
                     MenuItem::action(
                         checked(&strings.menu_spellcheck, writing.spellcheck),
@@ -1443,7 +1543,8 @@ fn build_menus(
                     }),
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_read_only.clone(), ToggleReadOnly),
-                ]
+                ])
+                .collect()
             },
         },
         Menu {
@@ -1456,12 +1557,17 @@ fn build_menus(
 
 pub(crate) fn install_menus(cx: &mut App) {
     let recent_files = recent_files_for_menu();
-    let menus = build_menus(
+    let view = ViewMenuState {
+        status_bar: crate::config::EditorSettings::status_bar_preferences(cx).enabled,
+        always_on_top: crate::window_pin::AlwaysOnTop::enabled(cx),
+    };
+    let menus = build_menus_with_view(
         cx.global::<ThemeManager>(),
         cx.global::<I18nManager>(),
         &recent_files,
         crate::config::EditorSettings::writing(cx),
         &crate::spellcheck::SpellChecker::languages(cx),
+        view,
     );
     cx.set_menus(menus);
 }
@@ -1712,6 +1818,12 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &ToggleTypewriterMode, cx| dispatch_menu_action(&ToggleTypewriterMode, cx));
     cx.on_action(|_: &ToggleReadOnly, cx| dispatch_menu_action(&ToggleReadOnly, cx));
     cx.on_action(|_: &ToggleSpellcheck, cx| dispatch_menu_action(&ToggleSpellcheck, cx));
+    cx.on_action(|_: &ToggleStatusBar, cx| dispatch_menu_action(&ToggleStatusBar, cx));
+    cx.on_action(|_: &ToggleFullScreen, cx| dispatch_menu_action(&ToggleFullScreen, cx));
+    cx.on_action(|_: &ToggleAlwaysOnTop, cx| dispatch_menu_action(&ToggleAlwaysOnTop, cx));
+    cx.on_action(|_: &ResetZoom, cx| dispatch_menu_action(&ResetZoom, cx));
+    cx.on_action(|_: &ZoomIn, cx| dispatch_menu_action(&ZoomIn, cx));
+    cx.on_action(|_: &ZoomOut, cx| dispatch_menu_action(&ZoomOut, cx));
     cx.on_action(|action: &SelectSpellcheckLanguage, cx| dispatch_menu_action(action, cx));
     cx.on_action(|_: &QuitApplication, cx| {
         dispatch_menu_action(&QuitApplication, cx);
@@ -1803,6 +1915,43 @@ mod tests {
     const HELP_IDX: usize = 10;
     #[cfg(not(target_os = "macos"))]
     const HELP_IDX: usize = 9;
+
+    #[test]
+    fn view_menu_has_status_bar_full_screen_and_zoom() {
+        let theme_manager = ThemeManager::default();
+        let i18n_manager = I18nManager::default();
+        let writing = crate::config::WritingPreferences {
+            zoom_percent: 125,
+            ..Default::default()
+        };
+        let view = super::ViewMenuState {
+            status_bar: false,
+            always_on_top: true,
+        };
+        let menus =
+            super::build_menus_with_view(&theme_manager, &i18n_manager, &[], writing, &[], view);
+        let view_menu = menus
+            .iter()
+            .find(|menu| menu.name.as_ref() == "View")
+            .expect("view menu");
+        let names = view_menu
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                MenuItem::Action { name, .. } => Some(name.to_string()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(names.contains(&"Status Bar".to_string()));
+        assert!(names.contains(&"Toggle Fullscreen".to_string()));
+        assert!(names.contains(&"Actual Size (125 %)".to_string()));
+        assert!(names.contains(&"Zoom In".to_string()));
+        assert!(names.contains(&"Zoom Out".to_string()));
+        assert_eq!(
+            names.contains(&"\u{2713} Always on Top".to_string()),
+            crate::window_pin::SUPPORTED
+        );
+    }
 
     #[test]
     fn build_menus_uses_english_fallback_by_default() {
