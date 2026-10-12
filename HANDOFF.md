@@ -11,7 +11,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 936 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 946 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -25,7 +25,8 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-**Nicht gepusht:** `feat/line-endings`, `feat/smart-punctuation`, `feat/emoji-picker` und `integration` (Merges). Test-Exe: `velotype-integration-12.exe`.
+**Nicht gepusht:** `feat/pandoc`, `feat/print`, `feat/image-upload` und `integration` (Merges). Test-Exe: `velotype-integration-13.exe`.
+**Ungetestet mit echter Software:** Pandoc ist auf dem Windows-Rechner nicht installiert (Roundtrip-Test `round_trip_through_installed_pandoc` überspringt sich dann); PicGo ebenso (Upload-Test nutzt einen Ersatzbefehl).
 **Mac bitte prüfen:** `src/window_pin.rs` (Immer im Vordergrund über `objc`/`setLevel:`) ist unter macOS nur von CI kompiliert, nicht ausprobiert.
 
 ## Mac-Runde
@@ -103,6 +104,9 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/line-endings | Bearbeiten → Zeilenenden: Windows (CRLF) / Unix (LF) pro Dokument (beim Laden erkannt, beim Speichern beibehalten; vorher wurde CRLF still zu LF), „Beim Speichern mit Zeilenumbruch enden“ (`editor.final_newline`). Statusleiste zeigt LF/CRLF, Klick schaltet um. `src/editor/line_endings.rs`; Menü-Häkchen über Global `MenuLineEnding`, das das aktive Fenster beim Rendern setzt |
 | feat/smart-punctuation | Bearbeiten → Typografische Zeichen: Anführungszeichen (deutsche Oberfläche „…“ ‚…‘, sonst “…” ‘…’; ' nach Buchstabe = Apostroph ’) und Striche (-- → –, dritter - → —). Mit Autopair (Paar einfügen, überspringen). Nicht in Code/Mathe/HTML/Front Matter/Inline-Code/Quellcode-Modus, nicht bei `---` und `<!--`. Standard aus (`editor.smart_quotes`, `editor.smart_dashes`). `src/components/block/smart_punctuation.rs` |
 | feat/emoji-picker | Bearbeiten → Emoji und Symbole…: Suchraster (Crate `emojis`, englische Namen und :Kürzel:), Pfeiltasten/Enter/Klick fügt am Cursor des zuvor fokussierten Blocks ein, Escape schließt. `src/editor/emoji_picker.rs` |
+| feat/pandoc | Export-Menü: Word, ODT, RTF, EPUB, LaTeX, reStructuredText, MediaWiki, Org über Pandoc (`ExportWithPandoc { format }`); Datei → Importieren… (Word/ODT/HTML/LaTeX/EPUB → neuer Tab, Bilder nach `<name>-media`). Pandoc-Suche in PATH und Standardorten, sonst Dialog mit Link auf pandoc.org. `src/export/pandoc.rs`, `src/editor/pandoc.rs` |
+| feat/print | Datei → Drucken… (Alt+Shift+P): HTML-Export mit eingebetteten Bildern in Temp-Datei, Standardbrowser öffnet Druckdialog per Skript. `src/editor/print.rs` |
+| feat/image-upload | Format → Bild → Bild hochladen / Alle lokalen Bilder hochladen; Einstellung „Upload-Befehl“ (Einstellungen → Bild, `editor.image_upload_command`, z. B. `picgo upload`): Bilddateien als Argumente, letzte URL-Zeilen der Ausgabe ersetzen die Links (ein Undo-Schritt). Neue Einfügeoption „Mit dem Upload-Befehl hochladen“ für eingefügte/gezogene Bilder. `src/editor/image_upload.rs` |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
@@ -161,7 +165,7 @@ Velotype schon beim Tippen (Durchgestrichen, `==Markierung==`, Hoch-/Tiefgestell
 
 Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kürzeln~~ (erledigt), ~~2. Zwischenablage~~ (erledigt; Bild kopieren fehlt noch),
 ~~3. Dateibaum und Dateiaktionen~~ (erledigt; „Verschieben nach“, „Eigenschaften“, Kodierung, Autosave fehlen), ~~4. Auswahl- und Löschbefehle~~ (erledigt), ~~5. Ansicht (Zoom, Vollbild, Immer im Vordergrund)~~ (erledigt; Werkzeugleiste und Artikel-Liste fehlen),
-~~6. Typografie/Zeilenenden/Emoji~~ (erledigt; Typora-Modus „beim Rendern umwandeln“ und Unicode-Satzzeichen-Mapping fehlen), 7. Pandoc, Drucken, Bild-Upload.
+~~6. Typografie/Zeilenenden/Emoji~~ (erledigt; Typora-Modus „beim Rendern umwandeln“ und Unicode-Satzzeichen-Mapping fehlen), ~~7. Pandoc, Drucken, Bild-Upload~~ (erledigt; „Export mit vorherigen Einstellungen“, HTML ohne Styles, Bild-Export, S3-Upload fehlen).
 
 Nach Punkt 1 noch offen bzw. abweichend: Strg+T bleibt „Neuer Tab“ (Typora: Tabelle; Tabelle auf macOS Cmd+Alt+T, unter Windows ohne Standardkürzel). Absatz davor/danach einfügen fehlt. Kein Häkchen-Status im Menü für den aktuellen Blocktyp. Strg+Shift+[ / ] und Alt+Shift+5 sind unter Windows nicht von Hand geprüft (Tastenlayout).
 
