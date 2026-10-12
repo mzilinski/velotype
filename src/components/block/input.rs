@@ -109,7 +109,33 @@ impl EntityInputHandler for Block {
             .map(|range| self.range_from_utf16(range))
             .or(self.marked_range.clone())
             .unwrap_or(self.selected_range.clone());
-        if crate::config::EditorSettings::auto_pair(cx) {
+        let writing = crate::config::EditorSettings::writing(cx);
+        let smart = super::smart_punctuation::SmartOptions {
+            quotes: writing.smart_quotes,
+            dashes: writing.smart_dashes,
+            auto_pair: writing.auto_pair,
+            style: super::smart_punctuation::QuoteStyle::for_language(
+                cx.try_global::<crate::i18n::I18nManager>()
+                    .map_or("en", |i18n| i18n.current_language_id()),
+            ),
+        };
+        match self.smart_punctuation_edit(new_text, &visible_range, smart) {
+            Some(super::smart_punctuation::SmartEdit::SkipOver(len)) => {
+                self.move_to(visible_range.end + len, cx);
+                return;
+            }
+            Some(super::smart_punctuation::SmartEdit::Replace {
+                range,
+                text,
+                selected,
+            }) => {
+                self.prepare_undo_capture(UndoCaptureKind::CoalescibleText, cx);
+                self.replace_text_in_visible_range(range, &text, Some(selected), false, cx);
+                return;
+            }
+            None => {}
+        }
+        if writing.auto_pair {
             match self.auto_pair_edit(new_text, &visible_range) {
                 Some(AutoPairEdit::SkipOver) => {
                     self.move_to(visible_range.end + new_text.len(), cx);

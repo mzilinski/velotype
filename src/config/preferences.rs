@@ -127,6 +127,10 @@ pub(crate) struct WritingPreferences {
     pub(crate) zoom_percent: u16,
     /// End saved files with a line break (Edit > Line Endings).
     pub(crate) final_newline: bool,
+    /// Type curly quotes and apostrophes (Edit > Smart Punctuation).
+    pub(crate) smart_quotes: bool,
+    /// Turn `--` into an en dash and `---` into an em dash.
+    pub(crate) smart_dashes: bool,
 }
 
 /// Zoom levels View > Zoom In/Out steps through, in percent.
@@ -165,6 +169,8 @@ impl Default for WritingPreferences {
             spellcheck_language: String::new(),
             zoom_percent: 100,
             final_newline: false,
+            smart_quotes: false,
+            smart_dashes: false,
         }
     }
 }
@@ -296,6 +302,12 @@ impl EditorSettings {
             .unwrap_or_default()
     }
 
+    /// Installs writing aids without touching the preferences file.
+    #[cfg(test)]
+    pub(crate) fn set_writing_for_test(cx: &mut App, writing: WritingPreferences) {
+        Self::set_global(cx, true, writing, &StatusBarPreferences::default());
+    }
+
     pub(crate) fn auto_pair(cx: &App) -> bool {
         Self::writing(cx).auto_pair
     }
@@ -422,6 +434,8 @@ struct EditorPreferencesFile {
     spellcheck_language: String,
     zoom_percent: u16,
     final_newline: bool,
+    smart_quotes: bool,
+    smart_dashes: bool,
 }
 
 #[derive(Serialize)]
@@ -486,6 +500,8 @@ impl From<&AppPreferences> for PreferencesFile {
                 spellcheck_language: value.writing.spellcheck_language.clone(),
                 zoom_percent: value.writing.zoom_percent,
                 final_newline: value.writing.final_newline,
+                smart_quotes: value.writing.smart_quotes,
+                smart_dashes: value.writing.smart_dashes,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -608,6 +624,8 @@ fn app_preferences_from_toml_value(
             .map(clamp_zoom)
             .unwrap_or(default_writing.zoom_percent),
         final_newline: editor_flag("final_newline", default_writing.final_newline),
+        smart_quotes: editor_flag("smart_quotes", default_writing.smart_quotes),
+        smart_dashes: editor_flag("smart_dashes", default_writing.smart_dashes),
     };
 
     let status_bar = value
@@ -1867,6 +1885,8 @@ impl PreferencesWindow {
             }
             ShortcutCommand::CloseWindow => strings.preferences_shortcut_close_window.clone(),
             ShortcutCommand::ToggleAutoPair => strings.menu_auto_pair.clone(),
+            ShortcutCommand::ToggleSmartQuotes => strings.menu_smart_quotes.clone(),
+            ShortcutCommand::ToggleSmartDashes => strings.menu_smart_dashes.clone(),
             ShortcutCommand::ToggleFocusMode => strings.menu_focus_mode.clone(),
             ShortcutCommand::ToggleTypewriterMode => strings.menu_typewriter_mode.clone(),
             ShortcutCommand::ToggleStatusBar => strings.menu_status_bar.clone(),
@@ -3009,6 +3029,8 @@ mod tests {
                 spellcheck_language: "de-DE".into(),
                 zoom_percent: 125,
                 final_newline: true,
+                smart_quotes: true,
+                smart_dashes: true,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             keybindings: BTreeMap::new(),
@@ -3046,6 +3068,8 @@ mod tests {
         assert!(text.contains("spellcheck_language = \"de-DE\""));
         assert!(text.contains("zoom_percent = 125"));
         assert!(text.contains("final_newline = true"));
+        assert!(text.contains("smart_quotes = true"));
+        assert!(text.contains("smart_dashes = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));

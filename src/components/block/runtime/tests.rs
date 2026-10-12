@@ -3346,3 +3346,25 @@ async fn read_only_block_rejects_text_edits(cx: &mut TestAppContext) {
     });
     block.read_with(cx, |block, _| assert_eq!(block.display_text(), "keep"));
 }
+
+#[gpui::test]
+async fn smart_punctuation_types_curly_quotes_and_dashes(cx: &mut TestAppContext) {
+    let (block, cx) = typed_paragraph_window(cx, BlockRecord::paragraph(""));
+    cx.update(|_, cx| {
+        cx.set_global(crate::i18n::I18nManager::new_with_language_id("en"));
+        crate::config::EditorSettings::set_writing_for_test(
+            cx,
+            crate::config::WritingPreferences {
+                smart_quotes: true,
+                smart_dashes: true,
+                ..Default::default()
+            },
+        )
+    });
+
+    // With auto-pair the closing quote is inserted and then stepped over.
+    type_text(&block, cx, "\"Hi\" -- it's");
+    block.read_with(cx, |block, _| {
+        assert_eq!(block.display_text(), "“Hi” – it’s")
+    });
+}

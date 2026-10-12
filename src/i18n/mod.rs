@@ -141,6 +141,9 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_smart_punctuation: String,
+    pub menu_smart_quotes: String,
+    pub menu_smart_dashes: String,
     pub menu_line_endings: String,
     pub menu_line_ending_crlf: String,
     pub menu_line_ending_lf: String,
@@ -572,6 +575,9 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_smart_punctuation: Option<String>,
+    menu_smart_quotes: Option<String>,
+    menu_smart_dashes: Option<String>,
     menu_line_endings: Option<String>,
     menu_line_ending_crlf: Option<String>,
     menu_line_ending_lf: Option<String>,
@@ -918,6 +924,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_smart_punctuation",
+    "menu_smart_quotes",
+    "menu_smart_dashes",
     "menu_line_endings",
     "menu_line_ending_crlf",
     "menu_line_ending_lf",
@@ -1344,6 +1353,11 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_smart_punctuation: self
+                .menu_smart_punctuation
+                .unwrap_or(defaults.menu_smart_punctuation),
+            menu_smart_quotes: self.menu_smart_quotes.unwrap_or(defaults.menu_smart_quotes),
+            menu_smart_dashes: self.menu_smart_dashes.unwrap_or(defaults.menu_smart_dashes),
             menu_line_endings: self.menu_line_endings.unwrap_or(defaults.menu_line_endings),
             menu_line_ending_crlf: self
                 .menu_line_ending_crlf
@@ -2138,6 +2152,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_smart_punctuation: "智能标点".into(),
+            menu_smart_quotes: "智能引号".into(),
+            menu_smart_dashes: "智能破折号".into(),
             menu_line_endings: "换行符".into(),
             menu_line_ending_crlf: "Windows (CRLF)".into(),
             menu_line_ending_lf: "Unix (LF)".into(),
@@ -2502,6 +2519,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_smart_punctuation: "Smart Punctuation".into(),
+            menu_smart_quotes: "Smart Quotes".into(),
+            menu_smart_dashes: "Smart Dashes".into(),
             menu_line_endings: "Line Endings".into(),
             menu_line_ending_crlf: "Windows (CRLF)".into(),
             menu_line_ending_lf: "Unix (LF)".into(),
@@ -2868,6 +2888,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_smart_punctuation: "Typografische Zeichen".into(),
+            menu_smart_quotes: "Typografische Anführungszeichen".into(),
+            menu_smart_dashes: "Typografische Striche".into(),
             menu_line_endings: "Zeilenenden".into(),
             menu_line_ending_crlf: "Windows (CRLF)".into(),
             menu_line_ending_lf: "Unix (LF)".into(),

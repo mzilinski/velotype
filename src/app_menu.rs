@@ -19,7 +19,8 @@ use crate::components::{
     ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace, UninstallCliTool,
 };
 use crate::components::{
-    ResetZoom, ToggleAlwaysOnTop, ToggleFullScreen, ToggleStatusBar, ZoomIn, ZoomOut,
+    ResetZoom, ToggleAlwaysOnTop, ToggleFullScreen, ToggleSmartDashes, ToggleSmartQuotes,
+    ToggleStatusBar, ZoomIn, ZoomOut,
 };
 use crate::config::{
     SessionDrafts, apply_configured_language, apply_configured_theme,
@@ -676,6 +677,10 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         });
     } else if action.as_any().is::<ToggleAutoPair>() {
         toggle_writing_aid(cx, |writing| writing.auto_pair = !writing.auto_pair);
+    } else if action.as_any().is::<ToggleSmartQuotes>() {
+        toggle_writing_aid(cx, |writing| writing.smart_quotes = !writing.smart_quotes);
+    } else if action.as_any().is::<ToggleSmartDashes>() {
+        toggle_writing_aid(cx, |writing| writing.smart_dashes = !writing.smart_dashes);
     } else if action.as_any().is::<ToggleFocusMode>() {
         toggle_writing_aid(cx, |writing| writing.focus_mode = !writing.focus_mode);
     } else if action.as_any().is::<ToggleTypewriterMode>() {
@@ -905,6 +910,19 @@ fn edit_menu(
                 ],
             }),
             MenuItem::separator(),
+            MenuItem::submenu(Menu {
+                name: strings.menu_smart_punctuation.clone().into(),
+                items: vec![
+                    MenuItem::action(
+                        checked(&strings.menu_smart_quotes, writing.smart_quotes),
+                        ToggleSmartQuotes,
+                    ),
+                    MenuItem::action(
+                        checked(&strings.menu_smart_dashes, writing.smart_dashes),
+                        ToggleSmartDashes,
+                    ),
+                ],
+            }),
             MenuItem::submenu(Menu {
                 name: strings.menu_line_endings.clone().into(),
                 items: vec![
@@ -1853,6 +1871,8 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &ClearRecentFiles, cx| dispatch_menu_action(&ClearRecentFiles, cx));
     cx.on_action(|_: &CloseFolder, cx| dispatch_menu_action(&CloseFolder, cx));
     cx.on_action(|_: &ToggleAutoPair, cx| dispatch_menu_action(&ToggleAutoPair, cx));
+    cx.on_action(|_: &ToggleSmartQuotes, cx| dispatch_menu_action(&ToggleSmartQuotes, cx));
+    cx.on_action(|_: &ToggleSmartDashes, cx| dispatch_menu_action(&ToggleSmartDashes, cx));
     cx.on_action(|_: &ToggleFocusMode, cx| dispatch_menu_action(&ToggleFocusMode, cx));
     cx.on_action(|_: &ToggleTypewriterMode, cx| dispatch_menu_action(&ToggleTypewriterMode, cx));
     cx.on_action(|_: &ToggleReadOnly, cx| dispatch_menu_action(&ToggleReadOnly, cx));

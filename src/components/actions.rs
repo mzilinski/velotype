@@ -115,6 +115,8 @@ actions!(
         InstallCliTool,
         UninstallCliTool,
         ToggleAutoPair,
+        ToggleSmartQuotes,
+        ToggleSmartDashes,
         ToggleFocusMode,
         ToggleTypewriterMode,
         ToggleReadOnly,
@@ -298,6 +300,8 @@ pub(crate) enum ShortcutCommand {
     QuitApplication,
     CloseWindow,
     ToggleAutoPair,
+    ToggleSmartQuotes,
+    ToggleSmartDashes,
     ToggleFocusMode,
     ToggleTypewriterMode,
     ToggleReadOnly,
@@ -1010,6 +1014,20 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         context: None,
     },
     ShortcutDefinition {
+        command: ShortcutCommand::ToggleSmartQuotes,
+        id: "toggle_smart_quotes",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: None,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleSmartDashes,
+        id: "toggle_smart_dashes",
+        category: ShortcutCategory::Edit,
+        default_keys: &[],
+        context: None,
+    },
+    ShortcutDefinition {
         command: ShortcutCommand::ToggleFocusMode,
         id: "toggle_focus_mode",
         category: ShortcutCategory::Navigation,
@@ -1493,6 +1511,8 @@ fn key_binding_for(
         ShortcutCommand::CloseWindow => KeyBinding::new(key, CloseWindow, context),
         ShortcutCommand::DismissTransientUi => KeyBinding::new(key, DismissTransientUi, context),
         ShortcutCommand::ToggleAutoPair => KeyBinding::new(key, ToggleAutoPair, context),
+        ShortcutCommand::ToggleSmartQuotes => KeyBinding::new(key, ToggleSmartQuotes, context),
+        ShortcutCommand::ToggleSmartDashes => KeyBinding::new(key, ToggleSmartDashes, context),
         ShortcutCommand::ToggleFocusMode => KeyBinding::new(key, ToggleFocusMode, context),
         ShortcutCommand::ToggleTypewriterMode => {
             KeyBinding::new(key, ToggleTypewriterMode, context)
