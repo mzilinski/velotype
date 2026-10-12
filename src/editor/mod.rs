@@ -47,6 +47,7 @@ mod print;
 mod render;
 mod runtime_context;
 mod selection;
+mod source_fidelity;
 mod source_mapping;
 mod spelling;
 mod status_bar;
@@ -104,6 +105,9 @@ pub struct Editor {
     file_path: Option<PathBuf>,
     /// Line endings written on save (detected when the file was loaded).
     line_ending: line_endings::LineEnding,
+    /// Original text of the regions loaded from disk, so unedited regions
+    /// are saved as they were written.
+    source_fidelity: Option<source_fidelity::SourceFidelity>,
     scroll_handle: ScrollHandle,
     last_scroll_viewport_size: Option<Size<Pixels>>,
     /// Last frame's visible block ids, to detect structural edits so the height
@@ -344,13 +348,15 @@ impl Editor {
         file_path: Option<PathBuf>,
     ) -> Self {
         let normalized = markdown.replace("\r\n", "\n").replace('\r', "\n");
-        let mut roots = Self::build_root_blocks_from_markdown(cx, &normalized);
+        let (mut roots, regions) = Self::build_root_blocks_with_regions(cx, &normalized);
         if roots.is_empty() {
             roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
         }
 
         let mut document = DocumentTree::new(roots);
         document.rebuild_metadata_and_snapshot(cx);
+        let source_fidelity =
+            source_fidelity::fidelity_for_document(&document, &normalized, &regions, cx);
         let pending_focus = document.first_root().map(|block| block.entity_id());
 
         let mut editor = Self {
@@ -370,6 +376,7 @@ impl Editor {
             document_dirty: false,
             file_path,
             line_ending: line_endings::LineEnding::detect(&markdown),
+            source_fidelity,
             scroll_handle: ScrollHandle::new(),
             last_scroll_viewport_size: None,
             prev_visible_block_ids: Vec::new(),

@@ -2722,10 +2722,12 @@ fn has_closing_delimiter(tokens: &[CharToken], index: usize, delimiter: Delimite
                 cursor += 1;
                 continue;
             }
-            // A highlight may open before whitespace, so only a closer that
-            // parse_until will accept counts; otherwise `a == b == c` would
-            // start a span that never closes.
-            if delimiter == Delimiter::HighlightMarkdown && !can_close_emphasis(tokens, cursor) {
+            // Only a closer that parse_until will accept counts. Otherwise an
+            // opener whose candidates can never close (`*` at line starts,
+            // `a == b == c`) starts a span that fails at the end of the text,
+            // and every later opener retries the same scan nested inside it,
+            // which takes exponential time.
+            if !can_close_emphasis(tokens, cursor) {
                 cursor += 1;
                 continue;
             }
@@ -3478,6 +3480,23 @@ mod tests {
         InlineScript, InlineStyle, InlineTextTree, LinkReferenceDefinitions, StyleFlag,
     };
     use crate::components::HtmlCssColor;
+
+    #[test]
+    fn many_unclosable_openers_parse_in_linear_time() {
+        // An mkdocs abbreviation glossary: every line starts with `*`, none
+        // can close. This used to take exponential time and froze the editor.
+        let text = (0..60)
+            .map(|i| format!("*[ABBR{i}]: Some expansion"))
+            .collect::<Vec<_>>()
+            .join(
+                "
+",
+            );
+        let started = std::time::Instant::now();
+        let tree = InlineTextTree::from_markdown(&text);
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+        assert_eq!(tree.visible_text(), text);
+    }
 
     #[test]
     fn parses_supported_styles_and_serializes_canonically() {

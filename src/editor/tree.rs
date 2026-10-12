@@ -133,6 +133,10 @@ impl DocumentTree {
         self.rebuild_metadata_and_snapshot(cx);
     }
 
+    pub(super) fn roots(&self) -> &[Entity<Block>] {
+        &self.roots
+    }
+
     pub(super) fn markdown_text(&self, cx: &App) -> String {
         let mut lines = Vec::new();
         Self::collect_root_markdown_lines(&self.roots, cx, &mut lines);
@@ -431,7 +435,11 @@ impl DocumentTree {
             && block.children.is_empty()
     }
 
-    fn collect_root_markdown_lines(blocks: &[Entity<Block>], cx: &App, lines: &mut Vec<String>) {
+    pub(super) fn collect_root_markdown_lines(
+        blocks: &[Entity<Block>],
+        cx: &App,
+        lines: &mut Vec<String>,
+    ) {
         let mut pending_empty_roots = 0usize;
         let mut wrote_non_empty_root = false;
         let mut previous_was_list_item = false;

@@ -914,7 +914,7 @@ fn build_native_footnote_definition_block(
         }
     }
 
-    let children = Editor::build_blocks_from_lines_internal(cx, &body_lines, false);
+    let children = Editor::build_blocks_from_lines_internal(cx, &body_lines, false, None);
     let block = Editor::new_block(
         cx,
         BlockRecord::new(BlockKind::FootnoteDefinition, InlineTextTree::plain(id)),
@@ -923,18 +923,43 @@ fn build_native_footnote_definition_block(
     Some(block)
 }
 
+/// A top-level region of a parsed document: its source lines and the root
+/// blocks built from it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct SourceRegion {
+    pub(super) lines: std::ops::Range<usize>,
+    pub(super) roots: std::ops::Range<usize>,
+}
+
 impl Editor {
     pub(super) fn build_root_blocks_from_markdown(
         cx: &mut Context<Self>,
         markdown: &str,
     ) -> Vec<Entity<super::Block>> {
+        Self::build_root_blocks_with_regions(cx, markdown).0
+    }
+
+    /// Like [`Self::build_root_blocks_from_markdown`], and also reports for
+    /// every top-level region the lines it came from and the roots built
+    /// from it (blank-line roots belong to no region).
+    pub(super) fn build_root_blocks_with_regions(
+        cx: &mut Context<Self>,
+        markdown: &str,
+    ) -> (Vec<Entity<super::Block>>, Vec<SourceRegion>) {
         let lines = markdown
             .split('\n')
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
+        let mut regions = Vec::new();
         let Some(front_matter_len) = front_matter_line_count(&lines) else {
-            return Self::build_blocks_from_lines_internal(cx, &lines, true);
+            let roots =
+                Self::build_blocks_from_lines_internal(cx, &lines, true, Some(&mut regions));
+            return (roots, regions);
         };
+        regions.push(SourceRegion {
+            lines: 0..front_matter_len,
+            roots: 0..1,
+        });
 
         // Front matter only exists at the document start. It becomes one
         // verbatim block, and every blank line after it is kept as an empty
@@ -957,12 +982,20 @@ impl Editor {
         for _ in 0..preserved_empty_blocks {
             roots.push(native_block(cx, BlockKind::Paragraph, String::new()));
         }
+        let mut rest_regions = Vec::new();
+        let roots_before = roots.len();
+        let line_offset = front_matter_len + blank_run_len;
         roots.extend(Self::build_blocks_from_lines_internal(
             cx,
             &rest[blank_run_len..],
             true,
+            Some(&mut rest_regions),
         ));
-        roots
+        regions.extend(rest_regions.into_iter().map(|region| SourceRegion {
+            lines: region.lines.start + line_offset..region.lines.end + line_offset,
+            roots: region.roots.start + roots_before..region.roots.end + roots_before,
+        }));
+        (roots, regions)
     }
 
     /// Builds runtime blocks from Markdown lines.
@@ -974,19 +1007,34 @@ impl Editor {
         cx: &mut Context<Self>,
         lines: &[String],
     ) -> Vec<Entity<super::Block>> {
-        Self::build_blocks_from_lines_internal(cx, lines, true)
+        Self::build_blocks_from_lines_internal(cx, lines, true, None)
     }
 
     fn build_blocks_from_lines_internal(
         cx: &mut Context<Self>,
         lines: &[String],
         allow_root_footnote_definitions: bool,
+        mut regions: Option<&mut Vec<SourceRegion>>,
     ) -> Vec<Entity<super::Block>> {
         let mut roots = Vec::new();
         let mut index = 0;
+        // The region started by the previous iteration: first line, first root.
+        let mut open_region: Option<(usize, usize)> = None;
 
         while index < lines.len() {
+            if let Some((start, first_root)) = open_region.take()
+                && let Some(regions) = regions.as_deref_mut()
+                && roots.len() > first_root
+            {
+                regions.push(SourceRegion {
+                    lines: start..index,
+                    roots: first_root..roots.len(),
+                });
+            }
             let line = &lines[index];
+            if !line.trim().is_empty() {
+                open_region = Some((index, roots.len()));
+            }
             if line.trim().is_empty() {
                 let blank_start = index;
                 while index < lines.len() && lines[index].trim().is_empty() {
@@ -1168,6 +1216,15 @@ impl Editor {
             let paragraph = Self::collect_paragraph_block(cx, lines, index);
             roots.push(paragraph.0);
             index = paragraph.1;
+        }
+        if let Some((start, first_root)) = open_region
+            && let Some(regions) = regions
+            && roots.len() > first_root
+        {
+            regions.push(SourceRegion {
+                lines: start..index.min(lines.len()),
+                roots: first_root..roots.len(),
+            });
         }
 
         roots

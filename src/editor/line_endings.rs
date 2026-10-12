@@ -56,11 +56,14 @@ impl Editor {
     /// and, when enabled, a final newline.
     pub(super) fn document_text_for_disk(&self, cx: &App) -> String {
         let final_newline = crate::config::EditorSettings::writing(cx).final_newline;
-        text_for_disk(
-            &self.serialized_document_text(cx),
-            self.line_ending,
-            final_newline,
-        )
+        let text = match self.view_mode {
+            // Source mode already shows (and edits) the original text.
+            super::ViewMode::Source => self.serialized_document_text(cx),
+            super::ViewMode::Rendered => {
+                self.restore_original_source(self.serialized_document_text(cx))
+            }
+        };
+        text_for_disk(&text, self.line_ending, final_newline)
     }
 
     /// Switches the document's line endings; the file changes on the next
