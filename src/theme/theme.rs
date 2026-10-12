@@ -1097,6 +1097,60 @@ pub struct Theme {
 
 #[allow(unused)]
 impl Theme {
+    /// A copy with the document text and its spacing scaled by `factor`.
+    /// Window chrome (menus, dialogs, status bar) keeps its size.
+    pub fn zoomed(&self, factor: f32) -> Self {
+        let mut theme = self.clone();
+        if (factor - 1.0).abs() < f32::EPSILON {
+            return theme;
+        }
+        let t = &mut theme.typography;
+        for size in [
+            &mut t.text_size,
+            &mut t.h1_size,
+            &mut t.h2_size,
+            &mut t.h3_size,
+            &mut t.h4_size,
+            &mut t.h5_size,
+            &mut t.h6_size,
+            &mut t.code_size,
+        ] {
+            *size *= factor;
+        }
+        let d = &mut theme.dimensions;
+        for size in [
+            &mut d.block_gap,
+            &mut d.block_min_height,
+            &mut d.block_padding_y,
+            &mut d.block_padding_x,
+            &mut d.nested_block_indent,
+            &mut d.list_marker_gap,
+            &mut d.list_marker_width,
+            &mut d.ordered_list_marker_width,
+            &mut d.task_checkbox_size,
+            &mut d.task_checkbox_check_size,
+            &mut d.h1_padding_bottom,
+            &mut d.h1_margin_bottom,
+            &mut d.quote_padding_left,
+            &mut d.callout_padding_x,
+            &mut d.callout_padding_y,
+            &mut d.callout_body_gap,
+            &mut d.footnote_padding_x,
+            &mut d.footnote_padding_y,
+            &mut d.separator_margin_y,
+            &mut d.code_block_padding_y,
+            &mut d.code_block_padding_x,
+            &mut d.table_cell_padding_x,
+            &mut d.table_cell_padding_y,
+            &mut d.table_cell_min_height,
+            &mut d.image_root_max_height,
+            &mut d.image_cell_max_height,
+        ] {
+            *size *= factor;
+        }
+        theme
+    }
+
     /// Returns the built-in fallback theme used when no custom theme is loaded.
     pub fn default_theme() -> Self {
         Self {
@@ -1842,7 +1896,12 @@ struct CustomThemeEntry {
 /// Registered via [`Global`] so every component can access it through
 /// `cx.global::<ThemeManager>().current()` without passing props.
 pub struct ThemeManager {
+    /// The active theme with the zoom factor applied.
     current: Arc<Theme>,
+    /// The active theme as configured, before zooming.
+    unzoomed: Arc<Theme>,
+    /// Document zoom factor (View > Zoom); 1.0 is the actual size.
+    zoom: f32,
     current_theme_id: String,
     custom_themes: Vec<CustomThemeEntry>,
     theme_catalog: Vec<ThemeCatalogEntry>,
@@ -1887,6 +1946,8 @@ impl Default for ThemeManager {
     fn default() -> Self {
         Self {
             current: Arc::new(Theme::default_theme()),
+            unzoomed: Arc::new(Theme::default_theme()),
+            zoom: 1.0,
             current_theme_id: BUILTIN_THEME_VELOTYPE_ID.into(),
             custom_themes: Vec::new(),
             theme_catalog: builtin_theme_catalog(),
@@ -1929,6 +1990,27 @@ impl ThemeManager {
         self.current.clone()
     }
 
+    /// The active theme without the document zoom, for exports.
+    pub fn unzoomed(&self) -> &Theme {
+        &self.unzoomed
+    }
+
+    /// The document zoom factor; 1.0 is the actual size.
+    pub fn zoom(&self) -> f32 {
+        self.zoom
+    }
+
+    /// Sets the document zoom factor and rescales the active theme.
+    pub fn set_zoom(&mut self, zoom: f32) {
+        self.zoom = zoom;
+        self.current = Arc::new(self.unzoomed.zoomed(zoom));
+    }
+
+    fn activate(&mut self, theme: Theme) {
+        self.current = Arc::new(theme.zoomed(self.zoom));
+        self.unzoomed = Arc::new(theme);
+    }
+
     /// Returns the identifier of the currently active theme.
     pub fn current_theme_id(&self) -> &str {
         &self.current_theme_id
@@ -1943,7 +2025,7 @@ impl ThemeManager {
     pub fn load_file(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         let theme = Theme::from_file(path)?;
         self.current_theme_id = self.theme_id_for_loaded_theme(&theme);
-        self.current = Arc::new(theme);
+        self.activate(theme);
         Ok(())
     }
 
@@ -1951,34 +2033,35 @@ impl ThemeManager {
     pub fn load_json(&mut self, json: &str) -> anyhow::Result<()> {
         let theme = Theme::from_json(json)?;
         self.current_theme_id = self.theme_id_for_loaded_theme(&theme);
-        self.current = Arc::new(theme);
+        self.activate(theme);
         Ok(())
     }
 
     /// Replaces the active theme with a fully constructed value.
     pub fn set_theme(&mut self, theme: Theme) {
         self.current_theme_id = self.theme_id_for_loaded_theme(&theme);
-        self.current = Arc::new(theme);
+        self.activate(theme);
     }
 
     /// Restores the built-in default theme.
     pub fn reset(&mut self) {
-        self.current = Arc::new(Theme::default_theme());
+        self.activate(Theme::default_theme());
         self.current_theme_id = BUILTIN_THEME_VELOTYPE_ID.into();
     }
 
     /// Activates a theme by identifier.
     pub fn set_theme_by_id(&mut self, theme_id: &str) -> bool {
         if let Some(theme) = Theme::builtin(theme_id) {
-            self.current = Arc::new(theme);
+            self.activate(theme);
             self.current_theme_id = theme_id.into();
             return true;
         }
         let Some(entry) = self.custom_themes.iter().find(|entry| entry.id == theme_id) else {
             return false;
         };
-        self.current = Arc::new(entry.theme.clone());
-        self.current_theme_id = entry.id.clone();
+        let (theme, id) = (entry.theme.clone(), entry.id.clone());
+        self.activate(theme);
+        self.current_theme_id = id;
         true
     }
 
@@ -2269,6 +2352,32 @@ mod tests {
     };
     use crate::config::VelotypeConfigDirs;
     use gpui::{Hsla, Rgba, rgba};
+
+    #[test]
+    fn zoom_scales_document_text_but_not_chrome() {
+        let mut manager = ThemeManager::default();
+        let base = manager.current().clone();
+        manager.set_zoom(1.5);
+        let zoomed = manager.current();
+        assert_eq!(zoomed.typography.text_size, base.typography.text_size * 1.5);
+        assert_eq!(zoomed.typography.h1_size, base.typography.h1_size * 1.5);
+        assert_eq!(zoomed.dimensions.block_gap, base.dimensions.block_gap * 1.5);
+        assert_eq!(
+            zoomed.dimensions.menu_text_size,
+            base.dimensions.menu_text_size
+        );
+        // Exports use the configured sizes.
+        assert_eq!(
+            manager.unzoomed().typography.text_size,
+            base.typography.text_size
+        );
+        // Switching themes keeps the zoom.
+        assert!(manager.set_theme_by_id(DEFAULT_DARK_THEME_ID));
+        let dark = manager.unzoomed().typography.text_size;
+        assert_eq!(manager.current().typography.text_size, dark * 1.5);
+        manager.set_zoom(1.0);
+        assert_eq!(manager.current().typography.text_size, dark);
+    }
 
     #[test]
     fn deserializes_legacy_block_focused_bg_key() {

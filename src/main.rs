@@ -32,6 +32,7 @@ mod net;
 mod spellcheck;
 mod theme;
 mod window_chrome;
+mod window_pin;
 
 use app_menu::{init as init_app_menu, open_editor_window};
 use components::init_with_keybindings as init_editor;
@@ -202,6 +203,8 @@ fn main() {
         components::svg_cache::spawn_svg_cache_cleanup();
         fonts::FontSettings::init(cx, preferences.fonts.clone());
         config::EditorSettings::init(cx, preferences.show_table_headers);
+        cx.global_mut::<ThemeManager>()
+            .set_zoom(f32::from(preferences.writing.zoom_percent) / 100.0);
         spellcheck::SpellChecker::init(cx, &preferences.writing.spellcheck_language);
         config::SessionDrafts::init(cx);
         net::install_http_client(cx);

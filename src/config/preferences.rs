@@ -123,6 +123,34 @@ pub(crate) struct WritingPreferences {
     pub(crate) spellcheck: bool,
     /// BCP-47 dictionary language; empty follows the system locale.
     pub(crate) spellcheck_language: String,
+    /// Document zoom from View > Zoom, in percent of the actual size.
+    pub(crate) zoom_percent: u16,
+}
+
+/// Zoom levels View > Zoom In/Out steps through, in percent.
+pub(crate) const ZOOM_STEPS: &[u16] = &[50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300];
+
+/// The next zoom level after `current` in the given direction; stays at the
+/// first or last level.
+pub(crate) fn step_zoom(current: u16, zoom_in: bool) -> u16 {
+    if zoom_in {
+        ZOOM_STEPS
+            .iter()
+            .copied()
+            .find(|step| *step > current)
+            .unwrap_or(ZOOM_STEPS[ZOOM_STEPS.len() - 1])
+    } else {
+        ZOOM_STEPS
+            .iter()
+            .rev()
+            .copied()
+            .find(|step| *step < current)
+            .unwrap_or(ZOOM_STEPS[0])
+    }
+}
+
+fn clamp_zoom(percent: u16) -> u16 {
+    percent.clamp(ZOOM_STEPS[0], ZOOM_STEPS[ZOOM_STEPS.len() - 1])
 }
 
 impl Default for WritingPreferences {
@@ -133,6 +161,7 @@ impl Default for WritingPreferences {
             typewriter_mode: false,
             spellcheck: true,
             spellcheck_language: String::new(),
+            zoom_percent: 100,
         }
     }
 }
@@ -294,6 +323,24 @@ impl EditorSettings {
         }
     }
 
+    /// Shows or hides the status bar (View > Status Bar) and persists it.
+    pub(crate) fn set_status_bar_enabled(cx: &mut App, enabled: bool) {
+        let mut status_bar = Self::status_bar_preferences(cx);
+        status_bar.enabled = enabled;
+        let show_table_headers = Self::show_table_headers(cx);
+        let writing = Self::writing(cx);
+        Self::set_global(cx, show_table_headers, writing, &status_bar);
+        match read_app_preferences() {
+            Ok(mut preferences) => {
+                preferences.status_bar.enabled = enabled;
+                if let Err(err) = save_app_preferences(&preferences) {
+                    eprintln!("failed to save status bar preference: {err}");
+                }
+            }
+            Err(err) => eprintln!("failed to read status bar preference: {err}"),
+        }
+    }
+
     pub fn status_bar_preferences(cx: &App) -> StatusBarPreferences {
         cx.try_global::<Self>()
             .map(|s| StatusBarPreferences {
@@ -370,6 +417,7 @@ struct EditorPreferencesFile {
     typewriter_mode: bool,
     spellcheck: bool,
     spellcheck_language: String,
+    zoom_percent: u16,
 }
 
 #[derive(Serialize)]
@@ -432,6 +480,7 @@ impl From<&AppPreferences> for PreferencesFile {
                 typewriter_mode: value.writing.typewriter_mode,
                 spellcheck: value.writing.spellcheck,
                 spellcheck_language: value.writing.spellcheck_language.clone(),
+                zoom_percent: value.writing.zoom_percent,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -546,6 +595,13 @@ fn app_preferences_from_toml_value(
             .and_then(|value| value.as_str())
             .map(|language| language.trim().to_string())
             .unwrap_or_default(),
+        zoom_percent: value
+            .get("editor")
+            .and_then(|editor| editor.get("zoom_percent"))
+            .and_then(|value| value.as_integer())
+            .and_then(|percent| u16::try_from(percent).ok())
+            .map(clamp_zoom)
+            .unwrap_or(default_writing.zoom_percent),
     };
 
     let status_bar = value
@@ -1804,6 +1860,12 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleAutoPair => strings.menu_auto_pair.clone(),
             ShortcutCommand::ToggleFocusMode => strings.menu_focus_mode.clone(),
             ShortcutCommand::ToggleTypewriterMode => strings.menu_typewriter_mode.clone(),
+            ShortcutCommand::ToggleStatusBar => strings.menu_status_bar.clone(),
+            ShortcutCommand::ToggleFullScreen => strings.menu_toggle_full_screen.clone(),
+            ShortcutCommand::ToggleAlwaysOnTop => strings.menu_always_on_top.clone(),
+            ShortcutCommand::ResetZoom => strings.menu_actual_size.clone(),
+            ShortcutCommand::ZoomIn => strings.menu_zoom_in.clone(),
+            ShortcutCommand::ZoomOut => strings.menu_zoom_out.clone(),
             ShortcutCommand::ToggleReadOnly => strings.menu_read_only.clone(),
             ShortcutCommand::ToggleSpellcheck => strings.menu_spellcheck.clone(),
             ShortcutCommand::OpenFolder => strings.menu_open_folder.clone(),
@@ -2725,6 +2787,19 @@ pub(crate) fn open_preferences_window(cx: &mut App) -> WindowHandle<PreferencesW
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn zoom_steps_stop_at_the_ends() {
+        use super::{ZOOM_STEPS, step_zoom};
+        assert_eq!(step_zoom(100, true), 110);
+        assert_eq!(step_zoom(100, false), 90);
+        // Off-step values snap to the next step.
+        assert_eq!(step_zoom(105, true), 110);
+        assert_eq!(step_zoom(105, false), 100);
+        assert_eq!(step_zoom(300, true), 300);
+        assert_eq!(step_zoom(50, false), 50);
+        assert!(ZOOM_STEPS.contains(&100));
+    }
+
     use super::{
         AppPreferences, EditorSettings, ImagePasteBehavior, StartupOpenPreference,
         StatusBarPreferences, WritingPreferences,
@@ -2923,6 +2998,7 @@ mod tests {
                 typewriter_mode: true,
                 spellcheck: false,
                 spellcheck_language: "de-DE".into(),
+                zoom_percent: 125,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             keybindings: BTreeMap::new(),
@@ -2958,6 +3034,7 @@ mod tests {
         assert!(text.contains("focus_mode = true"));
         assert!(text.contains("typewriter_mode = true"));
         assert!(text.contains("spellcheck_language = \"de-DE\""));
+        assert!(text.contains("zoom_percent = 125"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));
