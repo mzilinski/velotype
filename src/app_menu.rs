@@ -1080,6 +1080,45 @@ fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                 name: strings.menu_image.clone().into(),
                 items: vec![
                     MenuItem::action(
+                        strings.menu_insert_image.clone(),
+                        crate::components::InsertImage,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        strings.menu_reveal_image_file.clone(),
+                        crate::components::RevealImageFile,
+                    ),
+                    MenuItem::submenu(Menu {
+                        name: strings.menu_zoom_image.clone().into(),
+                        items: crate::editor::IMAGE_ZOOM_LEVELS
+                            .iter()
+                            .map(|percent| {
+                                MenuItem::action(
+                                    format!("{percent} %"),
+                                    crate::components::SetImageZoom { percent: *percent },
+                                )
+                            })
+                            .collect(),
+                    }),
+                    MenuItem::action(
+                        strings.menu_toggle_image_syntax.clone(),
+                        crate::components::ToggleImageSyntax,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        strings.menu_copy_image_to.clone(),
+                        crate::components::CopyImageTo,
+                    ),
+                    MenuItem::action(
+                        strings.menu_move_image_to.clone(),
+                        crate::components::MoveImageTo,
+                    ),
+                    MenuItem::action(
+                        strings.menu_delete_image_file.clone(),
+                        crate::components::DeleteImageFile,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
                         strings.menu_upload_image.clone(),
                         crate::components::UploadImage,
                     ),
@@ -1121,6 +1160,13 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
         || any.is::<crate::components::ExportAgain>()
+        || any.is::<crate::components::SetImageZoom>()
+        || any.is::<crate::components::InsertImage>()
+        || any.is::<crate::components::RevealImageFile>()
+        || any.is::<crate::components::ToggleImageSyntax>()
+        || any.is::<crate::components::CopyImageTo>()
+        || any.is::<crate::components::MoveImageTo>()
+        || any.is::<crate::components::DeleteImageFile>()
         || any.is::<crate::components::MoveDocument>()
         || any.is::<crate::components::ShowProperties>()
         || any.is::<crate::components::ExportHtmlPlain>()

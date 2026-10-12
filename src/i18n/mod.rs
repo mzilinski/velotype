@@ -141,6 +141,17 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_insert_image: String,
+    pub menu_reveal_image_file: String,
+    pub menu_zoom_image: String,
+    pub menu_toggle_image_syntax: String,
+    pub menu_copy_image_to: String,
+    pub menu_move_image_to: String,
+    pub menu_delete_image_file: String,
+    pub image_menu_no_image: String,
+    pub image_menu_no_local_image: String,
+    pub image_delete_confirm: String,
+    pub image_delete_button: String,
     pub menu_move_document: String,
     pub menu_properties: String,
     pub move_failed_title: String,
@@ -611,6 +622,17 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_insert_image: Option<String>,
+    menu_reveal_image_file: Option<String>,
+    menu_zoom_image: Option<String>,
+    menu_toggle_image_syntax: Option<String>,
+    menu_copy_image_to: Option<String>,
+    menu_move_image_to: Option<String>,
+    menu_delete_image_file: Option<String>,
+    image_menu_no_image: Option<String>,
+    image_menu_no_local_image: Option<String>,
+    image_delete_confirm: Option<String>,
+    image_delete_button: Option<String>,
     menu_move_document: Option<String>,
     menu_properties: Option<String>,
     move_failed_title: Option<String>,
@@ -996,6 +1018,17 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_insert_image",
+    "menu_reveal_image_file",
+    "menu_zoom_image",
+    "menu_toggle_image_syntax",
+    "menu_copy_image_to",
+    "menu_move_image_to",
+    "menu_delete_image_file",
+    "image_menu_no_image",
+    "image_menu_no_local_image",
+    "image_delete_confirm",
+    "image_delete_button",
     "menu_move_document",
     "menu_properties",
     "move_failed_title",
@@ -1461,6 +1494,35 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_insert_image: self.menu_insert_image.unwrap_or(defaults.menu_insert_image),
+            menu_reveal_image_file: self
+                .menu_reveal_image_file
+                .unwrap_or(defaults.menu_reveal_image_file),
+            menu_zoom_image: self.menu_zoom_image.unwrap_or(defaults.menu_zoom_image),
+            menu_toggle_image_syntax: self
+                .menu_toggle_image_syntax
+                .unwrap_or(defaults.menu_toggle_image_syntax),
+            menu_copy_image_to: self
+                .menu_copy_image_to
+                .unwrap_or(defaults.menu_copy_image_to),
+            menu_move_image_to: self
+                .menu_move_image_to
+                .unwrap_or(defaults.menu_move_image_to),
+            menu_delete_image_file: self
+                .menu_delete_image_file
+                .unwrap_or(defaults.menu_delete_image_file),
+            image_menu_no_image: self
+                .image_menu_no_image
+                .unwrap_or(defaults.image_menu_no_image),
+            image_menu_no_local_image: self
+                .image_menu_no_local_image
+                .unwrap_or(defaults.image_menu_no_local_image),
+            image_delete_confirm: self
+                .image_delete_confirm
+                .unwrap_or(defaults.image_delete_confirm),
+            image_delete_button: self
+                .image_delete_button
+                .unwrap_or(defaults.image_delete_button),
             menu_move_document: self
                 .menu_move_document
                 .unwrap_or(defaults.menu_move_document),
@@ -2334,6 +2396,17 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_insert_image: "插入图片…".into(),
+            menu_reveal_image_file: "打开图片位置".into(),
+            menu_zoom_image: "缩放图片".into(),
+            menu_toggle_image_syntax: "切换 Markdown/HTML 语法".into(),
+            menu_copy_image_to: "复制图片到…".into(),
+            menu_move_image_to: "移动图片到…".into(),
+            menu_delete_image_file: "删除图片文件".into(),
+            image_menu_no_image: "请先将光标放在图片中。".into(),
+            image_menu_no_local_image: "此操作仅适用于存储在本机上的图片文件。".into(),
+            image_delete_confirm: "将“{file}”移到回收站并从文档中删除该图片？".into(),
+            image_delete_button: "移到回收站".into(),
             menu_move_document: "移动到…".into(),
             menu_properties: "属性".into(),
             move_failed_title: "无法移动文件".into(),
@@ -2737,6 +2810,17 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_insert_image: "Insert Image…".into(),
+            menu_reveal_image_file: "Open Image Location".into(),
+            menu_zoom_image: "Zoom Image".into(),
+            menu_toggle_image_syntax: "Switch Markdown/HTML Syntax".into(),
+            menu_copy_image_to: "Copy Image to…".into(),
+            menu_move_image_to: "Move Image to…".into(),
+            menu_delete_image_file: "Delete Image File".into(),
+            image_menu_no_image: "Place the cursor in an image first.".into(),
+            image_menu_no_local_image: "This works only for an image stored as a file on this computer.".into(),
+            image_delete_confirm: "Move \"{file}\" to the trash and remove the image from the document?".into(),
+            image_delete_button: "Move to Trash".into(),
             menu_move_document: "Move To…".into(),
             menu_properties: "Properties".into(),
             move_failed_title: "Could not move the file".into(),
@@ -3142,6 +3226,17 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_insert_image: "Bild einfügen…".into(),
+            menu_reveal_image_file: "Speicherort des Bildes öffnen".into(),
+            menu_zoom_image: "Bildgröße".into(),
+            menu_toggle_image_syntax: "Zwischen Markdown- und HTML-Syntax wechseln".into(),
+            menu_copy_image_to: "Bild kopieren nach…".into(),
+            menu_move_image_to: "Bild verschieben nach…".into(),
+            menu_delete_image_file: "Bilddatei löschen".into(),
+            image_menu_no_image: "Setze den Cursor zuerst in ein Bild.".into(),
+            image_menu_no_local_image: "Das geht nur bei einem Bild, das als Datei auf diesem Rechner liegt.".into(),
+            image_delete_confirm: "„{file}“ in den Papierkorb verschieben und das Bild aus dem Dokument entfernen?".into(),
+            image_delete_button: "In den Papierkorb".into(),
             menu_move_document: "Verschieben nach…".into(),
             menu_properties: "Eigenschaften".into(),
             move_failed_title: "Datei konnte nicht verschoben werden".into(),

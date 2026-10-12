@@ -58,6 +58,12 @@ actions!(
         ExportHtmlPlain,
         MoveDocument,
         ShowProperties,
+        InsertImage,
+        RevealImageFile,
+        ToggleImageSyntax,
+        CopyImageTo,
+        MoveImageTo,
+        DeleteImageFile,
         ToggleAutosave,
         ShowBackups,
         UploadImage,
@@ -172,6 +178,15 @@ pub struct InsertCallout {
     pub kind: String,
 }
 
+/// Zooms the image at the caret (Format > Image > Zoom).
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+#[action(namespace = velotype)]
+#[serde(deny_unknown_fields)]
+pub struct SetImageZoom {
+    /// Zoom in percent; 100 restores the plain Markdown image.
+    pub percent: u32,
+}
+
 /// Exports the document with Pandoc (File > Export > Word, LaTeX, ...).
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
 #[action(namespace = velotype)]
@@ -274,6 +289,12 @@ pub(crate) enum ShortcutCommand {
     ExportHtmlPlain,
     MoveDocument,
     ShowProperties,
+    InsertImage,
+    RevealImageFile,
+    ToggleImageSyntax,
+    CopyImageTo,
+    MoveImageTo,
+    DeleteImageFile,
     ToggleAutosave,
     ShowBackups,
     UploadImage,
@@ -697,6 +718,48 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         command: ShortcutCommand::ShowBackups,
         id: "show_backups",
         category: ShortcutCategory::File,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertImage,
+        id: "insert_image",
+        category: ShortcutCategory::Formatting,
+        default_keys: &["cmd-shift-i", "ctrl-shift-i"],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::RevealImageFile,
+        id: "reveal_image_file",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::ToggleImageSyntax,
+        id: "toggle_image_syntax",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::CopyImageTo,
+        id: "copy_image_to",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::MoveImageTo,
+        id: "move_image_to",
+        category: ShortcutCategory::Formatting,
+        default_keys: &[],
+        context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::DeleteImageFile,
+        id: "delete_image_file",
+        category: ShortcutCategory::Formatting,
         default_keys: &[],
         context: BLOCK_CONTEXT,
     },
@@ -1562,6 +1625,12 @@ fn key_binding_for(
         ShortcutCommand::ToggleFinalNewline => KeyBinding::new(key, ToggleFinalNewline, context),
         ShortcutCommand::PrintDocument => KeyBinding::new(key, PrintDocument, context),
         ShortcutCommand::ExportAgain => KeyBinding::new(key, ExportAgain, context),
+        ShortcutCommand::InsertImage => KeyBinding::new(key, InsertImage, context),
+        ShortcutCommand::RevealImageFile => KeyBinding::new(key, RevealImageFile, context),
+        ShortcutCommand::ToggleImageSyntax => KeyBinding::new(key, ToggleImageSyntax, context),
+        ShortcutCommand::CopyImageTo => KeyBinding::new(key, CopyImageTo, context),
+        ShortcutCommand::MoveImageTo => KeyBinding::new(key, MoveImageTo, context),
+        ShortcutCommand::DeleteImageFile => KeyBinding::new(key, DeleteImageFile, context),
         ShortcutCommand::MoveDocument => KeyBinding::new(key, MoveDocument, context),
         ShortcutCommand::ShowProperties => KeyBinding::new(key, ShowProperties, context),
         ShortcutCommand::ExportHtmlPlain => KeyBinding::new(key, ExportHtmlPlain, context),
