@@ -2757,20 +2757,20 @@ async fn toggle_view_mode_ends_stale_code_block_pointer_selection(cx: &mut TestA
 }
 
 #[gpui::test]
-async fn ctrl_tab_toggles_view_mode(cx: &mut TestAppContext) {
+async fn ctrl_slash_toggles_view_mode(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
     let (editor, cx) =
         cx.add_window_view(|_window, cx| Editor::from_markdown(cx, "alpha".to_string(), None));
 
     redraw(cx);
-    cx.simulate_keystrokes("ctrl-tab");
+    cx.simulate_keystrokes("ctrl-/");
     redraw(cx);
 
     editor.update(cx, |editor, _cx| {
         assert!(matches!(editor.view_mode, ViewMode::Source));
     });
 
-    cx.simulate_keystrokes("ctrl-tab");
+    cx.simulate_keystrokes("ctrl-/");
     redraw(cx);
 
     editor.update(cx, |editor, _cx| {

@@ -141,6 +141,7 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_source_mode: String,
     pub menu_image: String,
     pub menu_upload_image: String,
     pub menu_upload_all_images: String,
@@ -592,6 +593,7 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_source_mode: Option<String>,
     menu_image: Option<String>,
     menu_upload_image: Option<String>,
     menu_upload_all_images: Option<String>,
@@ -958,6 +960,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_source_mode",
     "menu_image",
     "menu_upload_image",
     "menu_upload_all_images",
@@ -1404,6 +1407,7 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_source_mode: self.menu_source_mode.unwrap_or(defaults.menu_source_mode),
             menu_image: self.menu_image.unwrap_or(defaults.menu_image),
             menu_upload_image: self.menu_upload_image.unwrap_or(defaults.menu_upload_image),
             menu_upload_all_images: self
@@ -2242,6 +2246,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_source_mode: "源代码模式".into(),
             menu_image: "图片".into(),
             menu_upload_image: "上传图片".into(),
             menu_upload_all_images: "上传所有本地图片".into(),
@@ -2626,6 +2631,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_source_mode: "Source Code Mode".into(),
             menu_image: "Image".into(),
             menu_upload_image: "Upload Image".into(),
             menu_upload_all_images: "Upload All Local Images".into(),
@@ -3012,6 +3018,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_source_mode: "Quelltextmodus".into(),
             menu_image: "Bild".into(),
             menu_upload_image: "Bild hochladen".into(),
             menu_upload_all_images: "Alle lokalen Bilder hochladen".into(),

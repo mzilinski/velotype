@@ -63,7 +63,7 @@ mod workspace_actions;
 mod workspace_search;
 mod writing;
 
-pub(crate) use self::line_endings::menu_line_ending_is_crlf;
+pub(crate) use self::line_endings::{menu_line_ending_is_crlf, menu_source_mode};
 use self::status_bar::StatusBarState;
 pub(crate) use self::tabs::EditorTabEvent;
 pub use self::tabs::EditorWindow;

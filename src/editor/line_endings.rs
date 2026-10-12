@@ -82,11 +82,14 @@ impl Editor {
     /// Tells the menus the line endings of the document in the active
     /// window, rebuilding them when that changed.
     pub(super) fn publish_menu_state(&self, cx: &mut Context<Self>) {
-        let published = cx.try_global::<MenuLineEnding>().map(|state| state.0);
-        if published == Some(self.line_ending) {
+        let state = MenuDocumentState {
+            line_ending: self.line_ending,
+            source_mode: self.view_mode == super::ViewMode::Source,
+        };
+        if cx.try_global::<MenuDocumentState>() == Some(&state) {
             return;
         }
-        cx.set_global(MenuLineEnding(self.line_ending));
+        cx.set_global(state);
         refresh_menus(cx);
     }
 
@@ -130,14 +133,24 @@ impl Editor {
     }
 }
 
-/// Line endings of the document in the active window, for the menu.
-struct MenuLineEnding(LineEnding);
+/// State of the document in the active window shown in the menus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct MenuDocumentState {
+    line_ending: LineEnding,
+    /// The document is shown as Markdown source (View > Source Code Mode).
+    source_mode: bool,
+}
 
-impl Global for MenuLineEnding {}
+impl Global for MenuDocumentState {}
 
 pub(crate) fn menu_line_ending_is_crlf(cx: &App) -> bool {
-    cx.try_global::<MenuLineEnding>()
-        .is_some_and(|state| state.0 == LineEnding::Crlf)
+    cx.try_global::<MenuDocumentState>()
+        .is_some_and(|state| state.line_ending == LineEnding::Crlf)
+}
+
+pub(crate) fn menu_source_mode(cx: &App) -> bool {
+    cx.try_global::<MenuDocumentState>()
+        .is_some_and(|state| state.source_mode)
 }
 
 /// Rebuilds the menus once the current update is done (the builder reads
