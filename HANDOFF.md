@@ -176,6 +176,14 @@ Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kü
 ~~3. Dateibaum und Dateiaktionen~~ (erledigt; „Verschieben nach“, „Eigenschaften“, Kodierung, Autosave fehlen), ~~4. Auswahl- und Löschbefehle~~ (erledigt), ~~5. Ansicht (Zoom, Vollbild, Immer im Vordergrund)~~ (erledigt; Werkzeugleiste und Artikel-Liste fehlen),
 ~~6. Typografie/Zeilenenden/Emoji~~ (erledigt; Typora-Modus „beim Rendern umwandeln“ und Unicode-Satzzeichen-Mapping fehlen), ~~7. Pandoc, Drucken, Bild-Upload~~ (erledigt; „Export mit vorherigen Einstellungen“, HTML ohne Styles, Bild-Export, S3-Upload fehlen).
 
+**Nächster Plan (mit Malte abgestimmt, 2026-10-12):**
+- A. Fixes: (1) Inline-Parser liest Konstrukte nach dem ersten Rendern anders als beim Laden (siehe Folgepunkte unten), (2) unnötige Escapes `~`/`` ` `` beim Bearbeiten, (3) eingerückter Code wird beim Bearbeiten zu Fence mit überflüssiger Leerzeile, (4) Kürzel: Zoom auf Strg++/Strg+-/Strg+0 (Überschriftenebene neu belegen), Quellcode-Modus ins Menü Ansicht mit Strg+/, Strg+Tab wechselt Tabs. Bewusste Abweichung von Typora ist ok.
+- 8. Datei-Menü abschließen: Autosave und Sicherungskopien (zuerst), Export mit vorherigen Einstellungen (Strg+Shift+E), HTML ohne Styles, Verschieben nach…, Eigenschaften.
+- 9. Bild-Menü: Bild einfügen per Dialog (Strg+Shift+I), Bildordner öffnen, Markdown/HTML-Syntax wechseln, Bilder kopieren/verschieben mit Pfadanpassung, Bilddatei löschen, Bild kopieren, `typora-root-url`.
+- 10. Kontextmenüs: Block- und Textformate, Kopieren/Einfügen als …, Einfügen von Absatz, Bild, Mathe, Code.
+- 11. Ansicht: Werkzeugleiste, Artikel-Liste in der Seitenleiste.
+- Später: CSS-Themes wie Typora mit „Theme-Ordner öffnen“, mitgelieferte Hilfedokumente.
+- Grundsatz: Verhalten aus upstream ist kein Grund, Fehler zu behalten; geerbte Fehler wie eigene beheben.
 **Offene Folgepunkte Originaltreue:** Der Inline-Parser liest manche Konstrukte nach dem ersten Rendern anders als beim Laden (mehrzeiliger Linktext mit `_` in Listen wird zu `*`, `*[Text][ref]*` → `[*Text*][ref]`), diese Regionen werden dann normalisiert gespeichert; bearbeitete Absätze bekommen weiter `~`/`` ` ``-Escapes; eingerückter Code wird beim Bearbeiten zu einem Fence mit überflüssiger Leerzeile. Gemischte Zeilenenden werden auf die Mehrheit vereinheitlicht (wie Typora).
 **Offene Entscheidung (Malte):** Zoom-Kürzel. Strg+- ist Typoras „Überschriftenebene verringern“, Strg++ zoomt (Zusatzbelegung). Vorschlag: Zoom wie im Browser auf Strg++/Strg+-/Strg+0, Überschriftenebene anders belegen. Außerdem Quellcode-Modus fehlt im Menü Ansicht; Vorschlag Strg+/ dafür und Strg+Tab für Tab-Wechsel (wie Typora).
 
