@@ -369,6 +369,9 @@ impl Editor {
                     roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
                 }
                 self.document.replace_roots(roots, cx);
+                self.view_mode = ViewMode::Rendered;
+                self.rebuild_table_runtimes(cx);
+                self.rebuild_image_runtimes(cx);
                 let fidelity = super::source_fidelity::fidelity_for_document(
                     &self.document,
                     &source,
@@ -386,9 +389,6 @@ impl Editor {
                         map(selection_snapshot.range.start)..map(selection_snapshot.range.end);
                 }
                 self.source_fidelity = fidelity;
-                self.view_mode = ViewMode::Rendered;
-                self.rebuild_table_runtimes(cx);
-                self.rebuild_image_runtimes(cx);
             }
         }
 

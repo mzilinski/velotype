@@ -477,3 +477,40 @@ mod editor_tests {
         });
     }
 }
+
+#[cfg(test)]
+mod normalization_tests {
+    use gpui::TestAppContext;
+
+    use crate::editor::Editor;
+
+    /// What Velotype writes for regions it has to regenerate.
+    #[gpui::test]
+    async fn regenerated_markdown_stays_close_to_the_source(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            crate::i18n::I18nManager::init(cx);
+            crate::theme::ThemeManager::init(cx);
+            crate::components::init(cx);
+        });
+        for (input, normalized) in [
+            // Indented code: no blank line swallowed into the fence.
+            (
+                "a\n\n    code\n    more\n\nend",
+                "a\n\n```\ncode\nmore\n```\n\nend",
+            ),
+            // Literal markers that cannot format stay unescaped.
+            (
+                "max. ~5 and `n and snake_case",
+                "max. ~5 and `n and snake_case",
+            ),
+            // Underscores inside words are text, not emphasis.
+            ("- [A_B_C](x.md)", "- [A_B_C](x.md)"),
+        ] {
+            let (editor, cx) = cx
+                .add_window_view(|_window, cx| Editor::from_markdown(cx, input.to_string(), None));
+            editor.update(cx, |editor, cx| {
+                assert_eq!(editor.document.markdown_text(cx), normalized, "{input}");
+            });
+        }
+    }
+}

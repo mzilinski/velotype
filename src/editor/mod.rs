@@ -355,8 +355,6 @@ impl Editor {
 
         let mut document = DocumentTree::new(roots);
         document.rebuild_metadata_and_snapshot(cx);
-        let source_fidelity =
-            source_fidelity::fidelity_for_document(&document, &normalized, &regions, cx);
         let pending_focus = document.first_root().map(|block| block.entity_id());
 
         let mut editor = Self {
@@ -376,7 +374,7 @@ impl Editor {
             document_dirty: false,
             file_path,
             line_ending: line_endings::LineEnding::detect(&markdown),
-            source_fidelity,
+            source_fidelity: None,
             scroll_handle: ScrollHandle::new(),
             last_scroll_viewport_size: None,
             prev_visible_block_ids: Vec::new(),
@@ -424,7 +422,7 @@ impl Editor {
             redo_history: Vec::new(),
             pending_undo_capture: None,
             last_selection_snapshot: Self::empty_selection_snapshot(),
-            last_stable_source_text: normalized,
+            last_stable_source_text: normalized.clone(),
             history_restore_in_progress: false,
             image_reference_definitions: Arc::default(),
             link_reference_definitions: Arc::default(),
@@ -434,6 +432,10 @@ impl Editor {
         };
         editor.rebuild_table_runtimes(cx);
         editor.rebuild_image_runtimes(cx);
+        // After the runtimes: link reference definitions change how blocks
+        // serialize (`[text][ref]`).
+        editor.source_fidelity =
+            source_fidelity::fidelity_for_document(&editor.document, &normalized, &regions, cx);
         editor.pending_focus = editor.first_focusable_entity_id(cx);
         editor.active_entity_id = editor.pending_focus;
         editor.refresh_stable_document_snapshot(cx);
