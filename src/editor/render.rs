@@ -2132,6 +2132,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_print_document))
             .on_action(cx.listener(Self::on_show_backups))
             .on_action(cx.listener(Self::on_export_again))
+            .on_action(cx.listener(Self::on_move_document))
+            .on_action(cx.listener(Self::on_show_properties))
             .on_action(cx.listener(Self::on_export_html_plain))
             .on_action(cx.listener(Self::on_upload_image))
             .on_action(cx.listener(Self::on_upload_all_images))

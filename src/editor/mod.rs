@@ -33,6 +33,7 @@ mod emoji_picker;
 mod events;
 mod export;
 mod file_drop;
+mod file_info;
 mod file_menu;
 mod file_ops;
 mod find;
