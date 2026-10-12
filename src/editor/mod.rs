@@ -36,6 +36,7 @@ mod file_ops;
 mod find;
 mod history;
 mod images;
+mod line_endings;
 mod markdown_commands;
 mod paragraph_format;
 mod persistence;
@@ -57,6 +58,7 @@ mod workspace_actions;
 mod workspace_search;
 mod writing;
 
+pub(crate) use self::line_endings::menu_line_ending_is_crlf;
 use self::status_bar::StatusBarState;
 pub(crate) use self::tabs::EditorTabEvent;
 pub use self::tabs::EditorWindow;
@@ -96,6 +98,8 @@ pub struct Editor {
     pending_window_title_refresh: bool,
     document_dirty: bool,
     file_path: Option<PathBuf>,
+    /// Line endings written on save (detected when the file was loaded).
+    line_ending: line_endings::LineEnding,
     scroll_handle: ScrollHandle,
     last_scroll_viewport_size: Option<Size<Pixels>>,
     /// Last frame's visible block ids, to detect structural edits so the height
@@ -360,6 +364,7 @@ impl Editor {
             pending_window_title_refresh: false,
             document_dirty: false,
             file_path,
+            line_ending: line_endings::LineEnding::detect(&markdown),
             scroll_handle: ScrollHandle::new(),
             last_scroll_viewport_size: None,
             prev_visible_block_ids: Vec::new(),

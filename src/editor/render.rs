@@ -1488,6 +1488,9 @@ impl Render for Editor {
         self.sync_pending_open_link(window, cx);
         self.sync_pending_open_markdown_path(window, cx);
         self.sync_window_edited_state(window);
+        if window.is_window_active() {
+            self.publish_menu_state(cx);
+        }
 
         let viewport_bounds = self.scroll_handle.bounds();
         let viewport_size = viewport_bounds.size;
@@ -2116,6 +2119,9 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
             .on_action(cx.listener(Self::on_delete_block))
+            .on_action(cx.listener(Self::on_set_line_ending_crlf))
+            .on_action(cx.listener(Self::on_set_line_ending_lf))
+            .on_action(cx.listener(Self::on_toggle_final_newline))
             .on_action(cx.listener(Self::on_jump_to_selection))
             .on_action(cx.listener(Self::on_copy_as_plain_text))
             .on_action(cx.listener(Self::on_copy_as_html))

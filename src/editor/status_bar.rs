@@ -73,6 +73,8 @@ impl Editor {
             );
         }
 
+        right_items.push(render_line_ending(self.line_ending(), theme, cx));
+
         if prefs.show_word_count {
             let text = self.serialized_document_text(cx);
             let total_count = count_words(&text);
@@ -235,6 +237,35 @@ fn render_mode_switch(
              _window: &mut Window,
              cx: &mut Context<Editor>| {
                 editor.toggle_view_mode_from_ui(cx);
+            },
+        ))
+        .into_any_element()
+}
+
+/// "LF" / "CRLF"; a click switches the document's line endings.
+fn render_line_ending(
+    ending: super::line_endings::LineEnding,
+    theme: &Theme,
+    cx: &mut Context<Editor>,
+) -> AnyElement {
+    let c = &theme.colors;
+    let d = &theme.dimensions;
+    let hover_bg = c.status_bar_button_hover;
+    div()
+        .id("status-bar-line-ending")
+        .h(px(d.status_bar_height - 4.0))
+        .px(px(6.0))
+        .flex()
+        .items_center()
+        .rounded(px(4.0))
+        .cursor_pointer()
+        .hover(move |style| style.bg(hover_bg))
+        .text_size(px(d.status_bar_text_size))
+        .text_color(c.status_bar_text)
+        .child(ending.label())
+        .on_click(cx.listener(
+            |editor: &mut Editor, _: &gpui::ClickEvent, _window: &mut Window, cx| {
+                editor.toggle_line_ending(cx);
             },
         ))
         .into_any_element()
