@@ -38,6 +38,7 @@ mod file_menu;
 mod file_ops;
 mod find;
 mod history;
+mod image_menu;
 mod image_upload;
 mod images;
 mod line_endings;
@@ -65,6 +66,7 @@ mod workspace_actions;
 mod workspace_search;
 mod writing;
 
+pub(crate) use self::images::IMAGE_ZOOM_LEVELS;
 pub(crate) use self::line_endings::{menu_line_ending_is_crlf, menu_source_mode};
 use self::status_bar::StatusBarState;
 pub(crate) use self::tabs::EditorTabEvent;

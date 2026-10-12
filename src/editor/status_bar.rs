@@ -435,10 +435,15 @@ mod tests {
     fn mixed_cjk_and_english() {
         assert_eq!(count_words("hello 世界"), 3);
         // Markdown markers are not words.
-        assert_eq!(count_words("# Title
+        assert_eq!(
+            count_words(
+                "# Title
 
 - item | ---
-> **bold**"), 3);
+> **bold**"
+            ),
+            3
+        );
         assert_eq!(count_words("你好 world foo"), 4);
     }
 

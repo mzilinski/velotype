@@ -205,7 +205,7 @@ impl Editor {
         .detach();
     }
 
-    fn replace_uploaded_images(
+    pub(super) fn replace_uploaded_images(
         &mut self,
         replacements: &[(String, String)],
         cx: &mut Context<Self>,

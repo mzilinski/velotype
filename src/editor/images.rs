@@ -72,7 +72,7 @@ fn saved_document_image_dir(behavior: ImagePasteBehavior, document_path: &Path) 
 
 /// Returns `dir/preferred_name`, or `dir/<stem>-<n>.<ext>` for the first free
 /// `n` when that name is taken.
-fn unique_file_path(dir: &Path, preferred_name: &str) -> PathBuf {
+pub(super) fn unique_file_path(dir: &Path, preferred_name: &str) -> PathBuf {
     let preferred = Path::new(preferred_name);
     let stem = preferred
         .file_stem()
@@ -185,7 +185,7 @@ fn relative_path_under(dir: &Path, path: &Path) -> Option<String> {
 
 /// Text written into the image destination: `./relative` inside the document
 /// folder, otherwise the absolute path with `/` separators.
-fn image_link_path(path: &Path, document_dir: Option<&Path>) -> String {
+pub(super) fn image_link_path(path: &Path, document_dir: Option<&Path>) -> String {
     if let Some(relative) = document_dir.and_then(|dir| relative_path_under(dir, path))
         && !relative.is_empty()
     {
@@ -312,7 +312,7 @@ pub(super) fn image_timestamp() -> String {
 }
 
 /// Zoom levels offered by the image context menu, in percent.
-pub(super) const IMAGE_ZOOM_LEVELS: [u32; 5] = [25, 50, 75, 100, 150];
+pub(crate) const IMAGE_ZOOM_LEVELS: [u32; 9] = [25, 33, 50, 67, 75, 80, 100, 150, 200];
 
 fn escape_html_attr(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
@@ -396,37 +396,13 @@ impl Editor {
         if percent == 100 && is_markdown {
             return;
         }
-        let Some(location) = self.document.find_block_location(entity_id) else {
-            return;
-        };
-
         let source = zoomed_image_source(&src, &alt, percent);
         let record = if percent == 100 {
             BlockRecord::paragraph(source)
         } else {
             BlockRecord::html(source)
         };
-        self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
-        let replacement = Self::new_block(cx, record);
-        self.document.insert_blocks_at(
-            location.parent.clone(),
-            location.index + 1,
-            vec![replacement.clone()],
-            cx,
-        );
-        self.document.with_structure_mutation(cx, |document, cx| {
-            let _ = document.remove_block_by_id_raw(entity_id, cx);
-        });
-        if self.active_entity_id == Some(entity_id) {
-            self.active_entity_id = Some(replacement.entity_id());
-        }
-        if self.pending_focus == Some(entity_id) {
-            self.pending_focus = None;
-        }
-        self.rebuild_image_runtimes(cx);
-        self.mark_dirty(cx);
-        self.finalize_pending_undo_capture(cx);
-        cx.notify();
+        self.replace_image_block(entity_id, record, cx);
     }
 
     pub(super) fn current_image_paste_behavior() -> ImagePasteBehavior {
