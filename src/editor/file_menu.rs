@@ -118,7 +118,7 @@ impl Editor {
 mod tests {
     use std::fs;
 
-    use gpui::{AppContext as _, TestAppContext};
+    use gpui::TestAppContext;
 
     use crate::editor::Editor;
 

@@ -807,6 +807,10 @@ fn edit_menu(strings: &crate::i18n::I18nStrings) -> Menu {
         Copy, CopyAsHtml, CopyAsPlainText, Cut, FindAndReplace, FindInDocument, Paste,
         PasteAsPlainText, Redo, SearchInWorkspace, SelectAll, Undo,
     };
+    use crate::components::{
+        DeleteBlock, DeleteLine, DeleteStyledScope, DeleteWord, JumpToBottom, JumpToSelection,
+        JumpToTop, SelectBlock, SelectLine, SelectStyledScope, SelectWord,
+    };
     Menu {
         name: strings.menu_edit.clone().into(),
         items: vec![
@@ -822,6 +826,31 @@ fn edit_menu(strings: &crate::i18n::I18nStrings) -> Menu {
             MenuItem::action(strings.menu_paste_as_plain_text.clone(), PasteAsPlainText),
             MenuItem::separator(),
             MenuItem::action(strings.preferences_shortcut_select_all.clone(), SelectAll),
+            MenuItem::submenu(Menu {
+                name: strings.menu_selection.clone().into(),
+                items: vec![
+                    MenuItem::action(strings.menu_select_block.clone(), SelectBlock),
+                    MenuItem::action(strings.menu_select_line.clone(), SelectLine),
+                    MenuItem::action(strings.menu_select_styled_scope.clone(), SelectStyledScope),
+                    MenuItem::action(strings.menu_select_word.clone(), SelectWord),
+                    MenuItem::separator(),
+                    MenuItem::action(strings.preferences_shortcut_jump_to_top.clone(), JumpToTop),
+                    MenuItem::action(strings.menu_jump_to_selection.clone(), JumpToSelection),
+                    MenuItem::action(
+                        strings.preferences_shortcut_jump_to_bottom.clone(),
+                        JumpToBottom,
+                    ),
+                ],
+            }),
+            MenuItem::submenu(Menu {
+                name: strings.menu_delete.clone().into(),
+                items: vec![
+                    MenuItem::action(strings.menu_delete_block.clone(), DeleteBlock),
+                    MenuItem::action(strings.menu_delete_line.clone(), DeleteLine),
+                    MenuItem::action(strings.menu_delete_styled_scope.clone(), DeleteStyledScope),
+                    MenuItem::action(strings.menu_delete_word.clone(), DeleteWord),
+                ],
+            }),
             MenuItem::separator(),
             MenuItem::action(strings.preferences_shortcut_find.clone(), FindInDocument),
             MenuItem::action(
@@ -969,8 +998,23 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         Copy, CopyAsHtml, CopyAsPlainText, Cut, FindAndReplace, FindInDocument, Paste,
         PasteAsPlainText, Redo, SearchInWorkspace, SelectAll, Undo,
     };
+    use crate::components::{
+        DeleteBlock, DeleteLine, DeleteStyledScope, DeleteWord, JumpToBottom, JumpToSelection,
+        JumpToTop, SelectBlock, SelectLine, SelectStyledScope, SelectWord,
+    };
     let any = action.as_any();
-    any.is::<Undo>()
+    any.is::<SelectBlock>()
+        || any.is::<SelectLine>()
+        || any.is::<SelectStyledScope>()
+        || any.is::<SelectWord>()
+        || any.is::<JumpToTop>()
+        || any.is::<JumpToSelection>()
+        || any.is::<JumpToBottom>()
+        || any.is::<DeleteBlock>()
+        || any.is::<DeleteLine>()
+        || any.is::<DeleteStyledScope>()
+        || any.is::<DeleteWord>()
+        || any.is::<Undo>()
         || any.is::<Redo>()
         || any.is::<Cut>()
         || any.is::<Copy>()

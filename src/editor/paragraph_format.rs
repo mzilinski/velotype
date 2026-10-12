@@ -311,6 +311,41 @@ impl Editor {
         });
     }
 
+    /// Delete Paragraph/Block: removes the focused block's source.
+    pub(crate) fn on_delete_block(
+        &mut self,
+        _: &crate::components::DeleteBlock,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.read_only {
+            return;
+        }
+        let Some(active) = self.active_entity_id else {
+            return;
+        };
+        let Some(range) = self
+            .build_source_target_mappings(cx)
+            .into_iter()
+            .find(|mapping| mapping.entity.entity_id() == active)
+            .map(|mapping| mapping.full_source_range.clone())
+        else {
+            return;
+        };
+        let source = self.current_document_source(cx);
+        self.apply_source_edit(super::markdown_commands::remove_block(&source, range), cx);
+    }
+
+    /// Jump to Selection: scrolls the focused block back into view.
+    pub(crate) fn on_jump_to_selection(
+        &mut self,
+        _: &crate::components::JumpToSelection,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.request_active_block_scroll_into_view(cx);
+    }
+
     pub(crate) fn on_clear_format(
         &mut self,
         _: &ClearFormat,

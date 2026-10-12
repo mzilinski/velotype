@@ -3663,3 +3663,52 @@ async fn edit_menu_paste_and_copy_variants_use_the_focused_block(cx: &mut TestAp
     let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
     assert_eq!(source, "Some **bold** text\n\nplain *paste*");
 }
+
+#[gpui::test]
+async fn selection_and_delete_commands_act_on_the_focused_block(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+
+    let (editor, cx) = cx.add_window_view(|_window, cx| {
+        Editor::from_markdown(
+            cx,
+            "One two. Three four.\n\nmiddle block\n\nlast".to_string(),
+            None,
+        )
+    });
+    activate_visual_window(cx);
+    let dispatch = |action: &dyn gpui::Action, cx: &mut VisualTestContext| {
+        let action = action.boxed_clone();
+        cx.update(|window, cx| {
+            let weak = editor.downgrade();
+            crate::app_menu::dispatch_menu_action_for_editor(action.as_ref(), &weak, window, cx);
+        });
+        cx.run_until_parked();
+    };
+    let selected_text = |cx: &mut VisualTestContext| {
+        editor.update(cx, |editor, cx| editor.selected_markdown_text(cx))
+    };
+
+    // Caret inside "Three": word, then sentence.
+    editor.update(cx, |editor, cx| {
+        let block = editor.document.first_root().cloned().expect("first block");
+        editor.focus_block_range(&block, 11..11, cx);
+    });
+    cx.run_until_parked();
+    dispatch(&crate::components::SelectWord, cx);
+    assert_eq!(selected_text(cx).as_deref(), Some("Three"));
+    dispatch(&crate::components::SelectLine, cx);
+    assert_eq!(selected_text(cx).as_deref(), Some("Three four."));
+
+    // Delete the sentence, then the middle block as a whole.
+    dispatch(&crate::components::DeleteLine, cx);
+    let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
+    assert_eq!(source, "One two. \n\nmiddle block\n\nlast");
+    editor.update(cx, |editor, cx| {
+        let block = editor.document.root_blocks()[1].clone();
+        editor.focus_block_range(&block, 3..3, cx);
+    });
+    cx.run_until_parked();
+    dispatch(&crate::components::DeleteBlock, cx);
+    let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
+    assert_eq!(source, "One two. \n\nlast");
+}

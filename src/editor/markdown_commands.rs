@@ -445,6 +445,35 @@ pub(super) fn insert_footnote(source: &str, selection: Range<usize>) -> SourceEd
     }
 }
 
+/// Removes the whole lines covering `range` (one block's source) and the
+/// blank line that separated it; the caret lands where it was.
+pub(super) fn remove_block(source: &str, range: Range<usize>) -> SourceEdit {
+    let start = range.start.min(source.len());
+    let end = range.end.min(source.len()).max(start);
+    let line_start = source[..start].rfind('\n').map_or(0, |index| index + 1);
+    let line_end = source[end..]
+        .find('\n')
+        .map_or(source.len(), |index| end + index);
+    let before = source[..line_start].trim_end_matches('\n');
+    let after = source[line_end..].trim_start_matches('\n');
+    let mut out = String::with_capacity(source.len());
+    out.push_str(before);
+    let caret = if before.is_empty() || after.is_empty() {
+        out.len()
+    } else {
+        out.push_str("\n\n");
+        out.len()
+    };
+    out.push_str(after);
+    if !out.is_empty() && !out.ends_with('\n') && source.ends_with('\n') {
+        out.push('\n');
+    }
+    SourceEdit {
+        source: out,
+        selection: caret..caret,
+    }
+}
+
 /// Adds an empty YAML front matter block at the start, unless one exists.
 pub(super) fn insert_front_matter(source: &str) -> Option<SourceEdit> {
     if source.starts_with("---\n") || source.starts_with("---\r\n") {
@@ -632,6 +661,18 @@ mod tests {
             &note.source[note.selection.start - 6..note.selection.start],
             "[^2]: "
         );
+    }
+
+    #[test]
+    fn removing_a_block_drops_its_lines_and_one_blank_line() {
+        let source = "first\n\nmiddle line\nstill middle\n\nlast\n";
+        let start = source.find("middle").unwrap();
+        let end = source.find("still middle").unwrap() + "still middle".len();
+        let edit = remove_block(source, start..end);
+        assert_eq!(edit.source, "first\n\nlast\n");
+        assert_eq!(&edit.source[edit.selection.start..], "last\n");
+        assert_eq!(remove_block("only", 0..4).source, "");
+        assert_eq!(remove_block("a\n\nb", 3..4).source, "a");
     }
 
     #[test]

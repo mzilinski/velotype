@@ -2052,6 +2052,18 @@ impl Render for Editor {
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Cut>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Paste>))
             .capture_action(
+                cx.listener(Self::swallow_edit_when_read_only::<crate::components::DeleteWord>),
+            )
+            .capture_action(
+                cx.listener(Self::swallow_edit_when_read_only::<crate::components::DeleteLine>),
+            )
+            .capture_action(cx.listener(
+                Self::swallow_edit_when_read_only::<crate::components::DeleteStyledScope>,
+            ))
+            .capture_action(
+                cx.listener(Self::swallow_edit_when_read_only::<crate::components::DeleteBlock>),
+            )
+            .capture_action(
                 cx.listener(
                     Self::swallow_edit_when_read_only::<crate::components::PasteAsPlainText>,
                 ),
@@ -2103,6 +2115,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_and_replace))
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
+            .on_action(cx.listener(Self::on_delete_block))
+            .on_action(cx.listener(Self::on_jump_to_selection))
             .on_action(cx.listener(Self::on_copy_as_plain_text))
             .on_action(cx.listener(Self::on_copy_as_html))
             .on_action(cx.listener(Self::on_increase_heading_level))
