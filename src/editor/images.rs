@@ -287,7 +287,7 @@ fn utc_image_timestamp(unix_seconds: i64) -> String {
 ///
 /// Uses the local clock on Windows; other platforms fall back to UTC because
 /// the crate has no time-zone dependency.
-fn image_timestamp() -> String {
+pub(super) fn image_timestamp() -> String {
     #[cfg(windows)]
     {
         // SAFETY: GetLocalTime only writes the returned SYSTEMTIME value.

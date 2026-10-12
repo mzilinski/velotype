@@ -677,6 +677,8 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         });
     } else if action.as_any().is::<ToggleAutoPair>() {
         toggle_writing_aid(cx, |writing| writing.auto_pair = !writing.auto_pair);
+    } else if action.as_any().is::<crate::components::ToggleAutosave>() {
+        toggle_writing_aid(cx, |writing| writing.autosave = !writing.autosave);
     } else if action.as_any().is::<ToggleSmartQuotes>() {
         toggle_writing_aid(cx, |writing| writing.smart_quotes = !writing.smart_quotes);
     } else if action.as_any().is::<ToggleSmartDashes>() {
@@ -1118,6 +1120,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
+        || any.is::<crate::components::ShowBackups>()
         || any.is::<crate::components::UploadImage>()
         || any.is::<crate::components::UploadAllImages>()
         || any.is::<SetLineEndingCrlf>()
@@ -1441,8 +1444,20 @@ fn build_menus_with_view(
                     MenuItem::action(strings.menu_save.clone(), SaveDocument),
                     MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
                     MenuItem::action(strings.menu_save_all.clone(), SaveAll),
+                    MenuItem::action(
+                        if writing.autosave {
+                            format!("✓ {}", strings.menu_autosave)
+                        } else {
+                            strings.menu_autosave.clone()
+                        },
+                        crate::components::ToggleAutosave,
+                    ),
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_reload_from_disk.clone(), ReloadFromDisk),
+                    MenuItem::action(
+                        strings.menu_show_backups.clone(),
+                        crate::components::ShowBackups,
+                    ),
                     MenuItem::action(
                         strings.menu_reveal_in_file_manager.clone(),
                         RevealInFileManager,
@@ -1483,8 +1498,20 @@ fn build_menus_with_view(
                 MenuItem::action(strings.menu_save.clone(), SaveDocument),
                 MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
                 MenuItem::action(strings.menu_save_all.clone(), SaveAll),
+                MenuItem::action(
+                    if writing.autosave {
+                        format!("✓ {}", strings.menu_autosave)
+                    } else {
+                        strings.menu_autosave.clone()
+                    },
+                    crate::components::ToggleAutosave,
+                ),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_reload_from_disk.clone(), ReloadFromDisk),
+                MenuItem::action(
+                    strings.menu_show_backups.clone(),
+                    crate::components::ShowBackups,
+                ),
                 MenuItem::action(
                     strings.menu_reveal_in_file_manager.clone(),
                     RevealInFileManager,
@@ -1929,6 +1956,9 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &ClearRecentFiles, cx| dispatch_menu_action(&ClearRecentFiles, cx));
     cx.on_action(|_: &CloseFolder, cx| dispatch_menu_action(&CloseFolder, cx));
     cx.on_action(|_: &ToggleAutoPair, cx| dispatch_menu_action(&ToggleAutoPair, cx));
+    cx.on_action(|_: &crate::components::ToggleAutosave, cx| {
+        dispatch_menu_action(&crate::components::ToggleAutosave, cx)
+    });
     cx.on_action(|_: &ToggleSmartQuotes, cx| dispatch_menu_action(&ToggleSmartQuotes, cx));
     cx.on_action(|_: &ToggleSmartDashes, cx| dispatch_menu_action(&ToggleSmartDashes, cx));
     cx.on_action(|_: &ToggleFocusMode, cx| dispatch_menu_action(&ToggleFocusMode, cx));

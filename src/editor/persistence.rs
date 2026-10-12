@@ -75,6 +75,7 @@ impl Editor {
 
     pub(super) fn apply_successful_save(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.file_path = Some(path);
+        self.autosave_suspended = false;
         self.document_dirty = false;
         self.pending_window_edited = false;
         self.pending_window_title_refresh = true;
@@ -92,6 +93,7 @@ impl Editor {
         cx: &mut Context<Self>,
     ) -> bool {
         let markdown = self.document_text_for_disk(cx);
+        self.back_up_file_before_save(path);
         match std::fs::write(path, markdown) {
             Ok(_) => {
                 self.apply_successful_save(path.to_path_buf(), cx);

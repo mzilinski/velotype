@@ -67,6 +67,11 @@ impl VelotypeConfigDirs {
         self.root.join("config.toml")
     }
 
+    /// Copies of files taken before a save overwrote them.
+    pub(crate) fn backups_dir(&self) -> PathBuf {
+        self.root.join("backups")
+    }
+
     pub(crate) fn drafts_dir(&self) -> PathBuf {
         self.root.join("drafts")
     }
