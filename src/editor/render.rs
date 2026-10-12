@@ -2235,6 +2235,9 @@ impl Render for Editor {
         } else {
             base
         };
+        let base = base
+            .children(self.render_tree_menu(&theme, cx))
+            .children(self.render_name_dialog(&theme, cx));
         if let Some(kind) = self.info_dialog {
             base.child(self.render_info_dialog_overlay(&theme, kind, cx))
         } else if self.show_drop_replace_dialog {

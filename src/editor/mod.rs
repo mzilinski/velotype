@@ -31,6 +31,7 @@ mod document;
 mod events;
 mod export;
 mod file_drop;
+mod file_ops;
 mod find;
 mod history;
 mod images;
@@ -51,6 +52,7 @@ mod tree;
 mod update;
 mod window_state;
 mod workspace;
+mod workspace_actions;
 mod workspace_search;
 mod writing;
 

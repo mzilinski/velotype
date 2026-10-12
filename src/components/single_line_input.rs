@@ -101,6 +101,18 @@ impl SingleLineInput {
         cx.emit(InputChanged);
         cx.notify();
     }
+    /// Selects `range` (clamped to the content), e.g. a file name's stem.
+    pub(crate) fn select_range(&mut self, range: std::ops::Range<usize>, cx: &mut Context<Self>) {
+        let end = range.end.min(self.content.len());
+        let start = range.start.min(end);
+        if self.content.is_char_boundary(start) && self.content.is_char_boundary(end) {
+            self.selection = start..end;
+            self.reversed = false;
+            self.ensure_cursor_visible = true;
+            cx.notify();
+        }
+    }
+
     pub(crate) fn select_all(&mut self, cx: &mut Context<Self>) {
         self.selection = 0..self.content.len();
         self.reversed = false;

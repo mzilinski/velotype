@@ -366,6 +366,29 @@ impl EditorWindow {
         }
     }
 
+    /// Closes the clean tabs whose file is `path` or lies below it (after
+    /// it was moved to the trash).
+    pub(crate) fn close_tabs_under(
+        &mut self,
+        path: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        while let Some(index) = self.tabs.iter().position(|tab| {
+            let editor = tab.editor.read(cx);
+            !editor.document_dirty
+                && editor
+                    .file_path
+                    .as_deref()
+                    .is_some_and(|open| open.starts_with(path))
+        }) {
+            self.remove_tab(index, window, cx);
+            if self.tabs.is_empty() {
+                return;
+            }
+        }
+    }
+
     /// Requests closing the whole window, prompting for dirty tabs first.
     pub(crate) fn request_close_window(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.on_window_should_close(window, cx) {
