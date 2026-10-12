@@ -27,6 +27,7 @@ mod export;
 #[cfg(any(target_os = "macos", test))]
 mod file_url;
 mod fonts;
+mod help;
 mod i18n;
 mod net;
 mod spellcheck;

@@ -72,6 +72,11 @@ impl VelotypeConfigDirs {
         self.root.join("backups")
     }
 
+    /// Copies of the bundled help documents (Help menu).
+    pub(crate) fn help_dir(&self) -> PathBuf {
+        self.root.join("help")
+    }
+
     pub(crate) fn drafts_dir(&self) -> PathBuf {
         self.root.join("drafts")
     }
