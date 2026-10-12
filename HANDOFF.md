@@ -21,9 +21,10 @@ Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der
 
 **CI** (`.github/workflows/ci.yml`, `gh run list`): mit dem Test-Fix grün auf Linux, macOS und Windows (Lauf 38224033844 auf `fix/ci-segfault`).
 Ursache des SIGSEGV: der Upstream-Test `editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores`
-baute als einziger Fenster-Test seinen `TestAppContext::single()` von Hand und endete mit `cx.quit()`; jetzt `#[gpui::test]`.
-Der Fix liegt auf `fix/unix-test-segfault` und ist in `integration` gemergt. `fix/ci-segfault` (einzeln laufende Tests) war nur Diagnose
-und wird nicht gemergt.
+rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurückgegebenen `VisualTestContext` auf (Use-after-free in gpui,
+Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
+ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
+überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
 Alles gepusht (Stand 2026-10-12).
 
 ## Mac-Runde
@@ -31,7 +32,7 @@ Alles gepusht (Stand 2026-10-12).
 Ziel: einmal von Hand prüfen, was nur auf macOS anders läuft (der SIGSEGV ist bereits behoben).
 Entwickelt wird danach weiter unter Windows. Funde und Fixes kommen hier in die Datei und auf eigene Branches.
 
-**Einrichtung**
+**Einrichtung** (auf dem Mac erledigt: `~/Developer/velotype`, `upstream` eingetragen, Excludes gesetzt)
 ```
 xcode-select --install                     # falls noch nicht da
 curl https://sh.rustup.rs -sSf | sh -s -- -y && source ~/.cargo/env
@@ -45,11 +46,20 @@ cargo build
 Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausgeschlossenen Datei; stattdessen
 `git worktree add ../velotype-handoff handoff`, Datei hineinkopieren, dort committen und pushen.
 
-**1. SIGSEGV** – erledigt (siehe oben), nur bei erneutem Absturz relevant.
-- `cargo test -- --test-threads=1 2>&1 | tail -40`: Der zuletzt gestartete Test ist der Absturzkandidat.
-  Gegenprobe: nur diesen Test laufen lassen, dann parallel mit verwandten Tests.
-- Im Debugger: `lldb target/debug/deps/velotype-<hash> -- --test-threads=1 <testname>`, dann `run` und `bt`.
-- Fix auf eigenem Branch `fix/unix-test-segfault` (von `integration`), danach `fix/ci-segfault` verwerfen.
+**1. SIGSEGV – behoben** (Mac, 2026-10-12; Branch `fix/unix-test-segfault`, in `integration` gemerged)
+- Lokal reproduziert mit `cargo test -- --test-threads=1`: der Test stürzt erst in `cx.quit()` am Ende ab, alle Assertions davor
+  waren grün. Ein Minimaltest (leeres Fenster + `cx.quit()`) stürzt genauso ab.
+- Ursache ist ein Use-after-free in gpui 0.2.2, kein Velotype-Code: `TestAppContext::add_window_view` gibt einen geleakten
+  `&mut VisualTestContext` zurück (`into_mut`) und registriert einen `on_quit`-Callback, der genau diese Box freigibt.
+  `TestAppContext::quit` ruft erst die `on_quit`-Callbacks und greift danach auf `self.app` zu. Ruft man `quit()` über den
+  `VisualTestContext` auf (Deref), ist `self` dann schon freigegeben. Der macOS-Allocator überschreibt freigegebene Blöcke
+  (Crash in `AppCell::borrow_mut`, Adresse 0x5/0x15), Windows lässt den Inhalt stehen, deshalb dort grün.
+- Regel für neue Tests: nach `add_window_view` nie `cx.quit()` auf dem zurückgegebenen `cx`; entweder weglassen (wie in
+  `src/editor/tests.rs`) oder den Original-Kontext unter anderem Namen behalten und dort `quit()` aufrufen.
+- Ergebnis auf dem Mac (macOS 27.0.1, Rust 1.99): `cargo test` 908 grün, 1 ignoriert, auch mit `--test-threads=1`.
+  Clippy-Warnungen (7) sind vorbestehend. `cargo build --release` läuft, die App startet.
+- Debug-Tipp: lldb im Batch-Modus führt `-o`-Befehle nach dem Absturz nicht mehr aus, `-k 'bt'` nimmt. Alternativ liefert der
+  macOS-Crash-Report (`~/Library/Logs/DiagnosticReports/velotype-*.ips`) den Stack.
 
 **2. Von Hand prüfen** (`cargo run --release`, Testdatei z. B. `test.md`)
 - Native Menüleiste: Velotype, Datei, Bearbeiten, Absatz, Format, Export, Sprache, Theme, Arbeitsbereich, Ansicht, Hilfe.
@@ -86,6 +96,7 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/themes | Themes GitHub, Newsprint, Night, Whitey; „Systemdarstellung folgen“ (helles/dunkles Theme); Mermaid in Theme-Farben; SVG-Caches werden nach 30 Tagen bereinigt (`src/components/svg_cache.rs`) |
 | feat/format-paragraph-menus | Menüs „Absatz“ und „Format“ wie Typora (Überschriften, Ebene ±, Tabelle, Mathe-/Codeblock, Zitat, Listen, Aufgabenstatus, Hinweisblöcke, Fußnote, Linkreferenz, Trennlinie, TOC, Front Matter; Durchgestrichen, Markierung, Hoch/Tief, Inline-Mathe, Kommentar, Link Strg+K, Formatierung entfernen Strg+\). Quelltext-Befehle in `src/editor/markdown_commands.rs` (rein, getestet), Editor-Anbindung in `paragraph_format.rs` (`apply_source_edit` = ein Undo-Schritt). Menüklicks laufen über `is_document_command_action` in `app_menu.rs` an den fokussierten Block |
 | feat/clipboard | HTML aus Browser/Office wird beim Einfügen zu Markdown (`htmd`; nur wenn es Formatierung bringt, Code aus Editoren bleibt wörtlich), Als Text einfügen (Strg+Shift+V), Als reinen Text kopieren, Als HTML kopieren; neues Menü „Bearbeiten“. HTML-Zwischenablage über `arboard` in `src/clipboard.rs` (GPUI kann kein HTML) |
+| fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
 ## Wichtige Stellen im Code
