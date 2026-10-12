@@ -1,7 +1,5 @@
 //! Rendered-mode context menus and native table insertion dialog.
 
-use std::time::Duration;
-
 use gpui::*;
 
 use super::{Editor, TableAxisSelection, ViewMode};
@@ -20,13 +18,16 @@ pub(super) enum TableInsertTarget {
 
 /// Rendered-mode context menu currently open in the editor.
 pub(super) enum ContextMenuState {
-    /// General block context menu with an insert submenu.
-    Insert {
+    /// The document context menu (see `context_menu_general.rs`).
+    General {
         position: Point<Pixels>,
+        /// Where Insert > Table puts the table.
         target: TableInsertTarget,
-        insert_hovered: bool,
-        submenu_hovered: bool,
-        submenu_open: bool,
+        /// The block that was right-clicked.
+        block: Option<EntityId>,
+        entries: std::rc::Rc<Vec<super::context_menu_general::ContextEntry>>,
+        /// Indices of the open submenus, from the top level down.
+        open_path: Vec<usize>,
     },
     /// Spelling suggestions for the misspelled word under the pointer.
     Spelling(super::spelling::SpellingMenuState),
@@ -59,28 +60,6 @@ impl Editor {
             current = parent.entity_id();
         }
         current
-    }
-
-    fn open_insert_context_menu(
-        &mut self,
-        position: Point<Pixels>,
-        target: TableInsertTarget,
-        cx: &mut Context<Self>,
-    ) {
-        if self.view_mode != ViewMode::Rendered || self.read_only {
-            return;
-        }
-
-        self.close_menu_bar(cx);
-        self.context_menu_submenu_close_task = None;
-        self.context_menu = Some(ContextMenuState::Insert {
-            position,
-            target,
-            insert_hovered: false,
-            submenu_hovered: false,
-            submenu_open: false,
-        });
-        cx.notify();
     }
 
     pub(super) fn open_table_axis_context_menu(
@@ -125,90 +104,6 @@ impl Editor {
         }
     }
 
-    fn schedule_context_menu_submenu_close(&mut self, cx: &mut Context<Self>) {
-        if !matches!(self.context_menu, Some(ContextMenuState::Insert { .. })) {
-            return;
-        }
-
-        let weak_editor = cx.entity().downgrade();
-        self.context_menu_submenu_close_task = Some(cx.spawn(
-            async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
-                cx.background_executor()
-                    .timer(Duration::from_millis(120))
-                    .await;
-                let _ = weak_editor.update(cx, |editor, cx| {
-                    editor.context_menu_submenu_close_task = None;
-                    let Some(ContextMenuState::Insert {
-                        insert_hovered,
-                        submenu_hovered,
-                        submenu_open,
-                        ..
-                    }) = editor.context_menu.as_mut()
-                    else {
-                        return;
-                    };
-                    if !*insert_hovered && !*submenu_hovered && *submenu_open {
-                        *submenu_open = false;
-                        cx.notify();
-                    }
-                });
-            },
-        ));
-    }
-
-    fn set_context_menu_hover_state(
-        &mut self,
-        hovered: bool,
-        submenu: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let mut changed = false;
-        let mut should_clear_close = false;
-        let mut should_schedule_close = false;
-
-        if let Some(ContextMenuState::Insert {
-            insert_hovered,
-            submenu_hovered,
-            submenu_open,
-            ..
-        }) = self.context_menu.as_mut()
-        {
-            if submenu {
-                if *submenu_hovered != hovered {
-                    *submenu_hovered = hovered;
-                    changed = true;
-                }
-            } else if *insert_hovered != hovered {
-                *insert_hovered = hovered;
-                changed = true;
-            }
-
-            if hovered {
-                should_clear_close = true;
-                if !*submenu_open {
-                    *submenu_open = true;
-                    changed = true;
-                }
-            } else {
-                let insert_still_hovered = *insert_hovered;
-                let submenu_still_hovered = *submenu_hovered;
-                if !insert_still_hovered && !submenu_still_hovered {
-                    should_schedule_close = true;
-                }
-            }
-        }
-
-        if should_clear_close {
-            self.context_menu_submenu_close_task = None;
-        }
-        if should_schedule_close {
-            self.schedule_context_menu_submenu_close(cx);
-        }
-        if changed {
-            cx.notify();
-        }
-    }
-
     pub(super) fn on_editor_context_menu_mouse_down(
         &mut self,
         event: &MouseDownEvent,
@@ -219,7 +114,7 @@ impl Editor {
             return;
         }
         cx.stop_propagation();
-        self.open_insert_context_menu(event.position, TableInsertTarget::Append, cx);
+        self.open_general_context_menu(event.position, TableInsertTarget::Append, None, cx);
     }
 
     pub(super) fn on_block_context_menu_mouse_down(
@@ -237,11 +132,6 @@ impl Editor {
         if self.open_spelling_menu_at(entity_id, event.position, cx) {
             return;
         }
-        // Right-clicking inside a table cell, or any block where inserting a
-        // table makes no sense (code, math, etc.), offers no insert menu.
-        if self.table_cell_binding(entity_id).is_some() {
-            return;
-        }
         if !self.read_only && self.zoomable_image(entity_id, cx).is_some() {
             self.close_menu_bar(cx);
             self.context_menu_submenu_close_task = None;
@@ -252,14 +142,8 @@ impl Editor {
             cx.notify();
             return;
         }
-        let allows_insert = self
-            .focusable_entity_by_id(entity_id)
-            .is_none_or(|block| block.read(cx).kind().allows_context_table_insert());
-        if !allows_insert {
-            return;
-        }
         let target = TableInsertTarget::After(self.root_ancestor_entity_id(entity_id));
-        self.open_insert_context_menu(event.position, target, cx);
+        self.open_general_context_menu(event.position, target, Some(entity_id), cx);
     }
 
     pub(super) fn on_dismiss_context_menu_overlay(
@@ -285,42 +169,6 @@ impl Editor {
         if !had_overlay {
             self.close_find_bar(window, cx);
         }
-    }
-
-    pub(super) fn on_context_menu_insert_hover(
-        &mut self,
-        hovered: &bool,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.set_context_menu_hover_state(*hovered, false, cx);
-    }
-
-    pub(super) fn on_context_menu_submenu_hover(
-        &mut self,
-        hovered: &bool,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.set_context_menu_hover_state(*hovered, true, cx);
-    }
-
-    pub(super) fn on_open_table_insert_dialog(
-        &mut self,
-        _event: &ClickEvent,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(ContextMenuState::Insert { target, .. }) = self.context_menu.take() else {
-            return;
-        };
-        self.context_menu_submenu_close_task = None;
-        self.table_insert_dialog = Some(TableInsertDialogState {
-            target,
-            body_rows: 2,
-            columns: 2,
-        });
-        cx.notify();
     }
 
     pub(super) fn on_table_rows_decrement(
@@ -800,6 +648,7 @@ impl Editor {
     pub(super) fn render_context_menu_overlay(
         &self,
         theme: &Theme,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         let menu = self.context_menu.as_ref()?;
@@ -812,116 +661,8 @@ impl Editor {
             return Some(self.render_spelling_menu(spelling, theme, cx));
         }
         match menu {
-            ContextMenuState::Insert {
-                position,
-                submenu_open,
-                ..
-            } => {
-                let panel_x = position.x;
-                let panel_y = position.y;
-                let panel_width = px(d.context_menu_panel_width);
-
-                let submenu = submenu_open.then(|| {
-                    div()
-                        .id("editor-context-menu-submenu")
-                        .absolute()
-                        .left(panel_x + panel_width + px(d.context_menu_submenu_gap))
-                        .top(panel_y)
-                        .w(px(d.context_menu_submenu_width))
-                        .p(px(d.menu_panel_padding))
-                        .flex()
-                        .flex_col()
-                        .gap(px(d.menu_panel_gap))
-                        .occlude()
-                        .bg(c.dialog_surface)
-                        .border(px(d.dialog_border_width))
-                        .border_color(c.dialog_border)
-                        .rounded(px(d.menu_panel_radius))
-                        .shadow_lg()
-                        .on_mouse_down(MouseButton::Left, |_event, _window, cx| {
-                            cx.stop_propagation()
-                        })
-                        .on_hover(cx.listener(Self::on_context_menu_submenu_hover))
-                        .child(
-                            div()
-                                .id("editor-context-menu-insert-table")
-                                .h(px(d.menu_item_height))
-                                .px(px(d.menu_item_padding_x))
-                                .flex()
-                                .items_center()
-                                .rounded(px(d.menu_item_radius))
-                                .bg(c.dialog_surface)
-                                .hover(|this| this.bg(c.dialog_secondary_button_hover))
-                                .active(|this| this.opacity(0.92))
-                                .cursor_pointer()
-                                .text_size(px(d.menu_text_size))
-                                .font_weight(t.dialog_body_weight.to_font_weight())
-                                .text_color(c.dialog_secondary_button_text)
-                                .child(s.context_menu_table.clone())
-                                .on_click(cx.listener(Self::on_open_table_insert_dialog)),
-                        )
-                });
-
-                let overlay = div()
-                    .id("editor-context-menu-overlay")
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .right_0()
-                    .bottom_0()
-                    .occlude()
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(Self::on_dismiss_context_menu_overlay),
-                    )
-                    .child(
-                        div()
-                            .id("editor-context-menu-panel")
-                            .absolute()
-                            .left(panel_x)
-                            .top(panel_y)
-                            .w(panel_width)
-                            .p(px(d.menu_panel_padding))
-                            .flex()
-                            .flex_col()
-                            .gap(px(d.menu_panel_gap))
-                            .bg(c.dialog_surface)
-                            .border(px(d.dialog_border_width))
-                            .border_color(c.dialog_border)
-                            .rounded(px(d.menu_panel_radius))
-                            .shadow_lg()
-                            .on_mouse_down(MouseButton::Left, |_event, _window, cx| {
-                                cx.stop_propagation()
-                            })
-                            .child(
-                                div()
-                                    .id("editor-context-menu-insert")
-                                    .h(px(d.menu_item_height))
-                                    .px(px(d.menu_item_padding_x))
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .rounded(px(d.menu_item_radius))
-                                    .bg(if *submenu_open {
-                                        c.dialog_secondary_button_hover
-                                    } else {
-                                        c.dialog_surface
-                                    })
-                                    .hover(|this| this.bg(c.dialog_secondary_button_hover))
-                                    .text_size(px(d.menu_text_size))
-                                    .font_weight(t.dialog_body_weight.to_font_weight())
-                                    .text_color(c.dialog_secondary_button_text)
-                                    .child(s.context_menu_insert.clone())
-                                    .child("›")
-                                    .on_hover(cx.listener(Self::on_context_menu_insert_hover)),
-                            ),
-                    );
-
-                Some(if let Some(submenu) = submenu {
-                    overlay.child(submenu).into_any_element()
-                } else {
-                    overlay.into_any_element()
-                })
+            ContextMenuState::General { .. } => {
+                self.render_general_context_menu(theme, window.viewport_size(), window, cx)
             }
             ContextMenuState::Spelling(_) => None,
             ContextMenuState::Image {
@@ -1450,42 +1191,27 @@ mod tests {
     use gpui::{AppContext, Point, TestAppContext, px};
 
     #[gpui::test]
-    async fn context_submenu_stays_open_while_crossing_hover_gap(cx: &mut TestAppContext) {
+    async fn context_menu_opens_with_paragraph_format_and_insert(cx: &mut TestAppContext) {
+        cx.update(crate::i18n::I18nManager::init);
         let editor = cx.new(|cx| Editor::from_markdown(cx, "alpha".to_string(), None));
-
         editor.update(cx, |editor, cx| {
-            editor.open_insert_context_menu(
+            editor.open_general_context_menu(
                 Point {
                     x: px(24.0),
                     y: px(24.0),
                 },
                 TableInsertTarget::Append,
+                None,
                 cx,
             );
-
-            editor.set_context_menu_hover_state(true, false, cx);
-            let Some(ContextMenuState::Insert { submenu_open, .. }) = editor.context_menu.as_ref()
+            let Some(ContextMenuState::General {
+                entries, open_path, ..
+            }) = editor.context_menu.as_ref()
             else {
-                panic!("expected insert context menu");
+                panic!("expected the document context menu");
             };
-            assert!(*submenu_open);
-            assert!(editor.context_menu_submenu_close_task.is_none());
-
-            editor.set_context_menu_hover_state(false, false, cx);
-            let Some(ContextMenuState::Insert { submenu_open, .. }) = editor.context_menu.as_ref()
-            else {
-                panic!("expected insert context menu");
-            };
-            assert!(*submenu_open);
-            assert!(editor.context_menu_submenu_close_task.is_some());
-
-            editor.set_context_menu_hover_state(true, true, cx);
-            let Some(ContextMenuState::Insert { submenu_open, .. }) = editor.context_menu.as_ref()
-            else {
-                panic!("expected insert context menu");
-            };
-            assert!(*submenu_open);
-            assert!(editor.context_menu_submenu_close_task.is_none());
+            assert!(open_path.is_empty());
+            assert!(entries.len() >= 10);
         });
     }
 }

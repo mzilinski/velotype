@@ -24,6 +24,7 @@ pub(super) struct TreeMenu {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TreeMenuAction {
     Open,
+    OpenInNewWindow,
     NewFile,
     NewFolder,
     Rename,
@@ -137,6 +138,15 @@ impl Editor {
                     self.open_workspace_file(menu.target, window, cx);
                 }
             }
+            TreeMenuAction::OpenInNewWindow => match std::fs::read_to_string(&menu.target) {
+                Ok(markdown) => {
+                    let path = menu.target.clone();
+                    cx.defer(move |cx| {
+                        crate::app_menu::open_editor_window(cx, markdown, Some(path));
+                    });
+                }
+                Err(err) => eprintln!("failed to open {}: {err}", menu.target.display()),
+            },
             TreeMenuAction::NewFile => {
                 let name = file_ops::unique_name(
                     &folder,
@@ -422,14 +432,20 @@ impl Editor {
         let d = &theme.dimensions;
         let t = &theme.typography;
         let s = cx.global::<I18nManager>().strings().clone();
-        let mut entries = vec![
-            (TreeMenuAction::Open, s.workspace_menu_open.clone()),
+        let mut entries = vec![(TreeMenuAction::Open, s.workspace_menu_open.clone())];
+        if !menu.is_dir {
+            entries.push((
+                TreeMenuAction::OpenInNewWindow,
+                s.workspace_menu_open_in_new_window.clone(),
+            ));
+        }
+        entries.extend([
             (TreeMenuAction::NewFile, s.workspace_menu_new_file.clone()),
             (
                 TreeMenuAction::NewFolder,
                 s.workspace_menu_new_folder.clone(),
             ),
-        ];
+        ]);
         let is_root = self.workspace.root.as_deref() == Some(menu.target.as_path());
         if !is_root {
             entries.push((TreeMenuAction::Rename, s.workspace_menu_rename.clone()));

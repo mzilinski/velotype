@@ -141,6 +141,8 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub workspace_menu_open_in_new_window: String,
+    pub context_menu_search_web: String,
     pub menu_copy_image: String,
     pub menu_set_image_root: String,
     pub menu_insert_image: String,
@@ -624,6 +626,8 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    workspace_menu_open_in_new_window: Option<String>,
+    context_menu_search_web: Option<String>,
     menu_copy_image: Option<String>,
     menu_set_image_root: Option<String>,
     menu_insert_image: Option<String>,
@@ -1022,6 +1026,8 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "workspace_menu_open_in_new_window",
+    "context_menu_search_web",
     "menu_copy_image",
     "menu_set_image_root",
     "menu_insert_image",
@@ -1500,6 +1506,12 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            workspace_menu_open_in_new_window: self
+                .workspace_menu_open_in_new_window
+                .unwrap_or(defaults.workspace_menu_open_in_new_window),
+            context_menu_search_web: self
+                .context_menu_search_web
+                .unwrap_or(defaults.context_menu_search_web),
             menu_copy_image: self.menu_copy_image.unwrap_or(defaults.menu_copy_image),
             menu_set_image_root: self
                 .menu_set_image_root
@@ -2406,6 +2418,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            workspace_menu_open_in_new_window: "在新窗口中打开".into(),
+            context_menu_search_web: "用 Google 搜索“{text}”".into(),
             menu_copy_image: "复制图片".into(),
             menu_set_image_root: "设置图片根目录…".into(),
             menu_insert_image: "插入图片…".into(),
@@ -2822,6 +2836,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            workspace_menu_open_in_new_window: "Open in New Window".into(),
+            context_menu_search_web: "Search Google for \"{text}\"".into(),
             menu_copy_image: "Copy Image".into(),
             menu_set_image_root: "Set Image Root Folder…".into(),
             menu_insert_image: "Insert Image…".into(),
@@ -3240,6 +3256,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            workspace_menu_open_in_new_window: "In neuem Fenster öffnen".into(),
+            context_menu_search_web: "Mit Google nach „{text}“ suchen".into(),
             menu_copy_image: "Bild kopieren".into(),
             menu_set_image_root: "Bildstammordner festlegen…".into(),
             menu_insert_image: "Bild einfügen…".into(),
