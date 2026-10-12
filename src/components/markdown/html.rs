@@ -952,7 +952,7 @@ pub(crate) fn parse_inline_style(style: &str) -> HtmlInlineStyle {
     parsed
 }
 
-fn parse_css_color(value: &str) -> Option<HtmlCssColor> {
+pub(crate) fn parse_css_color(value: &str) -> Option<HtmlCssColor> {
     let value = value.trim();
     if value.eq_ignore_ascii_case("currentcolor") {
         return Some(HtmlCssColor::CurrentColor);

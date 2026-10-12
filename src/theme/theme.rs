@@ -1093,6 +1093,9 @@ pub struct Theme {
     pub dimensions: ThemeDimensions,
     pub typography: ThemeTypography,
     pub placeholders: Placeholders,
+    /// The original style sheet of a Typora CSS theme; exports embed it.
+    #[serde(skip)]
+    pub css: Option<Arc<str>>,
 }
 
 #[allow(unused)]
@@ -1388,6 +1391,7 @@ impl Theme {
                 dialog_button_size: 14.0,
                 dialog_button_weight: FontWeightDef::Medium,
             },
+            css: None,
             placeholders: Placeholders {
                 empty_editing: String::new(),
             },
@@ -1496,6 +1500,7 @@ impl Theme {
             dimensions: base.dimensions,
             typography: base.typography,
             placeholders: base.placeholders,
+            css: None,
         }
     }
 
@@ -1554,6 +1559,7 @@ impl Theme {
             dimensions: base.dimensions,
             typography: base.typography,
             placeholders: base.placeholders,
+            css: None,
         }
     }
 
@@ -1614,6 +1620,7 @@ impl Theme {
             dimensions: base.dimensions,
             typography: base.typography,
             placeholders: base.placeholders,
+            css: None,
         }
     }
 
@@ -1701,6 +1708,7 @@ impl Theme {
             dimensions: base.dimensions,
             typography: base.typography,
             placeholders: base.placeholders,
+            css: None,
         }
     }
 
@@ -1772,6 +1780,7 @@ impl Theme {
             dimensions: base.dimensions,
             typography: base.typography,
             placeholders: base.placeholders,
+            css: None,
         }
     }
 
@@ -1895,6 +1904,39 @@ struct CustomThemeEntry {
 ///
 /// Registered via [`Global`] so every component can access it through
 /// `cx.global::<ThemeManager>().current()` without passing props.
+fn is_css_theme_path(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("css"))
+}
+
+/// A Typora CSS theme file as a theme menu entry (`css-<name>`).
+fn css_theme_entry(path: &Path) -> anyhow::Result<CustomThemeEntry> {
+    let css = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read '{}'", path.display()))?;
+    let name = path
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().to_string())
+        .unwrap_or_else(|| "CSS".to_string());
+    let theme = super::css_theme::theme_from_css(
+        &name,
+        &css,
+        Theme::builtin(BUILTIN_THEME_GITHUB_ID).unwrap_or_else(Theme::default_theme),
+        Theme::builtin(BUILTIN_THEME_NIGHT_ID).unwrap_or_else(Theme::default_theme),
+    );
+    let base_theme_id = if theme.colors.editor_background.l < 0.5 {
+        BUILTIN_THEME_NIGHT_ID
+    } else {
+        BUILTIN_THEME_GITHUB_ID
+    };
+    Ok(CustomThemeEntry {
+        id: format!("css-{}", sanitize_config_file_stem(&name)),
+        name,
+        creator: "CSS".to_string(),
+        base_theme_id: base_theme_id.to_string(),
+        theme,
+    })
+}
+
 pub struct ThemeManager {
     /// The active theme with the zoom factor applied.
     current: Arc<Theme>,
@@ -2120,6 +2162,24 @@ impl ThemeManager {
         path: impl AsRef<Path>,
         dirs: &VelotypeConfigDirs,
     ) -> anyhow::Result<String> {
+        if is_css_theme_path(path.as_ref()) {
+            // Typora themes are copied as they are and read like on startup.
+            let themes_dir = dirs.themes_dir();
+            std::fs::create_dir_all(&themes_dir)?;
+            let file_name = path
+                .as_ref()
+                .file_name()
+                .context("the theme file has no name")?;
+            let target = themes_dir.join(file_name);
+            if target != path.as_ref() {
+                std::fs::copy(path.as_ref(), &target)?;
+            }
+            let entry = css_theme_entry(&target)?;
+            let imported_id = entry.id.clone();
+            self.upsert_custom_theme(entry);
+            self.set_theme_by_id(&imported_id);
+            return Ok(imported_id);
+        }
         let raw = read_json_or_jsonc(path.as_ref())?;
         let default_base_theme_id = self.theme_import_base_theme_id();
         let (entry, normalized) =
@@ -2141,6 +2201,14 @@ impl ThemeManager {
         Ok(imported_id)
     }
 
+    #[cfg(test)]
+    pub(crate) fn load_custom_themes_from_dirs_for_test(
+        &mut self,
+        dirs: &VelotypeConfigDirs,
+    ) -> anyhow::Result<()> {
+        self.load_custom_themes_from_dirs(dirs)
+    }
+
     fn load_custom_themes_from_dirs(&mut self, dirs: &VelotypeConfigDirs) -> anyhow::Result<()> {
         let themes_dir = dirs.themes_dir();
         if !themes_dir.exists() {
@@ -2150,7 +2218,12 @@ impl ThemeManager {
         let mut loaded = Vec::new();
         for entry in std::fs::read_dir(&themes_dir)? {
             let path = entry?.path();
-            if path.is_file() {
+            if path.is_file() && is_css_theme_path(&path) {
+                match css_theme_entry(&path) {
+                    Ok(entry) => loaded.push(entry),
+                    Err(err) => eprintln!("skipping CSS theme '{}': {err}", path.display()),
+                }
+            } else if path.is_file() {
                 match read_json_or_jsonc(&path)
                     .and_then(|value| custom_theme_from_value(value).map(|(entry, _)| entry))
                 {
