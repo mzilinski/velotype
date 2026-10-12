@@ -614,7 +614,7 @@ impl Editor {
 mod tests {
     use std::fs;
 
-    use gpui::{AppContext as _, TestAppContext, VisualTestContext};
+    use gpui::{TestAppContext, VisualTestContext};
 
     use super::NameDialogKind;
     use crate::editor::Editor;

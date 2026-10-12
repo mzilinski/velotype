@@ -1753,6 +1753,15 @@ impl PreferencesWindow {
                 strings.preferences_shortcut_underline_selection.clone()
             }
             ShortcutCommand::CodeSelection => strings.preferences_shortcut_code_selection.clone(),
+            ShortcutCommand::SelectLine => strings.menu_select_line.clone(),
+            ShortcutCommand::SelectStyledScope => strings.menu_select_styled_scope.clone(),
+            ShortcutCommand::SelectWord => strings.menu_select_word.clone(),
+            ShortcutCommand::SelectBlock => strings.menu_select_block.clone(),
+            ShortcutCommand::JumpToSelection => strings.menu_jump_to_selection.clone(),
+            ShortcutCommand::DeleteWord => strings.menu_delete_word.clone(),
+            ShortcutCommand::DeleteLine => strings.menu_delete_line.clone(),
+            ShortcutCommand::DeleteStyledScope => strings.menu_delete_styled_scope.clone(),
+            ShortcutCommand::DeleteBlock => strings.menu_delete_block.clone(),
             ShortcutCommand::PasteAsPlainText => strings.menu_paste_as_plain_text.clone(),
             ShortcutCommand::CopyAsPlainText => strings.menu_copy_as_plain_text.clone(),
             ShortcutCommand::CopyAsHtml => strings.menu_copy_as_html.clone(),
