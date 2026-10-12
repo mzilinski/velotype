@@ -51,7 +51,7 @@ enum WorkspaceSelection {
 #[derive(Default)]
 pub(super) struct WorkspaceState {
     pub(super) is_open: bool,
-    active_tab: WorkspaceTab,
+    pub(super) active_tab: WorkspaceTab,
     /// Folder opened with Open Folder; shared by all tabs of a window. Without
     /// one the workspace is the folder of the current file.
     pub(super) folder: Option<PathBuf>,

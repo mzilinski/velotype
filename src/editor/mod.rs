@@ -31,6 +31,7 @@ mod document;
 mod events;
 mod export;
 mod file_drop;
+mod file_menu;
 mod file_ops;
 mod find;
 mod history;

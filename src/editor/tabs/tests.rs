@@ -678,3 +678,51 @@ async fn replace_in_files_reloads_clean_tabs_and_skips_dirty_ones(cx: &mut TestA
     });
     let _ = fs::remove_dir_all(root);
 }
+
+#[gpui::test]
+async fn reopen_closed_tab_restores_the_last_closed_file(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let first = temp_markdown_path("reopen-first");
+    let second = temp_markdown_path("reopen-second");
+    let gone = temp_markdown_path("reopen-gone");
+    for path in [&first, &second, &gone] {
+        fs::write(path, "text").unwrap();
+    }
+
+    let handle = open_tab_window(cx, "");
+    let paths = vec![first.clone(), gone.clone(), second.clone()];
+    with_host(&handle, cx, |host, window, cx| {
+        host.open_paths(paths, false, window, cx)
+    });
+    assert_eq!(tab_state(&handle, cx), (3, 2));
+
+    // Close "gone" and then "second"; "gone" is deleted afterwards.
+    with_host(&handle, cx, |host, window, cx| {
+        host.request_close_tab(1, window, cx)
+    });
+    with_host(&handle, cx, |host, window, cx| {
+        host.request_close_tab(1, window, cx)
+    });
+    fs::remove_file(&gone).unwrap();
+    assert_eq!(tab_state(&handle, cx), (1, 0));
+
+    let path_of_active = |cx: &mut TestAppContext| {
+        with_host(&handle, cx, |host, _window, cx| {
+            host.active_editor().read(cx).file_path.clone()
+        })
+    };
+    with_host(&handle, cx, |host, window, cx| {
+        host.reopen_closed_tab(window, cx)
+    });
+    assert_eq!(tab_state(&handle, cx), (2, 1));
+    assert_eq!(path_of_active(cx), Some(second.clone()));
+
+    // The deleted file is skipped; nothing else is left to reopen.
+    with_host(&handle, cx, |host, window, cx| {
+        host.reopen_closed_tab(window, cx)
+    });
+    assert_eq!(tab_state(&handle, cx), (2, 1));
+
+    let _ = fs::remove_file(&first);
+    let _ = fs::remove_file(&second);
+}

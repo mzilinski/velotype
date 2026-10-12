@@ -76,6 +76,9 @@ struct EditorTab {
 }
 
 /// Window root view owning one [`Editor`] per tab.
+/// Closed files remembered for Reopen Closed Tab.
+const MAX_CLOSED_PATHS: usize = 20;
+
 pub struct EditorWindow {
     tabs: Vec<EditorTab>,
     active: usize,
@@ -87,6 +90,8 @@ pub struct EditorWindow {
     pub(crate) close_guard_installed: bool,
     /// Folder opened with Open Folder, given to every tab of this window.
     workspace_folder: Option<PathBuf>,
+    /// Files of closed tabs, most recent last, for Reopen Closed Tab.
+    closed_paths: Vec<PathBuf>,
     /// Re-applies the appearance-bound theme when the OS light/dark mode flips.
     _appearance_subscription: Subscription,
 }
@@ -104,6 +109,7 @@ impl EditorWindow {
             drafts_unavailable: false,
             close_guard_installed: false,
             workspace_folder: None,
+            closed_paths: Vec::new(),
             _appearance_subscription: appearance_subscription,
         }
     }
@@ -347,6 +353,13 @@ impl EditorWindow {
             return;
         }
         let removed = self.tabs.remove(index);
+        if let Some(path) = removed.editor.read(cx).file_path.clone() {
+            self.closed_paths.retain(|closed| closed != &path);
+            self.closed_paths.push(path);
+            if self.closed_paths.len() > MAX_CLOSED_PATHS {
+                self.closed_paths.remove(0);
+            }
+        }
         removed
             .editor
             .update(cx, |editor, cx| editor.discard_session_draft(cx));
@@ -363,6 +376,16 @@ impl EditorWindow {
             self.activate_current(window, cx);
         } else {
             cx.notify();
+        }
+    }
+
+    /// Reopens the most recently closed tab whose file still exists.
+    pub(crate) fn reopen_closed_tab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        while let Some(path) = self.closed_paths.pop() {
+            if path.is_file() {
+                self.open_paths(vec![path], false, window, cx);
+                return;
+            }
         }
     }
 
