@@ -154,6 +154,8 @@ pub struct Editor {
     /// Pending Auto Save (see `autosave.rs`).
     autosave_task: Option<Task<()>>,
     pending_autosave: bool,
+    /// The last export, repeated by File > Export with Previous Settings.
+    last_export: Option<export::LastExport>,
     /// Set after a failed Auto Save; cleared by the next successful save.
     autosave_suspended: bool,
     context_menu_submenu_close_task: Option<Task<()>>,
@@ -408,6 +410,7 @@ impl Editor {
             emoji_picker: None,
             autosave_task: None,
             pending_autosave: false,
+            last_export: None,
             autosave_suspended: false,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,

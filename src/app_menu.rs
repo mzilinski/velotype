@@ -1120,6 +1120,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
+        || any.is::<crate::components::ExportAgain>()
+        || any.is::<crate::components::ExportHtmlPlain>()
         || any.is::<crate::components::ShowBackups>()
         || any.is::<crate::components::UploadImage>()
         || any.is::<crate::components::UploadAllImages>()
@@ -1571,6 +1573,10 @@ fn build_menus_with_view(
             items: vec![
                 MenuItem::action(strings.menu_export_html.clone(), ExportHtml),
                 MenuItem::action(strings.menu_export_pdf.clone(), ExportPdf),
+                MenuItem::action(
+                    strings.menu_export_html_plain.clone(),
+                    crate::components::ExportHtmlPlain,
+                ),
                 MenuItem::separator(),
             ]
             .into_iter()
@@ -1582,6 +1588,13 @@ fn build_menus_with_view(
                     },
                 )
             }))
+            .chain([
+                MenuItem::separator(),
+                MenuItem::action(
+                    strings.menu_export_again.clone(),
+                    crate::components::ExportAgain,
+                ),
+            ])
             .collect(),
         },
         Menu {
@@ -2311,7 +2324,7 @@ mod tests {
             _ => panic!("expected export pdf action item"),
         }
 
-        match &menus[EXPORT_IDX].items[3] {
+        match &menus[EXPORT_IDX].items[4] {
             MenuItem::Action { name, action, .. } => {
                 assert_eq!(name.as_ref(), "Word (.docx)");
                 let action = action
@@ -2324,7 +2337,7 @@ mod tests {
         }
         assert_eq!(
             menus[EXPORT_IDX].items.len(),
-            3 + crate::export::pandoc::EXPORT_FORMATS.len()
+            6 + crate::export::pandoc::EXPORT_FORMATS.len()
         );
         assert!(super::is_document_command_action(
             &crate::components::ImportWithPandoc

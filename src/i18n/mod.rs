@@ -141,6 +141,9 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_export_again: String,
+    pub menu_export_html_plain: String,
+    pub export_again_nothing: String,
     pub menu_autosave: String,
     pub menu_show_backups: String,
     pub backups_none: String,
@@ -596,6 +599,9 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_export_again: Option<String>,
+    menu_export_html_plain: Option<String>,
+    export_again_nothing: Option<String>,
     menu_autosave: Option<String>,
     menu_show_backups: Option<String>,
     backups_none: Option<String>,
@@ -966,6 +972,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_export_again",
+    "menu_export_html_plain",
+    "export_again_nothing",
     "menu_autosave",
     "menu_show_backups",
     "backups_none",
@@ -1416,6 +1425,13 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_export_again: self.menu_export_again.unwrap_or(defaults.menu_export_again),
+            menu_export_html_plain: self
+                .menu_export_html_plain
+                .unwrap_or(defaults.menu_export_html_plain),
+            export_again_nothing: self
+                .export_again_nothing
+                .unwrap_or(defaults.export_again_nothing),
             menu_autosave: self.menu_autosave.unwrap_or(defaults.menu_autosave),
             menu_show_backups: self.menu_show_backups.unwrap_or(defaults.menu_show_backups),
             backups_none: self.backups_none.unwrap_or(defaults.backups_none),
@@ -2258,6 +2274,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_export_again: "使用上次设置导出".into(),
+            menu_export_html_plain: "HTML（无样式）".into(),
+            export_again_nothing: "此文档尚未导出。请先从“导出”菜单导出一次，之后 Ctrl+Shift+E 会重复该导出。".into(),
             menu_autosave: "自动保存".into(),
             menu_show_backups: "显示备份".into(),
             backups_none: "此文件还没有备份。Velotype 会在保存覆盖文件之前复制一份（每 10 分钟最多一次，保留最近 20 份）。".into(),
@@ -2646,6 +2665,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_export_again: "Export with Previous Settings".into(),
+            menu_export_html_plain: "HTML (without Styles)".into(),
+            export_again_nothing: "This document has not been exported yet. Export it once from the Export menu; afterwards Ctrl+Shift+E repeats that export.".into(),
             menu_autosave: "Auto Save".into(),
             menu_show_backups: "Show Backups".into(),
             backups_none: "There are no backups of this file yet. Velotype copies a file before a save overwrites it (at most once every 10 minutes, the last 20 copies are kept).".into(),
@@ -3036,6 +3058,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_export_again: "Mit vorherigen Einstellungen exportieren".into(),
+            menu_export_html_plain: "HTML (ohne Styles)".into(),
+            export_again_nothing: "Dieses Dokument wurde noch nicht exportiert. Exportiere es einmal über das Export-Menü, danach wiederholt Strg+Shift+E diesen Export.".into(),
             menu_autosave: "Automatisch speichern".into(),
             menu_show_backups: "Sicherungskopien anzeigen".into(),
             backups_none: "Von dieser Datei gibt es noch keine Sicherungskopie. Velotype kopiert eine Datei, bevor das Speichern sie überschreibt (höchstens alle 10 Minuten, die letzten 20 Kopien bleiben erhalten).".into(),

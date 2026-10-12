@@ -22,6 +22,8 @@ pub(crate) enum ExportFormat {
     Html,
     /// PDF bytes rendered from the themed HTML document.
     Pdf,
+    /// HTML document without any CSS (File > Export > HTML without Styles).
+    HtmlPlain,
 }
 
 impl ExportFormat {
@@ -30,11 +32,12 @@ impl ExportFormat {
         match self {
             Self::Html => "html",
             Self::Pdf => "pdf",
+            Self::HtmlPlain => "html",
         }
     }
 }
 
-pub(crate) use html::render_html_with_base_dir_and_fonts;
+pub(crate) use html::{render_html_with_base_dir_and_fonts, render_html_without_styles};
 
 pub(crate) fn render_pdf_with_fonts(
     markdown: &str,
