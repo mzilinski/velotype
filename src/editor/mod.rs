@@ -28,6 +28,7 @@ mod clipboard_commands;
 mod close;
 mod context_menu;
 mod document;
+mod emoji_picker;
 mod events;
 mod export;
 mod file_drop;
@@ -141,6 +142,7 @@ pub struct Editor {
     find: Option<find::FindState>,
     /// Open Quick Open / Search in Folder palette, if any.
     palette: Option<workspace_search::PaletteState>,
+    emoji_picker: Option<emoji_picker::EmojiPickerState>,
     context_menu_submenu_close_task: Option<Task<()>>,
     table_axis_preview: Option<TableAxisSelection>,
     table_axis_selection: Option<TableAxisSelection>,
@@ -389,6 +391,7 @@ impl Editor {
             table_insert_dialog: None,
             find: None,
             palette: None,
+            emoji_picker: None,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,
             table_axis_selection: None,

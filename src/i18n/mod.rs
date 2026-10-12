@@ -141,6 +141,9 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_emoji_picker: String,
+    pub emoji_search_placeholder: String,
+    pub emoji_no_results: String,
     pub menu_smart_punctuation: String,
     pub menu_smart_quotes: String,
     pub menu_smart_dashes: String,
@@ -575,6 +578,9 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_emoji_picker: Option<String>,
+    emoji_search_placeholder: Option<String>,
+    emoji_no_results: Option<String>,
     menu_smart_punctuation: Option<String>,
     menu_smart_quotes: Option<String>,
     menu_smart_dashes: Option<String>,
@@ -924,6 +930,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_emoji_picker",
+    "emoji_search_placeholder",
+    "emoji_no_results",
     "menu_smart_punctuation",
     "menu_smart_quotes",
     "menu_smart_dashes",
@@ -1353,6 +1362,11 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_emoji_picker: self.menu_emoji_picker.unwrap_or(defaults.menu_emoji_picker),
+            emoji_search_placeholder: self
+                .emoji_search_placeholder
+                .unwrap_or(defaults.emoji_search_placeholder),
+            emoji_no_results: self.emoji_no_results.unwrap_or(defaults.emoji_no_results),
             menu_smart_punctuation: self
                 .menu_smart_punctuation
                 .unwrap_or(defaults.menu_smart_punctuation),
@@ -2152,6 +2166,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_emoji_picker: "表情与符号…".into(),
+            emoji_search_placeholder: "搜索表情（名称或 :短代码:）".into(),
+            emoji_no_results: "未找到表情".into(),
             menu_smart_punctuation: "智能标点".into(),
             menu_smart_quotes: "智能引号".into(),
             menu_smart_dashes: "智能破折号".into(),
@@ -2519,6 +2536,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_emoji_picker: "Emoji & Symbols…".into(),
+            emoji_search_placeholder: "Search emoji (name or :shortcode:)".into(),
+            emoji_no_results: "No emoji found".into(),
             menu_smart_punctuation: "Smart Punctuation".into(),
             menu_smart_quotes: "Smart Quotes".into(),
             menu_smart_dashes: "Smart Dashes".into(),
@@ -2888,6 +2908,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_emoji_picker: "Emoji und Symbole…".into(),
+            emoji_search_placeholder: "Emoji suchen (englischer Name oder :Kürzel:)".into(),
+            emoji_no_results: "Kein Emoji gefunden".into(),
             menu_smart_punctuation: "Typografische Zeichen".into(),
             menu_smart_quotes: "Typografische Anführungszeichen".into(),
             menu_smart_dashes: "Typografische Striche".into(),
