@@ -397,4 +397,50 @@ mod tests {
             );
         });
     }
+
+    /// A real uploader script in a folder with spaces gets every image path
+    /// intact and in order.
+    #[test]
+    fn upload_script_receives_paths_with_spaces() {
+        let dir = std::env::temp_dir()
+            .join(format!("velotype upload {}", uuid::Uuid::new_v4()))
+            .join("Bilder Ordner");
+        std::fs::create_dir_all(&dir).unwrap();
+        let files = [dir.join("erstes bild.png"), dir.join("zweites.png")];
+        for file in &files {
+            std::fs::write(file, b"png").unwrap();
+        }
+        let command = if cfg!(windows) {
+            let script = dir.join("upload.cmd");
+            let body = [
+                "@echo off",
+                "echo uploading %*",
+                ":loop",
+                "if \"%~1\"==\"\" goto :eof",
+                "if not exist \"%~1\" exit /b 1",
+                "echo https://cdn/%~nx1",
+                "shift",
+                "goto loop",
+            ]
+            .join("\r\n");
+            std::fs::write(&script, body).unwrap();
+            format!("\"{}\"", script.display())
+        } else {
+            let script = dir.join("upload.sh");
+            let body = "#!/bin/sh\necho uploading\nfor f in \"$@\"; do\n  [ -f \"$f\" ] || exit 1\n  echo \"https://cdn/$(basename \"$f\")\"\ndone\n";
+            std::fs::write(&script, body).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt as _;
+                std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+            format!("\x27{}\x27", script.display())
+        };
+        let urls = run_upload_command(&command, &files).unwrap();
+        assert_eq!(
+            urls,
+            ["https://cdn/erstes bild.png", "https://cdn/zweites.png"]
+        );
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    }
 }
