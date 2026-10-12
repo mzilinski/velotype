@@ -11,7 +11,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 909 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 916 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -25,7 +25,7 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-Alles gepusht (Stand 2026-10-12).
+**Nicht gepusht:** `feat/file-actions` und `integration` (Merge). Test-Exe: `velotype-integration-9.exe`.
 
 ## Mac-Runde
 
@@ -96,6 +96,7 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/themes | Themes GitHub, Newsprint, Night, Whitey; „Systemdarstellung folgen“ (helles/dunkles Theme); Mermaid in Theme-Farben; SVG-Caches werden nach 30 Tagen bereinigt (`src/components/svg_cache.rs`) |
 | feat/format-paragraph-menus | Menüs „Absatz“ und „Format“ wie Typora (Überschriften, Ebene ±, Tabelle, Mathe-/Codeblock, Zitat, Listen, Aufgabenstatus, Hinweisblöcke, Fußnote, Linkreferenz, Trennlinie, TOC, Front Matter; Durchgestrichen, Markierung, Hoch/Tief, Inline-Mathe, Kommentar, Link Strg+K, Formatierung entfernen Strg+\). Quelltext-Befehle in `src/editor/markdown_commands.rs` (rein, getestet), Editor-Anbindung in `paragraph_format.rs` (`apply_source_edit` = ein Undo-Schritt). Menüklicks laufen über `is_document_command_action` in `app_menu.rs` an den fokussierten Block |
 | feat/clipboard | HTML aus Browser/Office wird beim Einfügen zu Markdown (`htmd`; nur wenn es Formatierung bringt, Code aus Editoren bleibt wörtlich), Als Text einfügen (Strg+Shift+V), Als reinen Text kopieren, Als HTML kopieren; neues Menü „Bearbeiten“. HTML-Zwischenablage über `arboard` in `src/clipboard.rs` (GPUI kann kein HTML) |
+| feat/file-actions | Kontextmenü im Dateibaum (Öffnen, Neue Datei, Neuer Ordner, Umbenennen, In den Papierkorb, Pfad kopieren, Im Dateimanager zeigen; Namensdialog, offene Tabs folgen Umbenennungen, Tabs gelöschter Dateien schließen). Datei-Menü: Geschlossenen Tab wieder öffnen (Strg+Shift+T), Alle speichern, Von Festplatte neu laden, Im Dateimanager zeigen, In Seitenleiste zeigen, Datei in den Papierkorb, „Liste leeren“ bei zuletzt geöffneten. Code: `file_ops.rs` (rein, getestet), `workspace_actions.rs`, `file_menu.rs`; Papierkorb über `trash`-Crate |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
@@ -153,7 +154,7 @@ Velotype schon beim Tippen (Durchgestrichen, `==Markierung==`, Hoch-/Tiefgestell
   Mathe kopieren, Websuche; Dateibaum-Menü (neue Datei/neuer Ordner, umbenennen, löschen, Pfad kopieren, im Explorer zeigen).
 
 Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kürzeln~~ (erledigt), ~~2. Zwischenablage~~ (erledigt; Bild kopieren fehlt noch),
-3. Dateibaum und Dateiaktionen, 4. Auswahl- und Löschbefehle, 5. Ansicht (Zoom, Vollbild, Immer im Vordergrund),
+~~3. Dateibaum und Dateiaktionen~~ (erledigt; „Verschieben nach“, „Eigenschaften“, Kodierung, Autosave fehlen), 4. Auswahl- und Löschbefehle, 5. Ansicht (Zoom, Vollbild, Immer im Vordergrund),
 6. Typografie/Zeilenenden/Emoji, 7. Pandoc, Drucken, Bild-Upload.
 
 Nach Punkt 1 noch offen bzw. abweichend: Strg+T bleibt „Neuer Tab“ (Typora: Tabelle; Tabelle auf macOS Cmd+Alt+T, unter Windows ohne Standardkürzel). Absatz davor/danach einfügen fehlt. Kein Häkchen-Status im Menü für den aktuellen Blocktyp. Strg+Shift+[ / ] und Alt+Shift+5 sind unter Windows nicht von Hand geprüft (Tastenlayout).
