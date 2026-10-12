@@ -141,6 +141,7 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_print: String,
     pub menu_import: String,
     pub pandoc_missing_title: String,
     pub pandoc_missing_message: String,
@@ -582,6 +583,7 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_print: Option<String>,
     menu_import: Option<String>,
     pandoc_missing_title: Option<String>,
     pandoc_missing_message: Option<String>,
@@ -938,6 +940,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_print",
     "menu_import",
     "pandoc_missing_title",
     "pandoc_missing_message",
@@ -1374,6 +1377,7 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_print: self.menu_print.unwrap_or(defaults.menu_print),
             menu_import: self.menu_import.unwrap_or(defaults.menu_import),
             pandoc_missing_title: self
                 .pandoc_missing_title
@@ -2188,6 +2192,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_print: "打印…".into(),
             menu_import: "导入…".into(),
             pandoc_missing_title: "未安装 Pandoc".into(),
             pandoc_missing_message: "导出为 Word、OpenDocument、LaTeX 等格式以及导入文档需要 Pandoc。请从 pandoc.org 安装后重试。".into(),
@@ -2562,6 +2567,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_print: "Print…".into(),
             menu_import: "Import…".into(),
             pandoc_missing_title: "Pandoc is not installed".into(),
             pandoc_missing_message: "Exporting to Word, OpenDocument, LaTeX and other formats and importing documents needs Pandoc. Install it from pandoc.org, then try again.".into(),
@@ -2938,6 +2944,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_print: "Drucken…".into(),
             menu_import: "Importieren…".into(),
             pandoc_missing_title: "Pandoc ist nicht installiert".into(),
             pandoc_missing_message: "Für den Export nach Word, OpenDocument, LaTeX und andere Formate sowie für den Import wird Pandoc benötigt. Installiere es von pandoc.org und versuche es dann erneut.".into(),
