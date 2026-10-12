@@ -14,6 +14,13 @@ use crate::fonts::FontSettings;
 use crate::i18n::I18nManager;
 use crate::theme::{Theme, ThemeManager};
 
+/// The last export of a document (File > Export with Previous Settings).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum LastExport {
+    Builtin(ExportFormat, PathBuf),
+    Pandoc(crate::export::pandoc::PandocFormat, PathBuf),
+}
+
 impl Editor {
     fn export_dialog_defaults(&self, format: ExportFormat) -> (PathBuf, String) {
         self.export_dialog_defaults_for(format.extension())
@@ -59,6 +66,13 @@ impl Editor {
         pdf_options: &PdfExportOptions,
     ) -> anyhow::Result<Vec<u8>> {
         match format {
+            ExportFormat::HtmlPlain => Ok(document_export::render_html_without_styles(
+                markdown,
+                theme,
+                title,
+                source_base_dir,
+            )
+            .into_bytes()),
             ExportFormat::Html => Ok(document_export::render_html_with_base_dir_and_fonts(
                 markdown,
                 theme,
@@ -137,26 +151,11 @@ impl Editor {
             return;
         }
 
-        let markdown = self.serialized_document_text(cx);
-        let theme = cx.global::<ThemeManager>().unzoomed().clone();
-        let title = self.export_title();
-        let fonts = FontSettings::current(cx);
-        let pdf_options = match format {
-            ExportFormat::Pdf => read_app_preferences()
-                .map(|preferences| preferences.pdf_export)
-                .unwrap_or_default(),
-            ExportFormat::Html => PdfExportOptions::default(),
-        };
-        let source_base_dir = self
-            .file_path
-            .as_ref()
-            .and_then(|path| path.parent())
-            .map(Path::to_path_buf);
         let (default_dir, suggested_name) = self.export_dialog_defaults(format);
         let prompt = cx.prompt_for_new_path(&default_dir, Some(&suggested_name));
         let window_handle = window.window_handle();
 
-        cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut path = match prompt.await {
                 Ok(Ok(Some(path))) => path,
                 Ok(Ok(None)) | Err(_) => return,
@@ -175,7 +174,50 @@ impl Editor {
             if path.extension().is_none() {
                 path.set_extension(format.extension());
             }
+            let _ = cx.update_window(
+                window_handle,
+                move |_view: AnyView, window: &mut Window, cx: &mut App| {
+                    let _ = this.update(cx, |editor, cx| {
+                        editor.export_document_to(format, path, window, cx);
+                    });
+                },
+            );
+        })
+        .detach();
+    }
 
+    /// Exports the document as `format` to `path` in the background and
+    /// remembers it for File > Export with Previous Settings.
+    pub(super) fn export_document_to(
+        &mut self,
+        format: ExportFormat,
+        path: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if format == ExportFormat::Pdf && document_export::find_chromium_executable().is_none() {
+            self.show_pdf_browser_missing_prompt(window, cx);
+            return;
+        }
+        let markdown = self.serialized_document_text(cx);
+        let theme = cx.global::<ThemeManager>().unzoomed().clone();
+        let title = self.export_title();
+        let fonts = FontSettings::current(cx);
+        let pdf_options = match format {
+            ExportFormat::Pdf => read_app_preferences()
+                .map(|preferences| preferences.pdf_export)
+                .unwrap_or_default(),
+            ExportFormat::Html | ExportFormat::HtmlPlain => PdfExportOptions::default(),
+        };
+        let source_base_dir = self
+            .file_path
+            .as_ref()
+            .and_then(|path| path.parent())
+            .map(Path::to_path_buf);
+        let window_handle = window.window_handle();
+        self.last_export = Some(LastExport::Builtin(format, path.clone()));
+
+        cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let (sender, receiver) = oneshot::channel();
             let output_path = path.clone();
             let spawn_result = thread::Builder::new()
@@ -218,6 +260,35 @@ impl Editor {
             );
         })
         .detach();
+    }
+
+    /// File > Export with Previous Settings: repeats the last export of this
+    /// document to the same file without asking.
+    pub(super) fn on_export_again(
+        &mut self,
+        _: &crate::components::ExportAgain,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match self.last_export.clone() {
+            Some(LastExport::Builtin(format, path)) => {
+                self.export_document_to(format, path, window, cx)
+            }
+            Some(LastExport::Pandoc(format, path)) => {
+                self.export_with_pandoc_to(format, path, window, cx)
+            }
+            None => {
+                let strings = cx.global::<I18nManager>().strings().clone();
+                let buttons = [strings.info_dialog_ok.as_str()];
+                let _ = window.prompt(
+                    PromptLevel::Info,
+                    &strings.menu_export_again,
+                    Some(&strings.export_again_nothing),
+                    &buttons,
+                    cx,
+                );
+            }
+        }
     }
 
     /// Explains that PDF export needs a Chromium-family browser and offers an
@@ -293,4 +364,36 @@ pub(super) fn show_export_error(window: &mut Window, cx: &mut App, detail: &str)
         &buttons,
         cx,
     );
+}
+
+#[cfg(test)]
+mod export_again_tests {
+    use gpui::TestAppContext;
+
+    use super::LastExport;
+    use crate::editor::Editor;
+    use crate::export::ExportFormat;
+
+    #[gpui::test]
+    async fn exports_are_remembered_for_export_again(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            crate::i18n::I18nManager::init(cx);
+            crate::theme::ThemeManager::init(cx);
+            crate::components::init(cx);
+        });
+        let (editor, cx) =
+            cx.add_window_view(|_window, cx| Editor::from_markdown(cx, "# Doc".to_string(), None));
+        let path =
+            std::env::temp_dir().join(format!("velotype-export-{}.html", uuid::Uuid::new_v4()));
+        cx.update(|window, cx| {
+            editor.update(cx, |editor, cx| {
+                assert!(editor.last_export.is_none());
+                editor.export_document_to(ExportFormat::HtmlPlain, path.clone(), window, cx);
+                assert_eq!(
+                    editor.last_export,
+                    Some(LastExport::Builtin(ExportFormat::HtmlPlain, path.clone()))
+                );
+            })
+        });
+    }
 }

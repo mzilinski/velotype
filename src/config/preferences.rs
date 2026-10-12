@@ -1906,6 +1906,8 @@ impl PreferencesWindow {
             ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
+            ShortcutCommand::ExportAgain => strings.menu_export_again.clone(),
+            ShortcutCommand::ExportHtmlPlain => strings.menu_export_html_plain.clone(),
             ShortcutCommand::ToggleAutosave => strings.menu_autosave.clone(),
             ShortcutCommand::ShowBackups => strings.menu_show_backups.clone(),
             ShortcutCommand::UploadImage => strings.menu_upload_image.clone(),

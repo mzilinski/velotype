@@ -48,6 +48,17 @@ pub(crate) fn render_html_with_base_dir_and_fonts(
     render_html_document(markdown, theme, title, base_dir, &theme_css(theme, fonts))
 }
 
+/// Semantic HTML without any CSS, for pasting into other tools or styling
+/// elsewhere.
+pub(crate) fn render_html_without_styles(
+    markdown: &str,
+    theme: &Theme,
+    title: &str,
+    base_dir: Option<&Path>,
+) -> String {
+    render_html_document(markdown, theme, title, base_dir, "").replace("<style>\n\n</style>\n", "")
+}
+
 pub(crate) fn render_chromium_pdf_html_with_base_dir_and_fonts(
     markdown: &str,
     theme: &Theme,
@@ -1378,12 +1389,27 @@ pub(super) fn escape_html(input: &str) -> String {
 mod tests {
     use super::{
         contains_tibetan_text, render_chromium_pdf_html_with_base_dir_and_fonts, render_html,
-        render_html_with_base_dir,
+        render_html_with_base_dir, render_html_without_styles,
     };
     use crate::fonts::{FontCatalog, FontPreferences, FontSettings, SYSTEM_UI_FONT};
     use crate::theme::Theme;
     use std::fs;
     use uuid::Uuid;
+
+    #[test]
+    fn html_without_styles_has_no_css() {
+        let html = render_html_without_styles(
+            "# Title
+
+**bold**",
+            &Theme::default_theme(),
+            "Doc",
+            None,
+        );
+        assert!(!html.contains("<style"), "{html}");
+        assert!(html.contains("<strong>bold</strong>"), "{html}");
+        assert!(html.contains("<title>Doc</title>"), "{html}");
+    }
 
     #[test]
     fn renders_complete_html_document_with_theme_css() {

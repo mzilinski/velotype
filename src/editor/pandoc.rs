@@ -21,22 +21,15 @@ impl Editor {
         let Some(format) = pandoc::export_format(&action.format) else {
             return;
         };
-        let Some(executable) = pandoc::find_pandoc() else {
+        if pandoc::find_pandoc().is_none() {
             show_pandoc_missing_prompt(window, cx);
             return;
-        };
-        let markdown = self.serialized_document_text(cx);
-        let title = self.export_title();
-        let resource_dir = self
-            .file_path
-            .as_ref()
-            .and_then(|path| path.parent())
-            .map(Path::to_path_buf);
+        }
         let (default_dir, suggested_name) = self.export_dialog_defaults_for(format.extension);
         let prompt = cx.prompt_for_new_path(&default_dir, Some(&suggested_name));
         let window_handle = window.window_handle();
 
-        cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut output = match prompt.await {
                 Ok(Ok(Some(path))) => path,
                 Ok(Ok(None)) | Err(_) => return,
@@ -48,6 +41,38 @@ impl Editor {
             if output.extension().is_none() {
                 output.set_extension(format.extension);
             }
+            let _ = cx.update_window(window_handle, move |_view: AnyView, window, cx| {
+                let _ = this.update(cx, |editor, cx| {
+                    editor.export_with_pandoc_to(format, output, window, cx);
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// Converts the document with Pandoc into `output` in the background and
+    /// remembers it for File > Export with Previous Settings.
+    pub(super) fn export_with_pandoc_to(
+        &mut self,
+        format: pandoc::PandocFormat,
+        output: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(executable) = pandoc::find_pandoc() else {
+            show_pandoc_missing_prompt(window, cx);
+            return;
+        };
+        let markdown = self.serialized_document_text(cx);
+        let title = self.export_title();
+        let resource_dir = self
+            .file_path
+            .as_ref()
+            .and_then(|path| path.parent())
+            .map(Path::to_path_buf);
+        let window_handle = window.window_handle();
+        self.last_export = Some(super::export::LastExport::Pandoc(format, output.clone()));
+        cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let result = cx
                 .background_executor()
                 .spawn(async move {

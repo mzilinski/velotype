@@ -280,6 +280,15 @@ impl Editor {
         self.export_document_via_prompt(crate::export::ExportFormat::Html, window, cx);
     }
 
+    pub(crate) fn on_export_html_plain(
+        &mut self,
+        _: &crate::components::ExportHtmlPlain,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.export_document_via_prompt(crate::export::ExportFormat::HtmlPlain, window, cx);
+    }
+
     pub(crate) fn on_export_pdf(
         &mut self,
         _: &crate::components::ExportPdf,
