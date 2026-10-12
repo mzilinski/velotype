@@ -141,6 +141,7 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub help_about_origin: String,
     pub menu_quick_start: String,
     pub menu_markdown_reference: String,
     pub menu_keyboard_shortcuts: String,
@@ -633,6 +634,7 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    help_about_origin: Option<String>,
     menu_quick_start: Option<String>,
     menu_markdown_reference: Option<String>,
     menu_keyboard_shortcuts: Option<String>,
@@ -1040,6 +1042,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "help_about_origin",
     "menu_quick_start",
     "menu_markdown_reference",
     "menu_keyboard_shortcuts",
@@ -1527,6 +1530,7 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            help_about_origin: self.help_about_origin.unwrap_or(defaults.help_about_origin),
             menu_quick_start: self.menu_quick_start.unwrap_or(defaults.menu_quick_start),
             menu_markdown_reference: self
                 .menu_markdown_reference
@@ -2412,7 +2416,7 @@ impl I18nStrings {
             update_open_release: "前往下载".into(),
             update_later: "稍后".into(),
             help_about_title: "关于 Velotype".into(),
-            help_about_message: "作者：所有项目贡献者".into(),
+            help_about_message: "由 Malte Zilinski 开发维护".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message: "如果本项目对您有帮助，那不妨给本项目一颗 Star⭐，十分感谢！"
                 .into(),
@@ -2456,6 +2460,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            help_about_origin: "基于 manyougz 及贡献者开发的 Velotype，Apache 2.0 许可证".into(),
             menu_quick_start: "快速入门".into(),
             menu_markdown_reference: "Markdown 参考".into(),
             menu_keyboard_shortcuts: "键盘快捷键".into(),
@@ -2837,7 +2842,7 @@ impl I18nStrings {
             update_open_release: "Open Releases".into(),
             update_later: "Later".into(),
             help_about_title: "About Velotype".into(),
-            help_about_message: "Author: All project contributors".into(),
+            help_about_message: "Developed by Malte Zilinski".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message:
                 "If this project helps you, consider giving it a Star⭐. Thank you!".into(),
@@ -2881,6 +2886,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            help_about_origin: "Based on Velotype by manyougz and contributors, Apache License 2.0".into(),
             menu_quick_start: "Quick Start".into(),
             menu_markdown_reference: "Markdown Reference".into(),
             menu_keyboard_shortcuts: "Keyboard Shortcuts".into(),
@@ -3264,7 +3270,7 @@ impl I18nStrings {
             update_open_release: "Releases öffnen".into(),
             update_later: "Später".into(),
             help_about_title: "Über Velotype".into(),
-            help_about_message: "Autoren: alle Mitwirkenden des Projekts".into(),
+            help_about_message: "Weiterentwicklung von Malte Zilinski".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message:
                 "Wenn dir dieses Projekt hilft, gib ihm gern einen Stern ⭐. Danke!".into(),
@@ -3308,6 +3314,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            help_about_origin: "Basiert auf Velotype von manyougz und Mitwirkenden, Apache-Lizenz 2.0".into(),
             menu_quick_start: "Schnellstart".into(),
             menu_markdown_reference: "Markdown-Referenz".into(),
             menu_keyboard_shortcuts: "Tastenkürzel".into(),

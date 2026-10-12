@@ -393,8 +393,13 @@ fn about_dialog_body_lines_include_repository_and_star_message() {
         lines[2],
         format!("GitHub: {}", super::render::ABOUT_GITHUB_URL)
     );
+    assert_eq!(lines[1], "由 Malte Zilinski 开发维护");
+    assert!(lines[2].ends_with("https://github.com/mzilinski/velotype"));
+    // The origin of the fork is credited with its license.
+    assert!(lines[3].contains("manyougz"), "{}", lines[3]);
+    assert!(lines[3].ends_with("https://github.com/manyougz/velotype"));
     assert_eq!(
-        lines[3],
+        lines[4],
         "如果本项目对您有帮助，那不妨给本项目一颗 Star⭐，十分感谢！"
     );
 }

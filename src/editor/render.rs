@@ -19,7 +19,10 @@ use crate::i18n::{I18nManager, I18nStrings};
 use crate::theme::{Theme, ThemeDimensions, ThemeManager};
 use crate::window_chrome::{custom_titlebar_height, render_custom_titlebar};
 
-pub(crate) const ABOUT_GITHUB_URL: &str = "https://github.com/manyougz/velotype";
+/// This fork's repository.
+pub(crate) const ABOUT_GITHUB_URL: &str = "https://github.com/mzilinski/velotype";
+/// The original Velotype this fork is based on (Apache License 2.0).
+pub(crate) const ABOUT_ORIGIN_URL: &str = "https://github.com/manyougz/velotype";
 
 /// Rows within this many pixels of the viewport stay mounted, so a fast flick
 /// paints them before they scroll in instead of showing a blank edge.
@@ -1318,6 +1321,7 @@ impl Editor {
             format!("Velotype {}", env!("CARGO_PKG_VERSION")),
             strings.help_about_message.clone(),
             format!("{}: {}", strings.help_about_github_label, ABOUT_GITHUB_URL),
+            format!("{}: {}", strings.help_about_origin, ABOUT_ORIGIN_URL),
             strings.help_about_star_message.clone(),
         ]
     }
@@ -1380,6 +1384,22 @@ impl Editor {
                                 .on_click(move |_, _, cx| {
                                     open_about_github_url(cx);
                                 }),
+                        ),
+                )
+                .child(
+                    body_style(div())
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(4.0))
+                        .child(format!("{}:", strings.help_about_origin))
+                        .child(
+                            div()
+                                .id("about-origin-link")
+                                .cursor_pointer()
+                                .text_color(c.text_link)
+                                .underline()
+                                .child(ABOUT_ORIGIN_URL)
+                                .on_click(move |_, _, cx| cx.open_url(ABOUT_ORIGIN_URL)),
                         ),
                 )
                 .child(body_style(div()).child(strings.help_about_star_message.clone()))
