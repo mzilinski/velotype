@@ -134,6 +134,7 @@ impl Editor {
             roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
         }
 
+        self.line_ending = super::line_endings::LineEnding::detect(&markdown);
         self.file_path = file_path;
         self.view_mode = ViewMode::Rendered;
         self.document.replace_roots(roots, cx);
@@ -276,7 +277,7 @@ impl Editor {
             self.clear_pending_drop_replace_state(cx);
             return;
         };
-        let markdown = self.serialized_document_text(cx);
+        let markdown = self.document_text_for_disk(cx);
         let (default_dir, suggested_name) = self.save_dialog_defaults();
         let prompt = cx.prompt_for_new_path(&default_dir, suggested_name.as_deref());
         let weak_editor = cx.entity().downgrade();

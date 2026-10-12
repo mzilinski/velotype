@@ -125,6 +125,8 @@ pub(crate) struct WritingPreferences {
     pub(crate) spellcheck_language: String,
     /// Document zoom from View > Zoom, in percent of the actual size.
     pub(crate) zoom_percent: u16,
+    /// End saved files with a line break (Edit > Line Endings).
+    pub(crate) final_newline: bool,
 }
 
 /// Zoom levels View > Zoom In/Out steps through, in percent.
@@ -162,6 +164,7 @@ impl Default for WritingPreferences {
             spellcheck: true,
             spellcheck_language: String::new(),
             zoom_percent: 100,
+            final_newline: false,
         }
     }
 }
@@ -418,6 +421,7 @@ struct EditorPreferencesFile {
     spellcheck: bool,
     spellcheck_language: String,
     zoom_percent: u16,
+    final_newline: bool,
 }
 
 #[derive(Serialize)]
@@ -481,6 +485,7 @@ impl From<&AppPreferences> for PreferencesFile {
                 spellcheck: value.writing.spellcheck,
                 spellcheck_language: value.writing.spellcheck_language.clone(),
                 zoom_percent: value.writing.zoom_percent,
+                final_newline: value.writing.final_newline,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -602,6 +607,7 @@ fn app_preferences_from_toml_value(
             .and_then(|percent| u16::try_from(percent).ok())
             .map(clamp_zoom)
             .unwrap_or(default_writing.zoom_percent),
+        final_newline: editor_flag("final_newline", default_writing.final_newline),
     };
 
     let status_bar = value
@@ -1809,6 +1815,9 @@ impl PreferencesWindow {
                 strings.preferences_shortcut_underline_selection.clone()
             }
             ShortcutCommand::CodeSelection => strings.preferences_shortcut_code_selection.clone(),
+            ShortcutCommand::SetLineEndingCrlf => strings.menu_line_ending_crlf.clone(),
+            ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
+            ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
             ShortcutCommand::SelectLine => strings.menu_select_line.clone(),
             ShortcutCommand::SelectStyledScope => strings.menu_select_styled_scope.clone(),
             ShortcutCommand::SelectWord => strings.menu_select_word.clone(),
@@ -2999,6 +3008,7 @@ mod tests {
                 spellcheck: false,
                 spellcheck_language: "de-DE".into(),
                 zoom_percent: 125,
+                final_newline: true,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             keybindings: BTreeMap::new(),
@@ -3035,6 +3045,7 @@ mod tests {
         assert!(text.contains("typewriter_mode = true"));
         assert!(text.contains("spellcheck_language = \"de-DE\""));
         assert!(text.contains("zoom_percent = 125"));
+        assert!(text.contains("final_newline = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));

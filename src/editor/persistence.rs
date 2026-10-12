@@ -91,7 +91,7 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        let markdown = self.serialized_document_text(cx);
+        let markdown = self.document_text_for_disk(cx);
         match std::fs::write(path, markdown) {
             Ok(_) => {
                 self.apply_successful_save(path.to_path_buf(), cx);
@@ -115,7 +115,7 @@ impl Editor {
     }
 
     fn save_document_via_prompt(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let markdown = self.serialized_document_text(cx);
+        let markdown = self.document_text_for_disk(cx);
         let (default_dir, suggested_name) = self.save_dialog_defaults();
         let prompt = cx.prompt_for_new_path(&default_dir, suggested_name.as_deref());
         let weak_editor = cx.entity().downgrade();

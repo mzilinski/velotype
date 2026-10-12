@@ -141,6 +141,10 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_line_endings: String,
+    pub menu_line_ending_crlf: String,
+    pub menu_line_ending_lf: String,
+    pub menu_final_newline: String,
     pub menu_status_bar: String,
     pub menu_toggle_full_screen: String,
     pub menu_always_on_top: String,
@@ -568,6 +572,10 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_line_endings: Option<String>,
+    menu_line_ending_crlf: Option<String>,
+    menu_line_ending_lf: Option<String>,
+    menu_final_newline: Option<String>,
     menu_status_bar: Option<String>,
     menu_toggle_full_screen: Option<String>,
     menu_always_on_top: Option<String>,
@@ -910,6 +918,10 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_line_endings",
+    "menu_line_ending_crlf",
+    "menu_line_ending_lf",
+    "menu_final_newline",
     "menu_status_bar",
     "menu_toggle_full_screen",
     "menu_always_on_top",
@@ -1332,6 +1344,16 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_line_endings: self.menu_line_endings.unwrap_or(defaults.menu_line_endings),
+            menu_line_ending_crlf: self
+                .menu_line_ending_crlf
+                .unwrap_or(defaults.menu_line_ending_crlf),
+            menu_line_ending_lf: self
+                .menu_line_ending_lf
+                .unwrap_or(defaults.menu_line_ending_lf),
+            menu_final_newline: self
+                .menu_final_newline
+                .unwrap_or(defaults.menu_final_newline),
             menu_status_bar: self.menu_status_bar.unwrap_or(defaults.menu_status_bar),
             menu_toggle_full_screen: self
                 .menu_toggle_full_screen
@@ -2116,6 +2138,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_line_endings: "换行符".into(),
+            menu_line_ending_crlf: "Windows (CRLF)".into(),
+            menu_line_ending_lf: "Unix (LF)".into(),
+            menu_final_newline: "保存时在末尾插入换行".into(),
             menu_status_bar: "状态栏".into(),
             menu_toggle_full_screen: "切换全屏".into(),
             menu_always_on_top: "保持窗口在最前端".into(),
@@ -2476,6 +2502,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_line_endings: "Line Endings".into(),
+            menu_line_ending_crlf: "Windows (CRLF)".into(),
+            menu_line_ending_lf: "Unix (LF)".into(),
+            menu_final_newline: "Insert Final Newline on Save".into(),
             menu_status_bar: "Status Bar".into(),
             menu_toggle_full_screen: "Toggle Fullscreen".into(),
             menu_always_on_top: "Always on Top".into(),
@@ -2838,6 +2868,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_line_endings: "Zeilenenden".into(),
+            menu_line_ending_crlf: "Windows (CRLF)".into(),
+            menu_line_ending_lf: "Unix (LF)".into(),
+            menu_final_newline: "Beim Speichern mit Zeilenumbruch enden".into(),
             menu_status_bar: "Statusleiste".into(),
             menu_toggle_full_screen: "Vollbild umschalten".into(),
             menu_always_on_top: "Immer im Vordergrund".into(),

@@ -843,7 +843,19 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
 
 /// Edit menu: history, clipboard (with the plain-text and HTML variants),
 /// selection and find.
-fn edit_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+fn edit_menu(
+    strings: &crate::i18n::I18nStrings,
+    view: ViewMenuState,
+    writing: &crate::config::WritingPreferences,
+) -> Menu {
+    use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
+    let checked = |label: &str, on: bool| {
+        if on {
+            format!("\u{2713} {label}")
+        } else {
+            label.to_string()
+        }
+    };
     use crate::components::{
         Copy, CopyAsHtml, CopyAsPlainText, Cut, FindAndReplace, FindInDocument, Paste,
         PasteAsPlainText, Redo, SearchInWorkspace, SelectAll, Undo,
@@ -890,6 +902,25 @@ fn edit_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                     MenuItem::action(strings.menu_delete_line.clone(), DeleteLine),
                     MenuItem::action(strings.menu_delete_styled_scope.clone(), DeleteStyledScope),
                     MenuItem::action(strings.menu_delete_word.clone(), DeleteWord),
+                ],
+            }),
+            MenuItem::separator(),
+            MenuItem::submenu(Menu {
+                name: strings.menu_line_endings.clone().into(),
+                items: vec![
+                    MenuItem::action(
+                        checked(&strings.menu_line_ending_crlf, view.crlf),
+                        SetLineEndingCrlf,
+                    ),
+                    MenuItem::action(
+                        checked(&strings.menu_line_ending_lf, !view.crlf),
+                        SetLineEndingLf,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        checked(&strings.menu_final_newline, writing.final_newline),
+                        ToggleFinalNewline,
+                    ),
                 ],
             }),
             MenuItem::separator(),
@@ -1043,8 +1074,12 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         DeleteBlock, DeleteLine, DeleteStyledScope, DeleteWord, JumpToBottom, JumpToSelection,
         JumpToTop, SelectBlock, SelectLine, SelectStyledScope, SelectWord,
     };
+    use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
-    any.is::<SelectBlock>()
+    any.is::<SetLineEndingCrlf>()
+        || any.is::<SetLineEndingLf>()
+        || any.is::<ToggleFinalNewline>()
+        || any.is::<SelectBlock>()
         || any.is::<SelectLine>()
         || any.is::<SelectStyledScope>()
         || any.is::<SelectWord>()
@@ -1195,11 +1230,13 @@ pub(crate) fn dispatch_menu_action_for_editor(
     }
 }
 
-/// Window state shown as check marks in the View menu.
+/// Window and document state shown as check marks in the menus.
 #[derive(Clone, Copy)]
 struct ViewMenuState {
     status_bar: bool,
     always_on_top: bool,
+    /// Line endings of the active document.
+    crlf: bool,
 }
 
 impl Default for ViewMenuState {
@@ -1207,6 +1244,7 @@ impl Default for ViewMenuState {
         Self {
             status_bar: true,
             always_on_top: false,
+            crlf: false,
         }
     }
 }
@@ -1318,7 +1356,7 @@ fn build_menus_with_view(
 
     // Built before the File menu moves strings out.
     let document_menus = [
-        edit_menu(&strings),
+        edit_menu(&strings, view, &writing),
         paragraph_menu(&strings),
         format_menu(&strings),
     ];
@@ -1560,6 +1598,7 @@ pub(crate) fn install_menus(cx: &mut App) {
     let view = ViewMenuState {
         status_bar: crate::config::EditorSettings::status_bar_preferences(cx).enabled,
         always_on_top: crate::window_pin::AlwaysOnTop::enabled(cx),
+        crlf: crate::editor::menu_line_ending_is_crlf(cx),
     };
     let menus = build_menus_with_view(
         cx.global::<ThemeManager>(),
@@ -1927,6 +1966,7 @@ mod tests {
         let view = super::ViewMenuState {
             status_bar: false,
             always_on_top: true,
+            crlf: true,
         };
         let menus =
             super::build_menus_with_view(&theme_manager, &i18n_manager, &[], writing, &[], view);
@@ -1950,6 +1990,35 @@ mod tests {
         assert_eq!(
             names.contains(&"\u{2713} Always on Top".to_string()),
             crate::window_pin::SUPPORTED
+        );
+
+        let edit_menu = menus
+            .iter()
+            .find(|menu| menu.name.as_ref() == "Edit")
+            .expect("edit menu");
+        let line_endings = edit_menu
+            .items
+            .iter()
+            .find_map(|item| match item {
+                MenuItem::Submenu(menu) if menu.name.as_ref() == "Line Endings" => Some(menu),
+                _ => None,
+            })
+            .expect("line endings submenu");
+        let names = line_endings
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                MenuItem::Action { name, .. } => Some(name.to_string()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            [
+                "\u{2713} Windows (CRLF)",
+                "Unix (LF)",
+                "Insert Final Newline on Save"
+            ]
         );
     }
 
