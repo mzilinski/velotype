@@ -1100,6 +1100,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
     any.is::<crate::components::OpenEmojiPicker>()
+        || any.is::<crate::components::ExportWithPandoc>()
+        || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<SetLineEndingCrlf>()
         || any.is::<SetLineEndingLf>()
         || any.is::<ToggleFinalNewline>()
@@ -1426,6 +1428,11 @@ fn build_menus_with_view(
                     ),
                     MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
                     MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        strings.menu_import.clone(),
+                        crate::components::ImportWithPandoc,
+                    ),
                 ],
             },
         ]
@@ -1462,6 +1469,11 @@ fn build_menus_with_view(
                 ),
                 MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
                 MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
+                MenuItem::separator(),
+                MenuItem::action(
+                    strings.menu_import.clone(),
+                    crate::components::ImportWithPandoc,
+                ),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_quit.clone(), QuitApplication),
             ],
@@ -1509,7 +1521,18 @@ fn build_menus_with_view(
             items: vec![
                 MenuItem::action(strings.menu_export_html.clone(), ExportHtml),
                 MenuItem::action(strings.menu_export_pdf.clone(), ExportPdf),
-            ],
+                MenuItem::separator(),
+            ]
+            .into_iter()
+            .chain(crate::export::pandoc::EXPORT_FORMATS.iter().map(|format| {
+                MenuItem::action(
+                    format.label,
+                    crate::components::ExportWithPandoc {
+                        format: format.id.to_string(),
+                    },
+                )
+            }))
+            .collect(),
         },
         Menu {
             name: strings.menu_language.into(),
@@ -2226,6 +2249,25 @@ mod tests {
             }
             _ => panic!("expected export pdf action item"),
         }
+
+        match &menus[EXPORT_IDX].items[3] {
+            MenuItem::Action { name, action, .. } => {
+                assert_eq!(name.as_ref(), "Word (.docx)");
+                let action = action
+                    .as_any()
+                    .downcast_ref::<crate::components::ExportWithPandoc>()
+                    .expect("pandoc export action");
+                assert_eq!(action.format, "docx");
+            }
+            _ => panic!("expected pandoc export action item"),
+        }
+        assert_eq!(
+            menus[EXPORT_IDX].items.len(),
+            3 + crate::export::pandoc::EXPORT_FORMATS.len()
+        );
+        assert!(super::is_document_command_action(
+            &crate::components::ImportWithPandoc
+        ));
     }
 
     #[test]

@@ -39,6 +39,7 @@ mod history;
 mod images;
 mod line_endings;
 mod markdown_commands;
+mod pandoc;
 mod paragraph_format;
 mod persistence;
 mod render;
