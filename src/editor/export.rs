@@ -16,7 +16,11 @@ use crate::theme::{Theme, ThemeManager};
 
 impl Editor {
     fn export_dialog_defaults(&self, format: ExportFormat) -> (PathBuf, String) {
-        let extension = format.extension();
+        self.export_dialog_defaults_for(format.extension())
+    }
+
+    /// Save-dialog folder and file name for an export with `extension`.
+    pub(super) fn export_dialog_defaults_for(&self, extension: &str) -> (PathBuf, String) {
         if let Some(path) = self.file_path.as_ref() {
             let directory = path
                 .parent()
@@ -36,7 +40,7 @@ impl Editor {
         )
     }
 
-    fn export_title(&self) -> String {
+    pub(super) fn export_title(&self) -> String {
         self.file_path
             .as_ref()
             .and_then(|path| path.file_stem())
@@ -279,7 +283,7 @@ fn show_export_succeeded(window: &mut Window, cx: &mut App, path: PathBuf) {
     .detach();
 }
 
-fn show_export_error(window: &mut Window, cx: &mut App, detail: &str) {
+pub(super) fn show_export_error(window: &mut Window, cx: &mut App, detail: &str) {
     let strings = cx.global::<I18nManager>().strings().clone();
     let buttons = [strings.info_dialog_ok.as_str()];
     let _ = window.prompt(

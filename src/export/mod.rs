@@ -9,6 +9,7 @@ use crate::theme::Theme;
 
 mod html;
 mod options;
+pub(crate) mod pandoc;
 mod pdf;
 
 pub(crate) use options::{DEFAULT_PDF_MARGIN_MM, PdfExportOptions, PdfOrientation, PdfPaperSize};

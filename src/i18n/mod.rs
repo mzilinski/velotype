@@ -141,6 +141,10 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_import: String,
+    pub pandoc_missing_title: String,
+    pub pandoc_missing_message: String,
+    pub pandoc_open_download_page: String,
     pub menu_emoji_picker: String,
     pub emoji_search_placeholder: String,
     pub emoji_no_results: String,
@@ -578,6 +582,10 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_import: Option<String>,
+    pandoc_missing_title: Option<String>,
+    pandoc_missing_message: Option<String>,
+    pandoc_open_download_page: Option<String>,
     menu_emoji_picker: Option<String>,
     emoji_search_placeholder: Option<String>,
     emoji_no_results: Option<String>,
@@ -930,6 +938,10 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_import",
+    "pandoc_missing_title",
+    "pandoc_missing_message",
+    "pandoc_open_download_page",
     "menu_emoji_picker",
     "emoji_search_placeholder",
     "emoji_no_results",
@@ -1362,6 +1374,16 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_import: self.menu_import.unwrap_or(defaults.menu_import),
+            pandoc_missing_title: self
+                .pandoc_missing_title
+                .unwrap_or(defaults.pandoc_missing_title),
+            pandoc_missing_message: self
+                .pandoc_missing_message
+                .unwrap_or(defaults.pandoc_missing_message),
+            pandoc_open_download_page: self
+                .pandoc_open_download_page
+                .unwrap_or(defaults.pandoc_open_download_page),
             menu_emoji_picker: self.menu_emoji_picker.unwrap_or(defaults.menu_emoji_picker),
             emoji_search_placeholder: self
                 .emoji_search_placeholder
@@ -2166,6 +2188,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_import: "导入…".into(),
+            pandoc_missing_title: "未安装 Pandoc".into(),
+            pandoc_missing_message: "导出为 Word、OpenDocument、LaTeX 等格式以及导入文档需要 Pandoc。请从 pandoc.org 安装后重试。".into(),
+            pandoc_open_download_page: "打开下载页面".into(),
             menu_emoji_picker: "表情与符号…".into(),
             emoji_search_placeholder: "搜索表情（名称或 :短代码:）".into(),
             emoji_no_results: "未找到表情".into(),
@@ -2536,6 +2562,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_import: "Import…".into(),
+            pandoc_missing_title: "Pandoc is not installed".into(),
+            pandoc_missing_message: "Exporting to Word, OpenDocument, LaTeX and other formats and importing documents needs Pandoc. Install it from pandoc.org, then try again.".into(),
+            pandoc_open_download_page: "Open Download Page".into(),
             menu_emoji_picker: "Emoji & Symbols…".into(),
             emoji_search_placeholder: "Search emoji (name or :shortcode:)".into(),
             emoji_no_results: "No emoji found".into(),
@@ -2908,6 +2938,10 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_import: "Importieren…".into(),
+            pandoc_missing_title: "Pandoc ist nicht installiert".into(),
+            pandoc_missing_message: "Für den Export nach Word, OpenDocument, LaTeX und andere Formate sowie für den Import wird Pandoc benötigt. Installiere es von pandoc.org und versuche es dann erneut.".into(),
+            pandoc_open_download_page: "Download-Seite öffnen".into(),
             menu_emoji_picker: "Emoji und Symbole…".into(),
             emoji_search_placeholder: "Emoji suchen (englischer Name oder :Kürzel:)".into(),
             emoji_no_results: "Kein Emoji gefunden".into(),

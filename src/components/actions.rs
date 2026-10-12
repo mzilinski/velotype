@@ -106,6 +106,7 @@ actions!(
         SaveDocumentAs,
         ExportHtml,
         ExportPdf,
+        ImportWithPandoc,
         AddLanguageConfig,
         AddThemeConfig,
         ToggleFollowSystemAppearance,
@@ -160,6 +161,15 @@ actions!(
 pub struct InsertCallout {
     /// Alert type: note, tip, important, warning or caution.
     pub kind: String,
+}
+
+/// Exports the document with Pandoc (File > Export > Word, LaTeX, ...).
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+#[action(namespace = velotype)]
+#[serde(deny_unknown_fields)]
+pub struct ExportWithPandoc {
+    /// Pandoc writer name such as `docx` or `latex`.
+    pub format: String,
 }
 
 /// Selects a theme from the app-level theme registry.
