@@ -1480,6 +1480,12 @@ impl Editor {
 impl Render for Editor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.install_close_guard(cx, window);
+        // Line heights are given in rems; scale them with the document zoom
+        // like the font sizes (GPUI's default rem is 16px).
+        let zoom = cx
+            .try_global::<crate::theme::ThemeManager>()
+            .map_or(1.0, |themes| themes.zoom());
+        window.set_rem_size(px(16.0 * zoom));
         self.apply_pending_focus(window, cx);
         self.apply_pending_scroll_into_view(window, cx);
         self.last_selection_snapshot = self.capture_source_selection_snapshot(cx);

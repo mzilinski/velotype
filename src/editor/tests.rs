@@ -3712,3 +3712,18 @@ async fn selection_and_delete_commands_act_on_the_focused_block(cx: &mut TestApp
     let source = editor.update(cx, |editor, cx| editor.current_document_source(cx));
     assert_eq!(source, "One two. \n\nlast");
 }
+
+#[gpui::test]
+async fn zoom_scales_rem_based_line_heights(cx: &mut gpui::TestAppContext) {
+    cx.update(|cx| {
+        crate::i18n::I18nManager::init(cx);
+        crate::theme::ThemeManager::init(cx);
+        crate::components::init(cx);
+        cx.global_mut::<crate::theme::ThemeManager>().set_zoom(2.0);
+    });
+    let (_editor, cx) = cx.add_window_view(|_window, cx| {
+        crate::editor::Editor::from_markdown(cx, "text".to_string(), None)
+    });
+    cx.run_until_parked();
+    cx.update(|window, _| assert_eq!(window.rem_size(), gpui::px(32.0)));
+}
