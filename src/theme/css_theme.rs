@@ -10,10 +10,13 @@ use gpui::{Hsla, Rgba};
 
 use super::Theme;
 
+/// One rule: its selectors and its `property: value` declarations.
+type CssRule = (Vec<String>, Vec<(String, String)>);
+
 /// The rules of a style sheet: selector list and declarations, in order.
 #[derive(Debug, Default)]
 pub(crate) struct CssRules {
-    rules: Vec<(Vec<String>, Vec<(String, String)>)>,
+    rules: Vec<CssRule>,
     variables: HashMap<String, String>,
 }
 
@@ -109,8 +112,7 @@ impl CssRules {
                 .iter()
                 .filter(|(list, _)| list.iter().any(|selector| selector == wanted))
                 .flat_map(|(_, declarations)| declarations.iter())
-                .filter(|(name, _)| name == property)
-                .next_back();
+                .rfind(|(name, _)| name == property);
             if let Some((_, value)) = found {
                 return Some(self.resolve(value, 0));
             }
