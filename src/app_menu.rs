@@ -1073,6 +1073,20 @@ fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
             MenuItem::action(strings.menu_link.clone(), InsertLink),
             MenuItem::separator(),
             MenuItem::action(strings.menu_clear_format.clone(), ClearFormat),
+            MenuItem::separator(),
+            MenuItem::submenu(Menu {
+                name: strings.menu_image.clone().into(),
+                items: vec![
+                    MenuItem::action(
+                        strings.menu_upload_image.clone(),
+                        crate::components::UploadImage,
+                    ),
+                    MenuItem::action(
+                        strings.menu_upload_all_images.clone(),
+                        crate::components::UploadAllImages,
+                    ),
+                ],
+            }),
         ],
     }
 }
@@ -1103,6 +1117,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
+        || any.is::<crate::components::UploadImage>()
+        || any.is::<crate::components::UploadAllImages>()
         || any.is::<SetLineEndingCrlf>()
         || any.is::<SetLineEndingLf>()
         || any.is::<ToggleFinalNewline>()

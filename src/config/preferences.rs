@@ -88,6 +88,8 @@ pub(crate) enum ImagePasteBehavior {
     CopyToDocumentFolder,
     CopyToAssetsFolder,
     CopyToNamedAssetsFolder,
+    /// Keep the image local first, then upload it with the upload command.
+    Upload,
 }
 
 impl ImagePasteBehavior {
@@ -97,6 +99,7 @@ impl ImagePasteBehavior {
             Self::CopyToDocumentFolder => "copy_to_document_folder",
             Self::CopyToAssetsFolder => "copy_to_assets_folder",
             Self::CopyToNamedAssetsFolder => "copy_to_named_assets_folder",
+            Self::Upload => "upload",
         }
     }
 
@@ -105,6 +108,7 @@ impl ImagePasteBehavior {
             "copy_to_document_folder" => Self::CopyToDocumentFolder,
             "copy_to_assets_folder" => Self::CopyToAssetsFolder,
             "copy_to_named_assets_folder" => Self::CopyToNamedAssetsFolder,
+            "upload" => Self::Upload,
             _ => Self::None,
         }
     }
@@ -186,6 +190,9 @@ pub(crate) struct AppPreferences {
     pub(crate) show_table_headers: bool,
     pub(crate) writing: WritingPreferences,
     pub(crate) image_paste_behavior: ImagePasteBehavior,
+    /// Command that uploads images given as arguments and prints their URLs
+    /// (Format > Image > Upload Image), e.g. `picgo upload`.
+    pub(crate) image_upload_command: String,
     pub(crate) keybindings: BTreeMap<String, Vec<String>>,
     pub(crate) status_bar: StatusBarPreferences,
     pub(crate) fonts: FontPreferences,
@@ -203,6 +210,7 @@ impl Default for AppPreferences {
             show_table_headers: true,
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
+            image_upload_command: String::new(),
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),
@@ -427,6 +435,7 @@ struct StartupPreferencesFile {
 struct EditorPreferencesFile {
     show_table_headers: bool,
     image_paste_behavior: String,
+    image_upload_command: String,
     auto_pair: bool,
     focus_mode: bool,
     typewriter_mode: bool,
@@ -493,6 +502,7 @@ impl From<&AppPreferences> for PreferencesFile {
             editor: EditorPreferencesFile {
                 show_table_headers: value.show_table_headers,
                 image_paste_behavior: value.image_paste_behavior.as_str().into(),
+                image_upload_command: value.image_upload_command.clone(),
                 auto_pair: value.writing.auto_pair,
                 focus_mode: value.writing.focus_mode,
                 typewriter_mode: value.writing.typewriter_mode,
@@ -699,6 +709,13 @@ fn app_preferences_from_toml_value(
         ui_stack: font_value("ui_stack", &default_fonts.ui_stack),
     };
 
+    let image_upload_command = value
+        .get("editor")
+        .and_then(|editor| editor.get("image_upload_command"))
+        .and_then(|value| value.as_str())
+        .map(|command| command.trim().to_string())
+        .unwrap_or_default();
+
     AppPreferences {
         startup_open,
         default_language_id,
@@ -707,6 +724,7 @@ fn app_preferences_from_toml_value(
         show_table_headers,
         writing,
         image_paste_behavior,
+        image_upload_command,
         keybindings,
         status_bar,
         fonts,
@@ -1039,6 +1057,9 @@ pub(crate) struct PreferencesWindow {
     ui_font_input: Entity<SingleLineInput>,
     pdf_export: PdfExportOptions,
     saved_pdf_export: PdfExportOptions,
+    upload_command: String,
+    saved_upload_command: String,
+    upload_command_input: Entity<SingleLineInput>,
 }
 
 impl PreferencesWindow {
@@ -1085,6 +1106,19 @@ impl PreferencesWindow {
             cx.notify();
         })
         .detach();
+        let upload_command = preferences.image_upload_command.clone();
+        let upload_command_input = cx.new(|cx| {
+            SingleLineInput::new(upload_command.clone(), "e.g. picgo upload", cx)
+                .with_overflow(SingleLineOverflow::Ellipsis)
+        });
+        cx.subscribe(
+            &upload_command_input,
+            |this, input, _: &InputChanged, cx| {
+                this.upload_command = input.read(cx).value().to_string();
+                cx.notify();
+            },
+        )
+        .detach();
         cx.subscribe(&ui_font_input, |this, input, _: &InputChanged, cx| {
             this.fonts.ui_stack = input.read(cx).value().to_string();
             this.refresh_font_availability(2);
@@ -1127,6 +1161,9 @@ impl PreferencesWindow {
             ui_font_input,
             pdf_export: preferences.pdf_export.clone(),
             saved_pdf_export: preferences.pdf_export,
+            saved_upload_command: upload_command.clone(),
+            upload_command,
+            upload_command_input,
         }
     }
 
@@ -1186,6 +1223,7 @@ impl PreferencesWindow {
             || self.status_bar_show_mode_switch != self.saved_status_bar_show_mode_switch
             || self.fonts != self.saved_fonts
             || self.pdf_export != self.saved_pdf_export
+            || self.upload_command.trim() != self.saved_upload_command.trim()
     }
 
     fn set_nav_file(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
@@ -1308,6 +1346,7 @@ impl PreferencesWindow {
             // PDF page setup is stored separately so the shared window save
             // signature stays unchanged.
             preferences.pdf_export = self.pdf_export.clone();
+            preferences.image_upload_command = self.upload_command.trim().to_string();
             save_app_preferences(&preferences)?;
             Ok(preferences)
         }) {
@@ -1387,6 +1426,7 @@ impl PreferencesWindow {
         self.saved_status_bar_show_mode_switch = self.status_bar_show_mode_switch;
         self.saved_fonts = self.fonts.clone();
         self.saved_pdf_export = self.pdf_export.clone();
+        self.saved_upload_command = self.upload_command.clone();
         cx.notify();
     }
 
@@ -1718,6 +1758,7 @@ impl PreferencesWindow {
             ImagePasteBehavior::CopyToNamedAssetsFolder => strings
                 .preferences_image_paste_copy_to_named_assets_folder
                 .clone(),
+            ImagePasteBehavior::Upload => strings.preferences_image_paste_upload.clone(),
         }
     }
 
@@ -1732,6 +1773,7 @@ impl PreferencesWindow {
             ImagePasteBehavior::CopyToDocumentFolder,
             ImagePasteBehavior::CopyToAssetsFolder,
             ImagePasteBehavior::CopyToNamedAssetsFolder,
+            ImagePasteBehavior::Upload,
         ];
         let mut dropdown = div()
             .w_full()
@@ -1764,7 +1806,28 @@ impl PreferencesWindow {
                 ));
             }
         }
-        self.labeled_row(&strings.preferences_image_insert_behavior, dropdown, theme)
+        let c = &theme.colors;
+        let t = &theme.typography;
+        div()
+            .w_full()
+            .min_w(px(0.0))
+            .flex()
+            .flex_col()
+            .gap(px(18.))
+            .child(self.labeled_row(&strings.preferences_image_insert_behavior, dropdown, theme))
+            .child(self.labeled_row(
+                &strings.preferences_image_upload_command,
+                self.upload_command_input.clone(),
+                theme,
+            ))
+            .child(
+                div()
+                    .w_full()
+                    .min_w(px(0.0))
+                    .text_size(px((t.dialog_body_size - 2.).max(10.)))
+                    .text_color(c.dialog_muted)
+                    .child(strings.preferences_image_upload_help.clone()),
+            )
     }
 
     fn shortcut_category_label(
@@ -1837,6 +1900,8 @@ impl PreferencesWindow {
             ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
+            ShortcutCommand::UploadImage => strings.menu_upload_image.clone(),
+            ShortcutCommand::UploadAllImages => strings.menu_upload_all_images.clone(),
             ShortcutCommand::OpenEmojiPicker => strings.menu_emoji_picker.clone(),
             ShortcutCommand::SelectLine => strings.menu_select_line.clone(),
             ShortcutCommand::SelectStyledScope => strings.menu_select_styled_scope.clone(),
@@ -3035,6 +3100,7 @@ mod tests {
                 smart_dashes: true,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
+            image_upload_command: "picgo upload".into(),
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences {
@@ -3073,6 +3139,7 @@ mod tests {
         assert!(text.contains("smart_quotes = true"));
         assert!(text.contains("smart_dashes = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
+        assert!(text.contains("image_upload_command = \"picgo upload\""));
         assert!(text.contains("[fonts]"));
         assert!(text.contains("body_stack = \"Segoe UI, sans-serif\""));
         assert!(text.contains("[pdf_export]"));
@@ -3150,6 +3217,7 @@ mod tests {
             show_table_headers: true,
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
+            image_upload_command: String::new(),
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),

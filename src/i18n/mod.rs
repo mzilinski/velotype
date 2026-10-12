@@ -141,6 +141,15 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_image: String,
+    pub menu_upload_image: String,
+    pub menu_upload_all_images: String,
+    pub image_upload_failed_title: String,
+    pub image_upload_no_command: String,
+    pub image_upload_nothing: String,
+    pub preferences_image_paste_upload: String,
+    pub preferences_image_upload_command: String,
+    pub preferences_image_upload_help: String,
     pub menu_print: String,
     pub menu_import: String,
     pub pandoc_missing_title: String,
@@ -583,6 +592,15 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_image: Option<String>,
+    menu_upload_image: Option<String>,
+    menu_upload_all_images: Option<String>,
+    image_upload_failed_title: Option<String>,
+    image_upload_no_command: Option<String>,
+    image_upload_nothing: Option<String>,
+    preferences_image_paste_upload: Option<String>,
+    preferences_image_upload_command: Option<String>,
+    preferences_image_upload_help: Option<String>,
     menu_print: Option<String>,
     menu_import: Option<String>,
     pandoc_missing_title: Option<String>,
@@ -940,6 +958,15 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_image",
+    "menu_upload_image",
+    "menu_upload_all_images",
+    "image_upload_failed_title",
+    "image_upload_no_command",
+    "image_upload_nothing",
+    "preferences_image_paste_upload",
+    "preferences_image_upload_command",
+    "preferences_image_upload_help",
     "menu_print",
     "menu_import",
     "pandoc_missing_title",
@@ -1377,6 +1404,29 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_image: self.menu_image.unwrap_or(defaults.menu_image),
+            menu_upload_image: self.menu_upload_image.unwrap_or(defaults.menu_upload_image),
+            menu_upload_all_images: self
+                .menu_upload_all_images
+                .unwrap_or(defaults.menu_upload_all_images),
+            image_upload_failed_title: self
+                .image_upload_failed_title
+                .unwrap_or(defaults.image_upload_failed_title),
+            image_upload_no_command: self
+                .image_upload_no_command
+                .unwrap_or(defaults.image_upload_no_command),
+            image_upload_nothing: self
+                .image_upload_nothing
+                .unwrap_or(defaults.image_upload_nothing),
+            preferences_image_paste_upload: self
+                .preferences_image_paste_upload
+                .unwrap_or(defaults.preferences_image_paste_upload),
+            preferences_image_upload_command: self
+                .preferences_image_upload_command
+                .unwrap_or(defaults.preferences_image_upload_command),
+            preferences_image_upload_help: self
+                .preferences_image_upload_help
+                .unwrap_or(defaults.preferences_image_upload_help),
             menu_print: self.menu_print.unwrap_or(defaults.menu_print),
             menu_import: self.menu_import.unwrap_or(defaults.menu_import),
             pandoc_missing_title: self
@@ -2192,6 +2242,15 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_image: "图片".into(),
+            menu_upload_image: "上传图片".into(),
+            menu_upload_all_images: "上传所有本地图片".into(),
+            image_upload_failed_title: "图片上传失败".into(),
+            image_upload_no_command: "尚未设置上传命令。请在 偏好设置 → 图片 中填写，例如 \"picgo upload\"。".into(),
+            image_upload_nothing: "没有可上传的本地图片。".into(),
+            preferences_image_paste_upload: "使用上传命令上传".into(),
+            preferences_image_upload_command: "上传命令".into(),
+            preferences_image_upload_help: "以图片文件作为参数运行，并须在最后几行为每张图片输出一个 URL，例如 PicGo（\"picgo upload\"）或自定义脚本。".into(),
             menu_print: "打印…".into(),
             menu_import: "导入…".into(),
             pandoc_missing_title: "未安装 Pandoc".into(),
@@ -2567,6 +2626,15 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_image: "Image".into(),
+            menu_upload_image: "Upload Image".into(),
+            menu_upload_all_images: "Upload All Local Images".into(),
+            image_upload_failed_title: "Image upload failed".into(),
+            image_upload_no_command: "No upload command is set. Enter one under Preferences → Image, for example \"picgo upload\".".into(),
+            image_upload_nothing: "There is no local image to upload.".into(),
+            preferences_image_paste_upload: "Upload with the upload command".into(),
+            preferences_image_upload_command: "Upload command".into(),
+            preferences_image_upload_help: "Runs with the image files as arguments and must print one URL per image in its last lines, like PicGo (\"picgo upload\") or a custom script.".into(),
             menu_print: "Print…".into(),
             menu_import: "Import…".into(),
             pandoc_missing_title: "Pandoc is not installed".into(),
@@ -2944,6 +3012,15 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_image: "Bild".into(),
+            menu_upload_image: "Bild hochladen".into(),
+            menu_upload_all_images: "Alle lokalen Bilder hochladen".into(),
+            image_upload_failed_title: "Bild-Upload fehlgeschlagen".into(),
+            image_upload_no_command: "Es ist kein Upload-Befehl eingestellt. Trage ihn unter Einstellungen → Bild ein, zum Beispiel \"picgo upload\".".into(),
+            image_upload_nothing: "Es gibt kein lokales Bild zum Hochladen.".into(),
+            preferences_image_paste_upload: "Mit dem Upload-Befehl hochladen".into(),
+            preferences_image_upload_command: "Upload-Befehl".into(),
+            preferences_image_upload_help: "Wird mit den Bilddateien als Argumenten aufgerufen und muss in den letzten Zeilen je Bild eine URL ausgeben, etwa PicGo (\"picgo upload\") oder ein eigenes Skript.".into(),
             menu_print: "Drucken…".into(),
             menu_import: "Importieren…".into(),
             pandoc_missing_title: "Pandoc ist nicht installiert".into(),

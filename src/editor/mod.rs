@@ -36,6 +36,7 @@ mod file_menu;
 mod file_ops;
 mod find;
 mod history;
+mod image_upload;
 mod images;
 mod line_endings;
 mod markdown_commands;

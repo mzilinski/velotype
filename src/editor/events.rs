@@ -379,6 +379,7 @@ impl Editor {
 
         self.mark_dirty(cx);
         self.finalize_pending_undo_capture(cx);
+        self.upload_inserted_images(std::slice::from_ref(&markdown), cx);
         cx.notify();
     }
 
