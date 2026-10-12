@@ -138,15 +138,15 @@ impl Editor {
         self.file_path = file_path;
         self.view_mode = ViewMode::Rendered;
         self.document.replace_roots(roots, cx);
+        self.table_cells.clear();
+        self.rebuild_table_runtimes(cx);
+        self.rebuild_image_runtimes(cx);
         self.source_fidelity = super::source_fidelity::fidelity_for_document(
             &self.document,
             &normalized,
             &regions,
             cx,
         );
-        self.table_cells.clear();
-        self.rebuild_table_runtimes(cx);
-        self.rebuild_image_runtimes(cx);
 
         self.document_dirty = false;
         self.pending_window_edited = false;

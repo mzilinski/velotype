@@ -779,6 +779,12 @@ fn collect_indented_code_block(
             break;
         }
     }
+    // Trailing blank lines separate the block from what follows; they are
+    // not part of the code (CommonMark), so they stay blank lines.
+    while code_lines.len() > 1 && code_lines.last().is_some_and(|line| line.trim().is_empty()) {
+        code_lines.pop();
+        code_index -= 1;
+    }
 
     Some((
         build_code_block(cx, None, code_lines.join("\n")),

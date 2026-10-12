@@ -1611,7 +1611,7 @@ fn parse_until(
                 }
                 _ => {
                     matches_sequence(tokens, index, &end_delim.close())
-                        && can_close_emphasis(tokens, index)
+                        && can_close_delimiter(tokens, index, *end_delim)
                 }
             };
 
@@ -2631,11 +2631,17 @@ fn match_open_delimiter(tokens: &[CharToken], index: usize) -> Option<Delimiter>
         Some(Delimiter::SubscriptMarkdown)
     } else if matches_sequence(tokens, index, "**") && can_open_emphasis(tokens, index, 2) {
         Some(Delimiter::BoldMarkdown { marker: '*' })
-    } else if matches_sequence(tokens, index, "__") && can_open_emphasis(tokens, index, 2) {
+    } else if matches_sequence(tokens, index, "__")
+        && can_open_emphasis(tokens, index, 2)
+        && !underscore_inside_word(tokens, index)
+    {
         Some(Delimiter::BoldMarkdown { marker: '_' })
     } else if matches_sequence(tokens, index, "*") && can_open_emphasis(tokens, index, 1) {
         Some(Delimiter::ItalicMarkdown { marker: '*' })
-    } else if matches_sequence(tokens, index, "_") && can_open_emphasis(tokens, index, 1) {
+    } else if matches_sequence(tokens, index, "_")
+        && can_open_emphasis(tokens, index, 1)
+        && !underscore_inside_word(tokens, index)
+    {
         Some(Delimiter::ItalicMarkdown { marker: '_' })
     } else if tokens[index].ch == '`' {
         // Count the run of consecutive backticks.
@@ -2727,7 +2733,7 @@ fn has_closing_delimiter(tokens: &[CharToken], index: usize, delimiter: Delimite
             // `a == b == c`) starts a span that fails at the end of the text,
             // and every later opener retries the same scan nested inside it,
             // which takes exponential time.
-            if !can_close_emphasis(tokens, cursor) {
+            if !can_close_delimiter(tokens, cursor, delimiter) {
                 cursor += 1;
                 continue;
             }
@@ -2930,7 +2936,7 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
             continue;
         }
 
-        if text[index..].starts_with('*') {
+        if text[index..].starts_with('*') && literal_marker_needs_escape(text, index) {
             let start = escaped.len();
             escaped.push_str("\\*");
             markdown_to_visible.resize(escaped.len() + 1, index);
@@ -2941,7 +2947,7 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
             continue;
         }
 
-        if text[index..].starts_with('_') {
+        if text[index..].starts_with('_') && literal_marker_needs_escape(text, index) {
             let start = escaped.len();
             escaped.push_str("\\_");
             markdown_to_visible.resize(escaped.len() + 1, index);
@@ -2952,7 +2958,7 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
             continue;
         }
 
-        if text[index..].starts_with('~') {
+        if text[index..].starts_with('~') && literal_marker_needs_escape(text, index) {
             let start = escaped.len();
             escaped.push_str("\\~");
             markdown_to_visible.resize(escaped.len() + 1, index);
@@ -2963,7 +2969,7 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
             continue;
         }
 
-        if text[index..].starts_with('^') {
+        if text[index..].starts_with('^') && literal_marker_needs_escape(text, index) {
             let start = escaped.len();
             escaped.push_str("\\^");
             markdown_to_visible.resize(escaped.len() + 1, index);
@@ -2985,7 +2991,7 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
             continue;
         }
 
-        if text[index..].starts_with('`') {
+        if text[index..].starts_with('`') && literal_marker_needs_escape(text, index) {
             let start = escaped.len();
             escaped.push_str("\\`");
             markdown_to_visible.resize(escaped.len() + 1, index);
@@ -3012,6 +3018,36 @@ fn escape_literal_text_with_offset_map(text: &str) -> InlineMarkdownOffsetMap {
         markdown: escaped,
         visible_to_markdown,
         markdown_to_visible,
+    }
+}
+
+/// Whether the literal marker character at `index` (`*`, `_`, `~`, `^`,
+/// a backtick) would be read as formatting when saved unescaped. Markers
+/// that cannot format there keep their exact bytes (`snake_case`, `~5`,
+/// `a * b`, a lone backtick), mirroring the rules of the parser.
+fn literal_marker_needs_escape(text: &str, index: usize) -> bool {
+    let Some(marker) = text[index..].chars().next() else {
+        return false;
+    };
+    let previous = text[..index].chars().next_back();
+    let next = text[index + marker.len_utf8()..].chars().next();
+    let alnum = |ch: Option<char>| ch.is_some_and(char::is_alphanumeric);
+    let space = |ch: Option<char>| ch.is_none_or(char::is_whitespace);
+    match marker {
+        // Opens only before visible text and closes only after it; at a line
+        // start `* ` would become a list item.
+        '*' => {
+            let line_start = previous.is_none_or(|ch| ch == '\n');
+            !(space(previous) && space(next)) || line_start
+        }
+        // Also never inside a word.
+        '_' => !(alnum(previous) && alnum(next)) && !(space(previous) && space(next)),
+        // `~~` strikes through; a single tilde subscripts between word characters.
+        '~' => previous == Some('~') || next == Some('~') || (alnum(previous) && alnum(next)),
+        '^' => alnum(previous) && alnum(next),
+        // A code span needs a second backtick.
+        '`' => text.matches('`').count() > 1,
+        _ => true,
     }
 }
 
@@ -3473,6 +3509,31 @@ fn can_close_emphasis(tokens: &[CharToken], index: usize) -> bool {
     index > 0 && !tokens[index - 1].ch.is_whitespace()
 }
 
+/// Whether a `_` / `__` opener at `index` follows a letter or digit
+/// (`snake_case`): CommonMark does not let it open emphasis there.
+fn underscore_inside_word(tokens: &[CharToken], index: usize) -> bool {
+    index
+        .checked_sub(1)
+        .and_then(|previous| tokens.get(previous))
+        .is_some_and(|token| token.ch.is_alphanumeric())
+}
+
+/// Whether `delimiter` may close at `index`: after visible text, and for
+/// underscores not directly before a letter or digit (`a_b_c` stays literal).
+fn can_close_delimiter(tokens: &[CharToken], index: usize, delimiter: Delimiter) -> bool {
+    if !can_close_emphasis(tokens, index) {
+        return false;
+    }
+    let underscore = matches!(
+        delimiter,
+        Delimiter::ItalicMarkdown { marker: '_' } | Delimiter::BoldMarkdown { marker: '_' }
+    );
+    !underscore
+        || tokens
+            .get(index + delimiter.close().chars().count())
+            .is_none_or(|token| !token.ch.is_alphanumeric())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -3480,6 +3541,41 @@ mod tests {
         InlineScript, InlineStyle, InlineTextTree, LinkReferenceDefinitions, StyleFlag,
     };
     use crate::components::HtmlCssColor;
+
+    #[test]
+    fn literal_markers_are_escaped_only_where_they_would_format() {
+        for (text, saved) in [
+            ("snake_case_name", "snake_case_name"),
+            ("max. ~5 min", "max. ~5 min"),
+            ("join \"`n\"", "join \"`n\""),
+            ("2 * 3 = 6", "2 * 3 = 6"),
+            ("x^2 and a~b", "x\\^2 and a\\~b"),
+            ("~~no~~", "\\~\\~no\\~\\~"),
+            ("*not italic*", "\\*not italic\\*"),
+            ("_not italic_", "\\_not italic\\_"),
+            ("`a` b", "\\`a\\` b"),
+        ] {
+            let tree = InlineTextTree::plain(text.to_string());
+            assert_eq!(tree.serialize_markdown(), saved, "{text}");
+            // Whatever is saved reads back as the same literal text.
+            let reparsed = InlineTextTree::from_markdown(&tree.serialize_markdown());
+            assert_eq!(reparsed.visible_text(), text, "{text}");
+            assert_eq!(reparsed.fragments.len(), 1, "{text}");
+        }
+    }
+
+    #[test]
+    fn underscores_inside_words_never_format() {
+        let tree = InlineTextTree::from_markdown("NLOHMANN_DEFINE_TYPE and _real_ emphasis");
+        assert_eq!(
+            tree.visible_text(),
+            "NLOHMANN_DEFINE_TYPE and real emphasis"
+        );
+        assert_eq!(
+            tree.serialize_markdown(),
+            "NLOHMANN_DEFINE_TYPE and *real* emphasis"
+        );
+    }
 
     #[test]
     fn many_unclosable_openers_parse_in_linear_time() {
@@ -3522,7 +3618,10 @@ mod tests {
         let tree = InlineTextTree::from_markdown("* a * _ b _");
 
         assert_eq!(tree.visible_text(), "* a * _ b _");
-        assert_eq!(tree.serialize_markdown(), "\\* a \\* \\_ b \\_");
+        // Only the leading `*` (a list marker otherwise) needs escaping.
+        assert_eq!(tree.serialize_markdown(), "\\* a * _ b _");
+        let reparsed = InlineTextTree::from_markdown(&tree.serialize_markdown());
+        assert_eq!(reparsed.visible_text(), "* a * _ b _");
     }
 
     #[test]
@@ -4402,7 +4501,8 @@ mod tests {
     fn unclosed_backtick_is_literal() {
         let tree = InlineTextTree::from_markdown("a `b");
         assert_eq!(tree.visible_text(), "a `b");
-        assert_eq!(tree.serialize_markdown(), "a \\`b");
+        // A lone backtick cannot open a code span, so it stays as typed.
+        assert_eq!(tree.serialize_markdown(), "a `b");
     }
 
     #[test]
