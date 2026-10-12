@@ -2119,6 +2119,7 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_find_next))
             .on_action(cx.listener(Self::on_find_previous))
             .on_action(cx.listener(Self::on_delete_block))
+            .on_action(cx.listener(Self::on_open_emoji_picker))
             .on_action(cx.listener(Self::on_set_line_ending_crlf))
             .on_action(cx.listener(Self::on_set_line_ending_lf))
             .on_action(cx.listener(Self::on_toggle_final_newline))
@@ -2252,6 +2253,11 @@ impl Render for Editor {
         };
         let base = if let Some(palette) = self.render_palette(&theme, px(titlebar_height), cx) {
             base.child(palette)
+        } else {
+            base
+        };
+        let base = if let Some(picker) = self.render_emoji_picker(&theme, px(titlebar_height), cx) {
+            base.child(picker)
         } else {
             base
         };

@@ -951,6 +951,11 @@ fn edit_menu(
                 strings.preferences_shortcut_search_workspace.clone(),
                 SearchInWorkspace,
             ),
+            MenuItem::separator(),
+            MenuItem::action(
+                strings.menu_emoji_picker.clone(),
+                crate::components::OpenEmojiPicker,
+            ),
         ],
     }
 }
@@ -1094,7 +1099,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     };
     use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
-    any.is::<SetLineEndingCrlf>()
+    any.is::<crate::components::OpenEmojiPicker>()
+        || any.is::<SetLineEndingCrlf>()
         || any.is::<SetLineEndingLf>()
         || any.is::<ToggleFinalNewline>()
         || any.is::<SelectBlock>()
