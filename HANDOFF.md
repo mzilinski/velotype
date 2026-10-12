@@ -25,7 +25,7 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-**Nicht gepusht:** `feat/file-actions` und `integration` (Merge). Test-Exe: `velotype-integration-9.exe`.
+Alles gepusht (Stand 2026-10-12). Test-Exe: `velotype-integration-9.exe`.
 
 ## Mac-Runde
 
