@@ -149,12 +149,18 @@ pub(crate) fn export_args(
     args
 }
 
-/// Arguments for converting `input` into GitHub Markdown on stdout, with
-/// embedded images written below `media_dir`.
-pub(crate) fn import_args(input: &Path, media_dir: &Path) -> Vec<String> {
+/// GitHub Markdown with `$…$` / `$$…$$` math as Velotype writes it.
+const MARKDOWN_WRITER: &str = "gfm-tex_math_gfm+tex_math_dollars";
+/// For Pandoc versions before `tex_math_gfm` existed (math then comes out
+/// in GitHub's `` $`…`$ `` form).
+const FALLBACK_MARKDOWN_WRITER: &str = "gfm";
+
+/// Arguments for converting `input` into GitHub Markdown (`writer`) on
+/// stdout, with embedded images written below `media_dir`.
+pub(crate) fn import_args(input: &Path, media_dir: &Path, writer: &str) -> Vec<String> {
     vec![
         "--to".to_string(),
-        "gfm".to_string(),
+        writer.to_string(),
         "--wrap=none".to_string(),
         format!("--extract-media={}", media_dir.to_string_lossy()),
         input.to_string_lossy().to_string(),
@@ -193,11 +199,18 @@ pub(crate) fn export(
 /// Converts `input` (Word, OpenDocument, HTML, LaTeX, EPUB, ...) to
 /// Markdown; images go to `media_dir`.
 pub(crate) fn import(pandoc: &Path, input: &Path, media_dir: &Path) -> anyhow::Result<String> {
-    let result = command(pandoc)
-        .args(import_args(input, media_dir))
-        .stdin(Stdio::null())
-        .output()
-        .with_context(|| format!("failed to start '{}'", pandoc.display()))?;
+    let run = |writer: &str| {
+        command(pandoc)
+            .args(import_args(input, media_dir, writer))
+            .stdin(Stdio::null())
+            .output()
+            .with_context(|| format!("failed to start '{}'", pandoc.display()))
+    };
+    let mut result = run(MARKDOWN_WRITER)?;
+    if !result.status.success() && String::from_utf8_lossy(&result.stderr).contains("tex_math_gfm")
+    {
+        result = run(FALLBACK_MARKDOWN_WRITER)?;
+    }
     if !result.status.success() {
         bail!("{}", String::from_utf8_lossy(&result.stderr).trim());
     }
@@ -243,8 +256,8 @@ mod tests {
         let input = Path::new("dir").join("Report.docx");
         let media = media_dir_for(&input);
         assert_eq!(media, Path::new("dir").join("Report-media"));
-        let args = import_args(&input, &media);
-        assert_eq!(&args[..3], ["--to", "gfm", "--wrap=none"]);
+        let args = import_args(&input, &media, MARKDOWN_WRITER);
+        assert_eq!(&args[..3], ["--to", MARKDOWN_WRITER, "--wrap=none"]);
         assert_eq!(args.last().unwrap(), &input.to_string_lossy().to_string());
     }
 
@@ -252,8 +265,10 @@ mod tests {
     #[test]
     fn round_trip_through_installed_pandoc() {
         let Some(pandoc) = find_pandoc() else {
+            eprintln!("pandoc not installed, round trip skipped");
             return;
         };
+        eprintln!("using {}", pandoc.display());
         let dir = std::env::temp_dir().join(format!("velotype-pandoc-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let output = dir.join("doc.docx");
@@ -270,5 +285,77 @@ mod tests {
         assert!(markdown.contains("# Title"), "{markdown}");
         assert!(markdown.contains("**bold**"), "{markdown}");
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Every export format, then importing the Word file again, in a folder
+    /// whose name has spaces and an umlaut. Runs only where Pandoc is
+    /// installed.
+    #[test]
+    fn all_formats_and_import_with_images() {
+        let Some(pandoc) = find_pandoc() else {
+            eprintln!("pandoc not installed, export formats skipped");
+            return;
+        };
+        let dir = std::env::temp_dir()
+            .join(format!("velotype pandoc {}", uuid::Uuid::new_v4()))
+            .join("Ordner mit Ümlaut");
+        std::fs::create_dir_all(dir.join("img")).unwrap();
+        // A 1x1 PNG.
+        const PNG: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+            0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0xF0, 0x1F, 0x00, 0x05, 0x00, 0x01, 0xFF, 0x89, 0x99,
+            0x3D, 0x1D, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        std::fs::write(dir.join("img").join("bild 1.png"), PNG).unwrap();
+        let markdown = [
+            "# Überschrift",
+            "",
+            "Text mit **fett**, $E = mc^2$ und Fußnote[^1].",
+            "",
+            "| A | B |",
+            "|---|---|",
+            "| 1 | 2 |",
+            "",
+            "- [x] erledigt",
+            "- [ ] offen",
+            "",
+            "![Bild](<img/bild 1.png>)",
+            "",
+            "[^1]: Die Fußnote.",
+            "",
+        ]
+        .join("\n");
+        let markdown = markdown.as_str();
+        for format in EXPORT_FORMATS {
+            let output = dir.join(format!("Dokument äö.{}", format.extension));
+            export(&pandoc, markdown, *format, &output, Some(&dir), "Dokument")
+                .unwrap_or_else(|err| panic!("{}: {err}", format.id));
+            let size = std::fs::metadata(&output)
+                .map(|meta| meta.len())
+                .unwrap_or(0);
+            assert!(size > 0, "{} produced no output", format.id);
+        }
+        let latex = std::fs::read_to_string(dir.join("Dokument äö.tex")).unwrap();
+        assert!(latex.contains("Überschrift"), "{latex}");
+        assert!(latex.contains("E = mc^2"), "{latex}");
+
+        let docx = dir.join("Dokument äö.docx");
+        let media = media_dir_for(&docx);
+        let imported = import(&pandoc, &docx, &media).unwrap();
+        assert!(imported.contains("# Überschrift"), "{imported}");
+        assert!(imported.contains("| A"), "{imported}");
+        assert!(imported.contains("Fußnote"), "{imported}");
+        assert!(imported.contains("$E = mc^{2}$"), "{imported}");
+        let extracted = std::fs::read_dir(media.join("media"))
+            .map(|entries| entries.count())
+            .unwrap_or(0);
+        assert!(
+            extracted > 0,
+            "no image extracted:
+{imported}"
+        );
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     }
 }
