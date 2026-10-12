@@ -11,7 +11,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 977 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 980 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -25,7 +25,7 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-**Nicht gepusht:** `feat/image-menu`, `feat/image-paths` und `integration` (Merges). Test-Exe: `velotype-integration-19.exe`.
+**Nicht gepusht:** `feat/context-menu` und `integration` (Merge). Test-Exe: `velotype-integration-20.exe`.
 **Pandoc:** auf dem Windows-Rechner installiert (winget, 3.12.1, liegt in `%LOCALAPPDATA%Pandoc`, nicht im PATH; die Ersatzsuche findet es). Die Tests `round_trip_through_installed_pandoc` und `all_formats_and_import_with_images` laufen nur, wo Pandoc installiert ist, sonst überspringen sie sich.
 **PicGo:** nicht installiert (braucht ein Bild-Hosting-Konto); der Upload ist mit einem echten Skript getestet (`upload_script_receives_paths_with_spaces`).
 
@@ -123,6 +123,7 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/move-and-properties | Datei → Verschieben nach… (rename, über Laufwerke copy+delete; unbenannt = Speichern unter), Datei → Eigenschaften (Pfad, Größe, Erstellt/Geändert in Ortszeit via `chrono`, Wörter, Zeichen, Zeilen, Kodierung, Zeilenenden). Wortzählung (auch Statusleiste) zählt Markdown-Zeichen wie `#`, `-`, `>`, `|` nicht mehr. `src/editor/file_info.rs` |
 | feat/image-menu | Format → Bild: Bild einfügen… (Strg+Shift+I), Speicherort öffnen, Bildgröße 25–200 % (`SetImageZoom { percent }`, Stufen jetzt auch 33/67/80/200, auch im Kontextmenü), Markdown/HTML-Syntax wechseln, Bild kopieren nach… / verschieben nach… (Ordnerdialog, freier Name, Link wird umgeschrieben), Bilddatei löschen (Papierkorb + Bild aus Dokument). Gemeinsame Basis `replace_image_block`. `src/editor/image_menu.rs` |
 | feat/image-paths | Bild kopieren (Zwischenablage, gpui `ClipboardItem::new_image`). `typora-root-url` aus der Front Matter: Quellen mit `/` relativ zu diesem Ordner (Editor via `Block::set_image_root`, Bild-Menü, Export); Format → Bild → Bildstammordner festlegen… schreibt den Schlüssel. Datei → Verschieben nach… schreibt relative Bildlinks um (`relative_link_path` mit `../`, `moved_image_links`) |
+| feat/context-menu | Kontextmenü im Dokument (`ContextMenuState::General`, `src/editor/context_menu_general.rs`): Ausschneiden/Kopieren/Einfügen, als Text/HTML kopieren, als Text einfügen, Absatz ▸ und Format ▸ (direkt aus `app_menu::paragraph_menu`/`format_menu` übernommen, mit Tastenkürzeln), Einfügen ▸ (Tabelle… nur wo erlaubt, Bild…, Emoji…), „Mit Google nach … suchen“ bei Auswahl. Einträge fokussieren den rechtsgeklickten Block und dispatchen die Aktion; Untermenüs per Hover mit 150 ms Verzögerung beim Verlassen, Panels bleiben im Fenster; auch im Schreibschutz. Altes „Einfügen ›“-Menü entfernt. Dateibaum-Menü: In neuem Fenster öffnen |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
@@ -187,7 +188,7 @@ Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kü
 - ~~A. Fixes~~ (erledigt, siehe `fix/parser-stability`, `fix/shortcuts`): (1) Inline-Parser liest Konstrukte nach dem ersten Rendern anders als beim Laden (siehe Folgepunkte unten), (2) unnötige Escapes `~`/`` ` `` beim Bearbeiten, (3) eingerückter Code wird beim Bearbeiten zu Fence mit überflüssiger Leerzeile, (4) Kürzel: Zoom auf Strg++/Strg+-/Strg+0 (Überschriftenebene neu belegen), Quellcode-Modus ins Menü Ansicht mit Strg+/, Strg+Tab wechselt Tabs. Bewusste Abweichung von Typora ist ok.
 - ~~8. Datei-Menü abschließen~~ (erledigt; beim Verschieben werden relative Bildpfade nicht angepasst): Autosave und Sicherungskopien (zuerst), Export mit vorherigen Einstellungen (Strg+Shift+E), HTML ohne Styles, Verschieben nach…, Eigenschaften.
 - ~~9. Bild-Menü~~ (erledigt; „Alle Bilder neu laden“ fehlt, GPUI cacht geladene Bilder): Bild einfügen per Dialog (Strg+Shift+I), Bildordner öffnen, Markdown/HTML-Syntax wechseln, Bilder kopieren/verschieben mit Pfadanpassung, Bilddatei löschen, Bild kopieren, `typora-root-url`.
-- 10. Kontextmenüs: Block- und Textformate, Kopieren/Einfügen als …, Einfügen von Absatz, Bild, Mathe, Code.
+- ~~10. Kontextmenüs~~ (erledigt; „Mathe kopieren“ als MathML/TeX fehlt): Block- und Textformate, Kopieren/Einfügen als …, Einfügen von Absatz, Bild, Mathe, Code.
 - 11. Ansicht: Werkzeugleiste, Artikel-Liste in der Seitenleiste.
 - Später: CSS-Themes wie Typora mit „Theme-Ordner öffnen“, mitgelieferte Hilfedokumente.
 - Grundsatz: Verhalten aus upstream ist kein Grund, Fehler zu behalten; geerbte Fehler wie eigene beheben.
