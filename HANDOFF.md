@@ -11,7 +11,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 946 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 948 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -25,8 +25,15 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-**Nicht gepusht:** `feat/pandoc`, `feat/print`, `feat/image-upload` und `integration` (Merges). Test-Exe: `velotype-integration-13.exe`.
-**Ungetestet mit echter Software:** Pandoc ist auf dem Windows-Rechner nicht installiert (Roundtrip-Test `round_trip_through_installed_pandoc` überspringt sich dann); PicGo ebenso (Upload-Test nutzt einen Ersatzbefehl).
+Alles gepusht. Test-Exe: `velotype-integration-14.exe`.
+**Pandoc:** auf dem Windows-Rechner installiert (winget, 3.12.1, liegt in `%LOCALAPPDATA%Pandoc`, nicht im PATH; die Ersatzsuche findet es). Die Tests `round_trip_through_installed_pandoc` und `all_formats_and_import_with_images` laufen nur, wo Pandoc installiert ist, sonst überspringen sie sich.
+**PicGo:** nicht installiert (braucht ein Bild-Hosting-Konto); der Upload ist mit einem echten Skript getestet (`upload_script_receives_paths_with_spaces`).
+
+**Mac-Runde, offene Prüfpunkte:**
+1. Ansicht → Immer im Vordergrund (`src/window_pin.rs`, `objc`/`setLevel:`): Fenster bleibt über anderen, Abschalten geht.
+2. Pandoc per `brew install pandoc`, dann `cargo test pandoc -- --nocapture` (muss „using /opt/homebrew/bin/pandoc“ zeigen) und in der aus dem Finder gestarteten App Export → Word sowie Datei → Importieren… (Finder-Apps sehen den Shell-PATH nicht, deshalb die Suche in `/opt/homebrew/bin`).
+3. Datei → Drucken… öffnet Safari/Standardbrowser mit Druckdialog.
+4. Emoji-Auswahl: Emojis farbig?
 **Mac bitte prüfen:** `src/window_pin.rs` (Immer im Vordergrund über `objc`/`setLevel:`) ist unter macOS nur von CI kompiliert, nicht ausprobiert.
 
 ## Mac-Runde
