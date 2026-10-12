@@ -1085,10 +1085,10 @@ mod tests {
 
     #[test]
     fn cross_block_cut_writes_markdown_deletes_range_and_undo_restores() {
-        let mut cx = TestAppContext::single();
-        init_editor_test_app(&mut cx);
+        let mut app = TestAppContext::single();
+        init_editor_test_app(&mut app);
         let original = "alpha\n\nbeta\n\ngamma";
-        let (editor, cx) = cx.add_window_view({
+        let (editor, cx) = app.add_window_view({
             let original = original.to_string();
             move |_window, cx| Editor::from_markdown(cx, original.clone(), None)
         });
@@ -1130,7 +1130,11 @@ mod tests {
                 Some("pha\n\nbeta\n\nga")
             );
         });
-        cx.quit();
+        // Quit through the original context, never through the leaked
+        // `VisualTestContext`: its `on_quit` hook frees that context, and
+        // `TestAppContext::quit` touches `self` afterwards (use-after-free,
+        // SIGSEGV on macOS and Linux).
+        app.quit();
     }
 
     const TABLE_DOC: &str = "alpha\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\ngamma";
