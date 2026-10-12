@@ -1836,6 +1836,7 @@ impl PreferencesWindow {
             ShortcutCommand::SetLineEndingCrlf => strings.menu_line_ending_crlf.clone(),
             ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
+            ShortcutCommand::PrintDocument => strings.menu_print.clone(),
             ShortcutCommand::OpenEmojiPicker => strings.menu_emoji_picker.clone(),
             ShortcutCommand::SelectLine => strings.menu_select_line.clone(),
             ShortcutCommand::SelectStyledScope => strings.menu_select_styled_scope.clone(),

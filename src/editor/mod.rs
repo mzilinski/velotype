@@ -42,6 +42,7 @@ mod markdown_commands;
 mod pandoc;
 mod paragraph_format;
 mod persistence;
+mod print;
 mod render;
 mod runtime_context;
 mod selection;

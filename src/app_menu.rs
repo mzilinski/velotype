@@ -1102,6 +1102,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     any.is::<crate::components::OpenEmojiPicker>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
+        || any.is::<crate::components::PrintDocument>()
         || any.is::<SetLineEndingCrlf>()
         || any.is::<SetLineEndingLf>()
         || any.is::<ToggleFinalNewline>()
@@ -1433,6 +1434,7 @@ fn build_menus_with_view(
                         strings.menu_import.clone(),
                         crate::components::ImportWithPandoc,
                     ),
+                    MenuItem::action(strings.menu_print.clone(), crate::components::PrintDocument),
                 ],
             },
         ]
@@ -1474,6 +1476,7 @@ fn build_menus_with_view(
                     strings.menu_import.clone(),
                     crate::components::ImportWithPandoc,
                 ),
+                MenuItem::action(strings.menu_print.clone(), crate::components::PrintDocument),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_quit.clone(), QuitApplication),
             ],
