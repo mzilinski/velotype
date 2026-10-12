@@ -54,6 +54,7 @@ fn clipboard_image_extension(format: ImageFormat) -> &'static str {
 fn saved_document_image_dir(behavior: ImagePasteBehavior, document_path: &Path) -> PathBuf {
     let document_dir = document_path.parent().unwrap_or_else(|| Path::new("."));
     match behavior {
+        ImagePasteBehavior::Upload => untitled_image_dir(),
         ImagePasteBehavior::None | ImagePasteBehavior::CopyToDocumentFolder => {
             document_dir.to_path_buf()
         }
@@ -118,7 +119,10 @@ pub(super) fn materialize_image(
             let Some(document_path) = document_path else {
                 return Ok(path.clone());
             };
-            if behavior == ImagePasteBehavior::None {
+            if matches!(
+                behavior,
+                ImagePasteBehavior::None | ImagePasteBehavior::Upload
+            ) {
                 return Ok(path.clone());
             }
             let target_dir = saved_document_image_dir(behavior, document_path);
@@ -472,7 +476,8 @@ impl Editor {
             }
         }
         let focused = self.document.focused_block_entity_id(window, cx);
-        self.insert_image_markdown_blocks(markdowns, focused, cx);
+        self.insert_image_markdown_blocks(markdowns.clone(), focused, cx);
+        self.upload_inserted_images(&markdowns, cx);
     }
 
     /// Inserts each Markdown image as its own block after `anchor` (or the
