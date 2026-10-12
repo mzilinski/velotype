@@ -3727,3 +3727,65 @@ async fn zoom_scales_rem_based_line_heights(cx: &mut gpui::TestAppContext) {
     cx.run_until_parked();
     cx.update(|window, _| assert_eq!(window.rem_size(), gpui::px(32.0)));
 }
+
+#[cfg(test)]
+mod help_document_tests {
+    use std::collections::BTreeMap;
+
+    use gpui::TestAppContext;
+
+    use crate::components::BlockKind;
+    use crate::editor::Editor;
+    use crate::help::{HelpDocument, help_document};
+
+    #[gpui::test]
+    async fn bundled_references_render_their_examples(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            crate::i18n::I18nManager::init(cx);
+            crate::theme::ThemeManager::init(cx);
+            crate::components::init(cx);
+        });
+        let strings = crate::i18n::I18nManager::default().strings().clone();
+        for language in ["de", "en"] {
+            let (_, markdown) = help_document(
+                HelpDocument::MarkdownReference,
+                &strings,
+                language,
+                &BTreeMap::new(),
+            );
+            let (editor, cx) =
+                cx.add_window_view(|_window, cx| Editor::from_markdown(cx, markdown.clone(), None));
+            editor.update(cx, |editor, cx| {
+                let kinds = editor
+                    .document
+                    .roots()
+                    .iter()
+                    .map(|block| block.read(cx).kind())
+                    .collect::<Vec<_>>();
+                for (wanted, label) in [
+                    (BlockKind::Table, "table"),
+                    (BlockKind::MathBlock, "math"),
+                    (BlockKind::TableOfContents, "toc"),
+                    (BlockKind::FootnoteDefinition, "footnote"),
+                ] {
+                    assert!(kinds.contains(&wanted), "{language}: no {label} block");
+                }
+                assert!(
+                    kinds
+                        .iter()
+                        .any(|kind| matches!(kind, BlockKind::Callout(_))),
+                    "{language}: no callout"
+                );
+                assert!(
+                    kinds.iter().any(|kind| matches!(
+                        kind,
+                        BlockKind::MermaidBlock | BlockKind::CodeBlock { .. }
+                    )),
+                    "{language}: no code block"
+                );
+                // Untouched, the document is saved exactly as bundled.
+                assert_eq!(editor.document_text_for_disk(cx), markdown);
+            });
+        }
+    }
+}

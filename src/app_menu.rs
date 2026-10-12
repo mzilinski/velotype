@@ -135,6 +135,35 @@ pub(crate) fn open_markdown_in_current_window(
     }
 }
 
+/// Opens `markdown` as a read-only tab of the current editor window (Help
+/// documents).
+pub(crate) fn open_read_only_document(cx: &mut App, markdown: String, file_path: Option<PathBuf>) {
+    let make_read_only = |editor: &gpui::Entity<Editor>, cx: &mut App| {
+        editor.update(cx, |editor, cx| {
+            if !editor.is_read_only() {
+                editor.toggle_read_only(cx);
+            }
+        });
+    };
+    let mut document = Some((markdown, file_path));
+    if let Some(handle) = current_editor_window(cx) {
+        let _ = handle.update(cx, |host, window, cx| {
+            if let Some((markdown, file_path)) = document.take() {
+                window.activate_window();
+                let editor = host.open_document(markdown, file_path, window, cx);
+                make_read_only(&editor, cx);
+            }
+        });
+    }
+    if let Some((markdown, file_path)) = document {
+        let handle = open_editor_window(cx, markdown, file_path);
+        let _ = handle.update(cx, |host, _window, cx| {
+            let editor = host.active_editor().clone();
+            make_read_only(&editor, cx);
+        });
+    }
+}
+
 /// Reopens the untitled drafts kept when the previous session closed as
 /// unsaved tabs of the current editor window (opening one if needed).
 pub(crate) fn restore_session_drafts(cx: &mut App) {
@@ -663,6 +692,18 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         prompt_and_import_language_config(cx);
     } else if action.as_any().is::<AddThemeConfig>() {
         prompt_and_import_theme_config(cx);
+    } else if action.as_any().is::<crate::components::OpenQuickStart>() {
+        crate::help::open_help(crate::help::HelpDocument::QuickStart, cx);
+    } else if action
+        .as_any()
+        .is::<crate::components::OpenMarkdownReference>()
+    {
+        crate::help::open_help(crate::help::HelpDocument::MarkdownReference, cx);
+    } else if action
+        .as_any()
+        .is::<crate::components::OpenKeyboardShortcuts>()
+    {
+        crate::help::open_help(crate::help::HelpDocument::KeyboardShortcuts, cx);
     } else if action.as_any().is::<crate::components::OpenThemeFolder>() {
         // Typora CSS themes and Velotype JSON themes placed here are listed in
         // the Theme menu after a restart (or right away when imported).
@@ -1155,6 +1196,25 @@ pub(crate) fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
 
 /// Paragraph and Format commands act on the focused block, so a menu click
 /// re-dispatches them through the window focus path (block, then editor).
+/// Help > Quick Start, Markdown Reference, Keyboard Shortcuts.
+fn help_document_items(strings: &crate::i18n::I18nStrings) -> Vec<MenuItem> {
+    vec![
+        MenuItem::action(
+            strings.menu_quick_start.clone(),
+            crate::components::OpenQuickStart,
+        ),
+        MenuItem::action(
+            strings.menu_markdown_reference.clone(),
+            crate::components::OpenMarkdownReference,
+        ),
+        MenuItem::action(
+            strings.menu_keyboard_shortcuts.clone(),
+            crate::components::OpenKeyboardShortcuts,
+        ),
+        MenuItem::separator(),
+    ]
+}
+
 fn is_document_command_action(action: &dyn Action) -> bool {
     use crate::components::{
         BoldSelection, ClearFormat, CodeSelection, CommentSelection, DecreaseHeadingLevel,
@@ -1485,6 +1545,8 @@ fn build_menus_with_view(
     };
 
     // Built before the File menu moves strings out.
+    // Built before the File menu moves strings out of `strings`.
+    let help_documents = help_document_items(&strings);
     let document_menus = [
         edit_menu(&strings, view, &writing),
         paragraph_menu(&strings),
@@ -1633,10 +1695,11 @@ fn build_menus_with_view(
         // installations (drag-installed .app bundles) need this —
         // pkg-installed apps manage the symlink via postinstall.
         let cli_installed = is_cli_symlink_current_app();
-        let mut items = vec![
+        let mut items = help_documents;
+        items.extend([
             MenuItem::action(strings.menu_check_updates.clone(), CheckForUpdates),
             MenuItem::separator(),
-        ];
+        ]);
         if cli_installed {
             items.push(MenuItem::action(
                 SharedString::new(strings.menu_uninstall_cli_tool.as_str()),
@@ -1653,11 +1716,14 @@ fn build_menus_with_view(
         items
     };
     #[cfg(not(target_os = "macos"))]
-    let help_items = vec![
-        MenuItem::action(strings.menu_check_updates.clone(), CheckForUpdates),
-        MenuItem::separator(),
-        MenuItem::action(strings.menu_about.clone(), ShowAbout),
-    ];
+    let help_items = help_documents
+        .into_iter()
+        .chain([
+            MenuItem::action(strings.menu_check_updates.clone(), CheckForUpdates),
+            MenuItem::separator(),
+            MenuItem::action(strings.menu_about.clone(), ShowAbout),
+        ])
+        .collect::<Vec<_>>();
 
     let mut menus = initial_menus;
     menus.extend(document_menus);
@@ -2088,6 +2154,15 @@ pub(crate) fn init(cx: &mut App) {
     });
     cx.on_action(|_: &crate::components::OpenThemeFolder, cx| {
         dispatch_menu_action(&crate::components::OpenThemeFolder, cx)
+    });
+    cx.on_action(|_: &crate::components::OpenQuickStart, cx| {
+        dispatch_menu_action(&crate::components::OpenQuickStart, cx)
+    });
+    cx.on_action(|_: &crate::components::OpenMarkdownReference, cx| {
+        dispatch_menu_action(&crate::components::OpenMarkdownReference, cx)
+    });
+    cx.on_action(|_: &crate::components::OpenKeyboardShortcuts, cx| {
+        dispatch_menu_action(&crate::components::OpenKeyboardShortcuts, cx)
     });
     cx.on_action(|_: &ToggleSmartQuotes, cx| dispatch_menu_action(&ToggleSmartQuotes, cx));
     cx.on_action(|_: &ToggleSmartDashes, cx| dispatch_menu_action(&ToggleSmartDashes, cx));
@@ -2667,13 +2742,21 @@ mod tests {
         let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
+        // Quick Start, Markdown Reference, Keyboard Shortcuts, separator.
         match &help_items[0] {
+            MenuItem::Action { action, .. } => {
+                assert!(action.as_any().is::<crate::components::OpenQuickStart>());
+            }
+            _ => panic!("expected quick start action item"),
+        }
+        assert!(matches!(help_items[3], MenuItem::Separator));
+        match &help_items[4] {
             MenuItem::Action { action, .. } => {
                 assert!(action.as_any().is::<CheckForUpdates>());
             }
             _ => panic!("expected check updates action item"),
         }
-        assert!(matches!(help_items[1], MenuItem::Separator));
+        assert!(matches!(help_items[5], MenuItem::Separator));
     }
 
     #[test]
@@ -2684,8 +2767,8 @@ mod tests {
         let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
-        assert_eq!(help_items.len(), 3);
-        match &help_items[2] {
+        assert_eq!(help_items.len(), 7);
+        match &help_items[6] {
             MenuItem::Action { action, .. } => {
                 assert!(action.as_any().is::<ShowAbout>());
             }
@@ -2701,10 +2784,11 @@ mod tests {
         let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let help_items = &menus[HELP_IDX].items;
 
-        // CheckForUpdates, separator, Install/Uninstall CLI, separator, About
-        assert_eq!(help_items.len(), 5);
-        assert!(matches!(help_items[3], MenuItem::Separator));
-        match &help_items[4] {
+        // Help documents (3 + separator), CheckForUpdates, separator,
+        // Install/Uninstall CLI, separator, About
+        assert_eq!(help_items.len(), 9);
+        assert!(matches!(help_items[7], MenuItem::Separator));
+        match &help_items[8] {
             MenuItem::Action { action, .. } => {
                 assert!(action.as_any().is::<ShowAbout>());
             }

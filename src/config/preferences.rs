@@ -1842,7 +1842,7 @@ impl PreferencesWindow {
             )
     }
 
-    fn shortcut_category_label(
+    pub(crate) fn shortcut_category_label(
         category: ShortcutCategory,
         strings: &crate::i18n::I18nStrings,
     ) -> String {
@@ -1856,7 +1856,7 @@ impl PreferencesWindow {
         }
     }
 
-    fn shortcut_command_label(
+    pub(crate) fn shortcut_command_label(
         command: ShortcutCommand,
         strings: &crate::i18n::I18nStrings,
     ) -> String {

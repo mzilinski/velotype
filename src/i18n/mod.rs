@@ -141,6 +141,9 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_quick_start: String,
+    pub menu_markdown_reference: String,
+    pub menu_keyboard_shortcuts: String,
     pub menu_open_theme_folder: String,
     pub menu_toolbar: String,
     pub workspace_tab_articles: String,
@@ -630,6 +633,9 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_quick_start: Option<String>,
+    menu_markdown_reference: Option<String>,
+    menu_keyboard_shortcuts: Option<String>,
     menu_open_theme_folder: Option<String>,
     menu_toolbar: Option<String>,
     workspace_tab_articles: Option<String>,
@@ -1034,6 +1040,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_quick_start",
+    "menu_markdown_reference",
+    "menu_keyboard_shortcuts",
     "menu_open_theme_folder",
     "menu_toolbar",
     "workspace_tab_articles",
@@ -1518,6 +1527,13 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_quick_start: self.menu_quick_start.unwrap_or(defaults.menu_quick_start),
+            menu_markdown_reference: self
+                .menu_markdown_reference
+                .unwrap_or(defaults.menu_markdown_reference),
+            menu_keyboard_shortcuts: self
+                .menu_keyboard_shortcuts
+                .unwrap_or(defaults.menu_keyboard_shortcuts),
             menu_open_theme_folder: self
                 .menu_open_theme_folder
                 .unwrap_or(defaults.menu_open_theme_folder),
@@ -2440,6 +2456,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_quick_start: "快速入门".into(),
+            menu_markdown_reference: "Markdown 参考".into(),
+            menu_keyboard_shortcuts: "键盘快捷键".into(),
             menu_open_theme_folder: "打开主题文件夹".into(),
             menu_toolbar: "工具栏".into(),
             workspace_tab_articles: "文章".into(),
@@ -2862,6 +2881,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_quick_start: "Quick Start".into(),
+            menu_markdown_reference: "Markdown Reference".into(),
+            menu_keyboard_shortcuts: "Keyboard Shortcuts".into(),
             menu_open_theme_folder: "Open Theme Folder".into(),
             menu_toolbar: "Toolbar".into(),
             workspace_tab_articles: "Articles".into(),
@@ -3286,6 +3308,9 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_quick_start: "Schnellstart".into(),
+            menu_markdown_reference: "Markdown-Referenz".into(),
+            menu_keyboard_shortcuts: "Tastenkürzel".into(),
             menu_open_theme_folder: "Theme-Ordner öffnen".into(),
             menu_toolbar: "Werkzeugleiste".into(),
             workspace_tab_articles: "Artikel".into(),
