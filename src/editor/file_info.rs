@@ -10,6 +10,25 @@ use super::Editor;
 use crate::components::{MoveDocument, ShowProperties};
 use crate::i18n::{I18nManager, I18nStrings};
 
+/// Link rewrites for relative image sources in `markdown` when the document
+/// moves from `old_dir` to `new_dir` (only images whose files exist).
+pub(crate) fn moved_image_links(
+    markdown: &str,
+    old_dir: &Path,
+    new_dir: &Path,
+) -> Vec<(String, String)> {
+    super::image_upload::local_image_sources(markdown)
+        .into_iter()
+        .filter(|src| !src.starts_with('/') && !Path::new(src).is_absolute())
+        .filter_map(|src| {
+            let file = super::image_upload::resolve_image_path(&src, Some(old_dir))?;
+            let link = super::images::relative_link_path(new_dir, &file);
+            let link = super::images::markdown_link_destination(&link);
+            (link != src).then_some((src, link))
+        })
+        .collect()
+}
+
 /// Moves `from` to `to`, also across drives (copy, then delete).
 pub(crate) fn move_file(from: &Path, to: &Path) -> anyhow::Result<()> {
     if from == to {
@@ -149,13 +168,29 @@ impl Editor {
         .detach();
     }
 
-    /// The document's file now lives at `path`.
+    /// The document's file now lives at `path`. Relative image links are
+    /// rewritten so they still point to the same files.
     fn document_moved(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let old_dir = self
+            .file_path
+            .as_deref()
+            .and_then(Path::parent)
+            .map(Path::to_path_buf);
+        let new_dir = path.parent().map(Path::to_path_buf);
         crate::app_menu::record_recent_file_from_editor(&path, cx);
         self.file_path = Some(path);
         self.pending_window_title_refresh = true;
         self.sync_workspace_after_document_path_change(cx);
         self.refresh_workspace_trees(cx);
+        if let (Some(old_dir), Some(new_dir)) = (old_dir, new_dir)
+            && old_dir != new_dir
+        {
+            let replacements =
+                moved_image_links(&self.current_document_source(cx), &old_dir, &new_dir);
+            if !replacements.is_empty() {
+                self.replace_uploaded_images(&replacements, cx);
+            }
+        }
         self.rebuild_image_runtimes(cx);
         cx.notify();
     }
@@ -227,5 +262,45 @@ mod tests {
             "{unsaved}"
         );
         let _ = std::fs::remove_dir_all(dir);
+    }
+}
+
+#[cfg(test)]
+mod moved_link_tests {
+    use super::moved_image_links;
+    use crate::editor::images::relative_link_path;
+
+    #[test]
+    fn relative_links_climb_with_dot_dot() {
+        let base = std::env::temp_dir();
+        let dir = base.join("a").join("b");
+        assert_eq!(
+            relative_link_path(&dir, &dir.join("img").join("x.png")),
+            "./img/x.png"
+        );
+        assert_eq!(
+            relative_link_path(&dir, &base.join("a").join("pics").join("y.png")),
+            "../pics/y.png"
+        );
+    }
+
+    #[test]
+    fn image_links_follow_a_moved_document() {
+        let root =
+            std::env::temp_dir().join(format!("velotype-movelinks-{}", uuid::Uuid::new_v4()));
+        let old_dir = root.join("notes");
+        let new_dir = root.join("archive").join("2026");
+        std::fs::create_dir_all(old_dir.join("img")).unwrap();
+        std::fs::create_dir_all(&new_dir).unwrap();
+        std::fs::write(old_dir.join("img").join("a b.png"), b"png").unwrap();
+        let markdown = "![x](img/a%20b.png) ![web](https://x/y.png) ![gone](img/missing.png)";
+        assert_eq!(
+            moved_image_links(markdown, &old_dir, &new_dir),
+            [(
+                "img/a%20b.png".to_string(),
+                "../../notes/img/a%20b.png".to_string()
+            )]
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 }

@@ -111,15 +111,17 @@ fn markdown_options() -> Options {
 }
 
 fn render_browser_html_body(markdown: &str, theme: &Theme, base_dir: Option<&Path>) -> String {
+    let root = crate::components::markdown::image::typora_root_url(markdown, base_dir);
+    let root = root.as_deref();
     // Front matter is document metadata, not content.
     let markdown = strip_front_matter(markdown);
     let rewritten = rewrite_visible_comment_blocks(markdown);
-    let rewritten = rewrite_unsafe_html_blocks(&rewritten, base_dir);
+    let rewritten = rewrite_unsafe_html_blocks(&rewritten, base_dir, root);
     let rewritten = rewrite_display_math_blocks(&rewritten, theme);
     let rewritten = rewrite_inline_math(&rewritten, theme);
     let rewritten = rewrite_mermaid_blocks(&rewritten, theme);
     let parser = Parser::new_ext(&rewritten, markdown_options())
-        .map(|event| rewrite_local_image_event(event, base_dir))
+        .map(|event| rewrite_local_image_event(event, base_dir, root))
         .map(rewrite_wiki_link_event);
     let events = TextMergeStream::new(parser).collect::<Vec<_>>();
     let events = highlight_code_blocks(events);
@@ -685,7 +687,11 @@ fn looks_like_export_currency(line: &str, open: usize, close: usize, body: &str)
             && body.len() > 1)
 }
 
-fn rewrite_unsafe_html_blocks(markdown: &str, base_dir: Option<&Path>) -> String {
+fn rewrite_unsafe_html_blocks(
+    markdown: &str,
+    base_dir: Option<&Path>,
+    root: Option<&Path>,
+) -> String {
     let lines = markdown.split('\n').collect::<Vec<_>>();
     let mut rewritten = Vec::with_capacity(lines.len());
     let mut index = 0usize;
@@ -718,8 +724,8 @@ fn rewrite_unsafe_html_blocks(markdown: &str, base_dir: Option<&Path>) -> String
         let end = collect_export_html_region(&lines, index, &html_start);
         let raw = lines[index..end].join("\n");
         if let Some(image) = parse_html_image_block(&raw) {
-            let src =
-                local_image_data_uri(&image.src, base_dir).unwrap_or_else(|| image.src.clone());
+            let src = local_image_data_uri(&image.src, base_dir, root)
+                .unwrap_or_else(|| image.src.clone());
             rewritten.push(image.to_sanitized_html_with_src(&src));
         } else {
             rewritten.push(sanitize_html_for_export(&raw));
@@ -830,7 +836,11 @@ fn rewrite_mermaid_blocks(markdown: &str, theme: &Theme) -> String {
     rewritten.join("\n")
 }
 
-fn rewrite_local_image_event<'a>(event: Event<'a>, base_dir: Option<&Path>) -> Event<'a> {
+fn rewrite_local_image_event<'a>(
+    event: Event<'a>,
+    base_dir: Option<&Path>,
+    root: Option<&Path>,
+) -> Event<'a> {
     match event {
         Event::Start(Tag::Image {
             link_type,
@@ -838,7 +848,7 @@ fn rewrite_local_image_event<'a>(event: Event<'a>, base_dir: Option<&Path>) -> E
             title,
             id,
         }) => {
-            let dest_url = local_image_data_uri(dest_url.as_ref(), base_dir)
+            let dest_url = local_image_data_uri(dest_url.as_ref(), base_dir, root)
                 .map(CowStr::from)
                 .unwrap_or(dest_url);
             Event::Start(Tag::Image {
@@ -879,7 +889,13 @@ fn rewrite_wiki_link_event(event: Event<'_>) -> Event<'_> {
     }
 }
 
-fn local_image_data_uri(source: &str, base_dir: Option<&Path>) -> Option<String> {
+fn local_image_data_uri(
+    source: &str,
+    base_dir: Option<&Path>,
+    root: Option<&Path>,
+) -> Option<String> {
+    let rooted = crate::components::markdown::image::apply_image_root(source, root);
+    let source = rooted.as_str();
     if source.is_empty()
         || source.starts_with('#')
         || source.starts_with("data:")

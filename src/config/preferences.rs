@@ -1907,6 +1907,8 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
             ShortcutCommand::ExportAgain => strings.menu_export_again.clone(),
+            ShortcutCommand::CopyImage => strings.menu_copy_image.clone(),
+            ShortcutCommand::SetImageRoot => strings.menu_set_image_root.clone(),
             ShortcutCommand::InsertImage => strings.menu_insert_image.clone(),
             ShortcutCommand::RevealImageFile => strings.menu_reveal_image_file.clone(),
             ShortcutCommand::ToggleImageSyntax => strings.menu_toggle_image_syntax.clone(),

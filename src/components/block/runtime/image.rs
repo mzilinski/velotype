@@ -36,7 +36,13 @@ impl Block {
             alt: syntax.alt.clone(),
             src: resolved_target.src.clone(),
             title: resolved_target.title.clone(),
-            resolved_source: resolve_image_source(&resolved_target.src, base_dir),
+            resolved_source: resolve_image_source(
+                &crate::components::markdown::image::apply_image_root(
+                    &resolved_target.src,
+                    self.image_root_dir.as_deref(),
+                ),
+                base_dir,
+            ),
         })
     }
 
@@ -46,6 +52,10 @@ impl Block {
 
     pub(crate) fn image_base_dir(&self) -> Option<&Path> {
         self.image_base_dir.as_deref()
+    }
+
+    pub(crate) fn image_root_dir(&self) -> Option<&Path> {
+        self.image_root_dir.as_deref()
     }
 
     pub(super) fn sync_image_runtime(&mut self) {

@@ -1524,7 +1524,10 @@ impl Block {
             alt,
             src: src.to_string(),
             title: None,
-            resolved_source: resolve_image_source(src, self.image_base_dir()),
+            resolved_source: resolve_image_source(
+                &crate::components::markdown::image::apply_image_root(src, self.image_root_dir()),
+                self.image_base_dir(),
+            ),
         };
         let strings = cx.global::<I18nManager>().strings_arc();
         let size = parsed_image

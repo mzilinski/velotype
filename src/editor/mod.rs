@@ -196,6 +196,8 @@ pub struct Editor {
     history_restore_in_progress: bool,
     image_reference_definitions: Arc<ImageReferenceDefinitions>,
     link_reference_definitions: Arc<LinkReferenceDefinitions>,
+    /// `typora-root-url` of the document, for image sources starting with `/`.
+    image_root_dir: Option<PathBuf>,
     footnote_registry: Arc<FootnoteRegistry>,
     /// Window that shows this editor as one of its tabs. `None` for a
     /// standalone editor that owns its window directly.
@@ -441,6 +443,7 @@ impl Editor {
             history_restore_in_progress: false,
             image_reference_definitions: Arc::default(),
             link_reference_definitions: Arc::default(),
+            image_root_dir: None,
             footnote_registry: Arc::default(),
             tab_host: None,
             draft_id: None,

@@ -98,6 +98,47 @@ impl ImageSyntax {
     }
 }
 
+/// `typora-root-url` from the document's YAML front matter: the folder that
+/// image sources starting with `/` are relative to (Typora's "Use Image
+/// Root Path"). A relative value is taken from `base_dir`.
+pub(crate) fn typora_root_url(markdown: &str, base_dir: Option<&Path>) -> Option<PathBuf> {
+    let mut lines = markdown.lines();
+    if lines.next()?.trim_start_matches('\u{feff}').trim() != "---" {
+        return None;
+    }
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed == "---" || trimmed == "..." {
+            return None;
+        }
+        let Some(value) = trimmed.strip_prefix("typora-root-url:") else {
+            continue;
+        };
+        let value = value.trim().trim_matches(|ch| ch == '"' || ch == '\'');
+        if value.is_empty() || net::is_remote_image_source(value) {
+            return None;
+        }
+        let path = PathBuf::from(value.replace('\\', "/"));
+        return Some(if path.is_absolute() {
+            path
+        } else {
+            base_dir.map(|dir| dir.join(&path)).unwrap_or(path)
+        });
+    }
+    None
+}
+
+/// `source` with a leading `/` taken relative to the image root, if any.
+pub(crate) fn apply_image_root(source: &str, root: Option<&Path>) -> String {
+    match root {
+        Some(root) if source.starts_with('/') && !source.starts_with("//") => root
+            .join(source.trim_start_matches('/'))
+            .to_string_lossy()
+            .to_string(),
+        _ => source.to_string(),
+    }
+}
+
 pub(crate) fn resolve_image_source(source: &str, base_dir: Option<&Path>) -> ImageResolvedSource {
     if net::is_remote_image_source(source) {
         return ImageResolvedSource::Remote(SharedUri::from(source.to_string()));
@@ -1132,6 +1173,37 @@ mod tests {
                 src: "./real.png".to_string(),
                 title: None,
             })
+        );
+    }
+
+    #[test]
+    fn typora_root_url_resolves_slash_sources() {
+        use super::{apply_image_root, typora_root_url};
+        let base = Path::new("D:/docs");
+        let markdown = "---
+title: x
+typora-root-url: ./site
+---
+![](/img/a.png)";
+        let root = typora_root_url(markdown, Some(base)).unwrap();
+        assert_eq!(root, base.join("./site"));
+        assert_eq!(
+            Path::new(&apply_image_root("/img/a.png", Some(&root))),
+            root.join("img/a.png")
+        );
+        // Relative sources and URLs stay as they are.
+        assert_eq!(apply_image_root("img/a.png", Some(&root)), "img/a.png");
+        assert_eq!(apply_image_root("//cdn/a.png", Some(&root)), "//cdn/a.png");
+        assert!(typora_root_url("# no front matter", Some(base)).is_none());
+        assert!(
+            typora_root_url(
+                "---
+typora-root-url: https://x
+---
+",
+                Some(base)
+            )
+            .is_none()
         );
     }
 }
