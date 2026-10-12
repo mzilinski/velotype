@@ -329,12 +329,31 @@ impl Editor {
 
     pub(crate) fn toggle_view_mode(&mut self, cx: &mut Context<Self>) {
         self.end_block_pointer_selection_sessions(cx);
-        let selection_snapshot = self.capture_source_selection_snapshot(cx);
+        let mut selection_snapshot = self.capture_source_selection_snapshot(cx);
         self.clear_cross_block_selection(cx);
         self.rendered_select_all_cycle = None;
         match self.view_mode {
             ViewMode::Rendered => {
-                let markdown = self.document.markdown_text(cx);
+                let normalized = self.document.markdown_text(cx);
+                // Show the file as written: unedited regions come from the
+                // original text; the caret follows its line.
+                let markdown = match &self.source_fidelity {
+                    Some(fidelity) => {
+                        let restored = fidelity.restore(&normalized);
+                        let map = |offset| {
+                            super::source_fidelity::map_offset(
+                                &normalized,
+                                &restored.text,
+                                offset,
+                                |line| restored.line_map.get(line).copied().unwrap_or(line),
+                            )
+                        };
+                        selection_snapshot.range =
+                            map(selection_snapshot.range.start)..map(selection_snapshot.range.end);
+                        restored.text
+                    }
+                    None => normalized,
+                };
                 let block = Self::new_block(cx, BlockRecord::paragraph(markdown));
                 block.update(cx, |block, _cx| block.set_source_document_mode());
                 self.document.replace_roots(vec![block], cx);
@@ -343,11 +362,30 @@ impl Editor {
             }
             ViewMode::Source => {
                 let source = self.document.raw_source_text(cx);
-                let mut roots = Self::build_root_blocks_from_markdown(cx, &source);
+                // The source text is the new original; map the caret to the
+                // normalized text the rendered view works with.
+                let (mut roots, regions) = Self::build_root_blocks_with_regions(cx, &source);
                 if roots.is_empty() {
                     roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
                 }
                 self.document.replace_roots(roots, cx);
+                let fidelity = super::source_fidelity::fidelity_for_document(
+                    &self.document,
+                    &source,
+                    &regions,
+                    cx,
+                );
+                if let Some(fidelity) = &fidelity {
+                    let normalized = self.document.markdown_text(cx);
+                    let map = |offset| {
+                        super::source_fidelity::map_offset(&source, &normalized, offset, |line| {
+                            fidelity.normalized_line_for_original(line)
+                        })
+                    };
+                    selection_snapshot.range =
+                        map(selection_snapshot.range.start)..map(selection_snapshot.range.end);
+                }
+                self.source_fidelity = fidelity;
                 self.view_mode = ViewMode::Rendered;
                 self.rebuild_table_runtimes(cx);
                 self.rebuild_image_runtimes(cx);

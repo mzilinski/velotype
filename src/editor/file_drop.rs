@@ -129,7 +129,7 @@ impl Editor {
         cx: &mut Context<Self>,
     ) {
         let normalized = markdown.replace("\r\n", "\n").replace('\r', "\n");
-        let mut roots = Self::build_root_blocks_from_markdown(cx, &normalized);
+        let (mut roots, regions) = Self::build_root_blocks_with_regions(cx, &normalized);
         if roots.is_empty() {
             roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
         }
@@ -138,6 +138,12 @@ impl Editor {
         self.file_path = file_path;
         self.view_mode = ViewMode::Rendered;
         self.document.replace_roots(roots, cx);
+        self.source_fidelity = super::source_fidelity::fidelity_for_document(
+            &self.document,
+            &normalized,
+            &regions,
+            cx,
+        );
         self.table_cells.clear();
         self.rebuild_table_runtimes(cx);
         self.rebuild_image_runtimes(cx);
