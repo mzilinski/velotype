@@ -11,8 +11,8 @@ use super::Editor;
 use super::images::{image_link_path, markdown_link_destination, unique_file_path};
 use crate::components::markdown::image::{ImageResolvedSource, resolve_image_source};
 use crate::components::{
-    BlockKind, BlockRecord, CopyImageTo, DeleteImageFile, InsertImage, MoveImageTo,
-    RevealImageFile, SetImageZoom, ToggleImageSyntax, UndoCaptureKind,
+    BlockKind, BlockRecord, CopyImage, CopyImageTo, DeleteImageFile, InsertImage, MoveImageTo,
+    RevealImageFile, SetImageRoot, SetImageZoom, ToggleImageSyntax, UndoCaptureKind,
 };
 use crate::i18n::I18nManager;
 
@@ -58,7 +58,13 @@ impl Editor {
             .focused_block_entity_id(window, cx)
             .or(self.active_entity_id)?;
         let (src, alt) = self.zoomable_image(entity_id, cx)?;
-        let file = match resolve_image_source(&src, self.image_base_dir().as_deref()) {
+        let file = match resolve_image_source(
+            &crate::components::markdown::image::apply_image_root(
+                &src,
+                self.image_root_dir.as_deref(),
+            ),
+            self.image_base_dir().as_deref(),
+        ) {
             ImageResolvedSource::Local(path) => path.is_file().then_some(path),
             ImageResolvedSource::Remote(_) => None,
         };
@@ -368,6 +374,130 @@ impl Editor {
     }
 }
 
+/// The gpui image format for a file extension (PNG when unknown).
+fn clipboard_image_format(file: &Path) -> ImageFormat {
+    let extension = file
+        .extension()
+        .map(|extension| extension.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    match extension.as_str() {
+        "jpg" | "jpeg" => ImageFormat::Jpeg,
+        "gif" => ImageFormat::Gif,
+        "webp" => ImageFormat::Webp,
+        "svg" => ImageFormat::Svg,
+        "bmp" => ImageFormat::Bmp,
+        "tif" | "tiff" => ImageFormat::Tiff,
+        _ => ImageFormat::Png,
+    }
+}
+
+/// `markdown` with `key: value` set in its YAML front matter (added when
+/// there is none, replaced when the key exists).
+pub(crate) fn set_front_matter_value(markdown: &str, key: &str, value: &str) -> String {
+    let entry = format!("{key}: {value}");
+    let mut lines = markdown.split('\n').map(str::to_string).collect::<Vec<_>>();
+    let has_front_matter = lines
+        .first()
+        .is_some_and(|line| line.trim_start_matches('\u{feff}').trim() == "---");
+    let end = has_front_matter
+        .then(|| {
+            lines
+                .iter()
+                .enumerate()
+                .skip(1)
+                .find(|(_, line)| matches!(line.trim(), "---" | "..."))
+                .map(|(index, _)| index)
+        })
+        .flatten();
+    let Some(end) = end else {
+        return format!("---\n{entry}\n---\n\n{markdown}");
+    };
+    let prefix = format!("{key}:");
+    match (1..end).find(|index| lines[*index].trim_start().starts_with(&prefix)) {
+        Some(index) => lines[index] = entry,
+        None => lines.insert(end, entry),
+    }
+    lines.join("\n")
+}
+
+impl Editor {
+    pub(super) fn on_copy_image(
+        &mut self,
+        _: &CopyImage,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(CaretImage {
+            file: Some(file), ..
+        }) = self.caret_image_or_hint(true, window, cx)
+        else {
+            return;
+        };
+        match std::fs::read(&file) {
+            Ok(bytes) => cx.write_to_clipboard(ClipboardItem::new_image(&Image::from_bytes(
+                clipboard_image_format(&file),
+                bytes,
+            ))),
+            Err(err) => show_image_error(window, cx, err.to_string()),
+        }
+    }
+
+    /// Format > Image > Set Image Root Folder…: writes `typora-root-url`
+    /// into the front matter; image sources starting with `/` are then
+    /// taken from that folder.
+    pub(super) fn on_set_image_root(
+        &mut self,
+        _: &SetImageRoot,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.read_only {
+            return;
+        }
+        let title = cx
+            .global::<I18nManager>()
+            .strings()
+            .menu_set_image_root
+            .clone();
+        let prompt = cx.prompt_for_paths(PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some(title.trim_end_matches('…').to_string().into()),
+        });
+        let window_handle = window.window_handle();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let folder = match prompt.await {
+                Ok(Ok(Some(mut paths))) if !paths.is_empty() => paths.remove(0),
+                _ => return,
+            };
+            let _ = cx.update_window(window_handle, move |_view: AnyView, _window, cx| {
+                let _ = this.update(cx, |editor, cx| editor.set_image_root(&folder, cx));
+            });
+        })
+        .detach();
+    }
+
+    fn set_image_root(&mut self, folder: &Path, cx: &mut Context<Self>) {
+        let value = match self.file_path.as_deref().and_then(Path::parent) {
+            Some(dir) => super::images::relative_link_path(dir, folder),
+            None => folder.to_string_lossy().replace('\\', "/"),
+        };
+        let source = self.current_document_source(cx);
+        let updated = set_front_matter_value(&source, "typora-root-url", &value);
+        let selection = self.capture_source_selection_snapshot(cx).range;
+        let end = updated.len();
+        self.apply_source_edit(
+            super::markdown_commands::SourceEdit {
+                source: updated,
+                selection: selection.start.min(end)..selection.end.min(end),
+            },
+            cx,
+        );
+        self.rebuild_image_runtimes(cx);
+    }
+}
+
 fn show_image_error(window: &mut Window, cx: &mut App, detail: String) {
     let strings = cx.global::<I18nManager>().strings().clone();
     let buttons = [strings.info_dialog_ok.as_str()];
@@ -382,7 +512,27 @@ fn show_image_error(window: &mut Window, cx: &mut App, detail: String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{html_image_source, target_in_folder};
+    use super::{html_image_source, set_front_matter_value, target_in_folder};
+
+    #[test]
+    fn front_matter_values_are_added_or_replaced() {
+        assert_eq!(
+            set_front_matter_value("# Doc", "typora-root-url", "./site"),
+            "---\ntypora-root-url: ./site\n---\n\n# Doc"
+        );
+        assert_eq!(
+            set_front_matter_value("---\ntitle: x\n---\n# Doc", "typora-root-url", "../r"),
+            "---\ntitle: x\ntypora-root-url: ../r\n---\n# Doc"
+        );
+        assert_eq!(
+            set_front_matter_value(
+                "---\ntypora-root-url: old\n---\nbody",
+                "typora-root-url",
+                "new"
+            ),
+            "---\ntypora-root-url: new\n---\nbody"
+        );
+    }
 
     #[test]
     fn html_syntax_escapes_attributes() {

@@ -2134,6 +2134,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_export_again))
             .on_action(cx.listener(Self::on_move_document))
             .on_action(cx.listener(Self::on_insert_image))
+            .on_action(cx.listener(Self::on_copy_image))
+            .on_action(cx.listener(Self::on_set_image_root))
             .on_action(cx.listener(Self::on_reveal_image_file))
             .on_action(cx.listener(Self::on_set_image_zoom))
             .on_action(cx.listener(Self::on_toggle_image_syntax))

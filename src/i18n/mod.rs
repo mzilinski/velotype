@@ -141,6 +141,8 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_copy_image: String,
+    pub menu_set_image_root: String,
     pub menu_insert_image: String,
     pub menu_reveal_image_file: String,
     pub menu_zoom_image: String,
@@ -622,6 +624,8 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_copy_image: Option<String>,
+    menu_set_image_root: Option<String>,
     menu_insert_image: Option<String>,
     menu_reveal_image_file: Option<String>,
     menu_zoom_image: Option<String>,
@@ -1018,6 +1022,8 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_copy_image",
+    "menu_set_image_root",
     "menu_insert_image",
     "menu_reveal_image_file",
     "menu_zoom_image",
@@ -1494,6 +1500,10 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_copy_image: self.menu_copy_image.unwrap_or(defaults.menu_copy_image),
+            menu_set_image_root: self
+                .menu_set_image_root
+                .unwrap_or(defaults.menu_set_image_root),
             menu_insert_image: self.menu_insert_image.unwrap_or(defaults.menu_insert_image),
             menu_reveal_image_file: self
                 .menu_reveal_image_file
@@ -2396,6 +2406,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_copy_image: "复制图片".into(),
+            menu_set_image_root: "设置图片根目录…".into(),
             menu_insert_image: "插入图片…".into(),
             menu_reveal_image_file: "打开图片位置".into(),
             menu_zoom_image: "缩放图片".into(),
@@ -2810,6 +2822,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_copy_image: "Copy Image".into(),
+            menu_set_image_root: "Set Image Root Folder…".into(),
             menu_insert_image: "Insert Image…".into(),
             menu_reveal_image_file: "Open Image Location".into(),
             menu_zoom_image: "Zoom Image".into(),
@@ -3226,6 +3240,8 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_copy_image: "Bild kopieren".into(),
+            menu_set_image_root: "Bildstammordner festlegen…".into(),
             menu_insert_image: "Bild einfügen…".into(),
             menu_reveal_image_file: "Speicherort des Bildes öffnen".into(),
             menu_zoom_image: "Bildgröße".into(),

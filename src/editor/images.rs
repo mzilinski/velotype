@@ -185,6 +185,38 @@ fn relative_path_under(dir: &Path, path: &Path) -> Option<String> {
 
 /// Text written into the image destination: `./relative` inside the document
 /// folder, otherwise the absolute path with `/` separators.
+/// `path` relative to `dir` with `../` steps where needed (`./x` below
+/// it); absolute when they share no root (another drive).
+pub(crate) fn relative_link_path(dir: &Path, path: &Path) -> String {
+    if let Some(relative) = relative_path_under(dir, path)
+        && !relative.is_empty()
+    {
+        return format!("./{relative}");
+    }
+    let dir_parts = dir.components().collect::<Vec<_>>();
+    let path_parts = path.components().collect::<Vec<_>>();
+    let common = dir_parts
+        .iter()
+        .zip(&path_parts)
+        .take_while(|(left, right)| left == right)
+        .count();
+    let shares_root = common > 0
+        && matches!(
+            dir_parts[0],
+            std::path::Component::Prefix(_) | std::path::Component::RootDir
+        );
+    if !shares_root {
+        return path.to_string_lossy().replace('\\', "/");
+    }
+    let mut parts = vec!["..".to_string(); dir_parts.len() - common];
+    parts.extend(
+        path_parts[common..]
+            .iter()
+            .map(|part| part.as_os_str().to_string_lossy().to_string()),
+    );
+    parts.join("/")
+}
+
 pub(super) fn image_link_path(path: &Path, document_dir: Option<&Path>) -> String {
     if let Some(relative) = document_dir.and_then(|dir| relative_path_under(dir, path))
         && !relative.is_empty()

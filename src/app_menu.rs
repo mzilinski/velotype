@@ -1106,6 +1106,10 @@ fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                     ),
                     MenuItem::separator(),
                     MenuItem::action(
+                        strings.menu_copy_image.clone(),
+                        crate::components::CopyImage,
+                    ),
+                    MenuItem::action(
                         strings.menu_copy_image_to.clone(),
                         crate::components::CopyImageTo,
                     ),
@@ -1116,6 +1120,10 @@ fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                     MenuItem::action(
                         strings.menu_delete_image_file.clone(),
                         crate::components::DeleteImageFile,
+                    ),
+                    MenuItem::action(
+                        strings.menu_set_image_root.clone(),
+                        crate::components::SetImageRoot,
                     ),
                     MenuItem::separator(),
                     MenuItem::action(
@@ -1161,6 +1169,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::PrintDocument>()
         || any.is::<crate::components::ExportAgain>()
         || any.is::<crate::components::SetImageZoom>()
+        || any.is::<crate::components::CopyImage>()
+        || any.is::<crate::components::SetImageRoot>()
         || any.is::<crate::components::InsertImage>()
         || any.is::<crate::components::RevealImageFile>()
         || any.is::<crate::components::ToggleImageSyntax>()

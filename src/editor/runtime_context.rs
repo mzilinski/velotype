@@ -104,7 +104,9 @@ impl Editor {
         let link_reference_definitions = self.link_reference_definitions.clone();
         let footnote_registry = self.footnote_registry.clone();
         let read_only = self.read_only;
+        let image_root = self.image_root_dir.clone();
         block.update(cx, move |block, cx| {
+            block.set_image_root(image_root.clone());
             block.set_runtime_context(
                 next_base_dir.clone(),
                 image_reference_definitions.clone(),
@@ -208,6 +210,8 @@ impl Editor {
         let markdown = self.document.markdown_text(cx);
         self.image_reference_definitions = Arc::new(parse_image_reference_definitions(&markdown));
         self.link_reference_definitions = Arc::new(parse_link_reference_definitions(&markdown));
+        self.image_root_dir =
+            crate::components::markdown::image::typora_root_url(&markdown, base_dir.as_deref());
         self.rebuild_footnote_registry(cx);
         let visible = self.document.visible_blocks().to_vec();
         for visible_block in visible {
