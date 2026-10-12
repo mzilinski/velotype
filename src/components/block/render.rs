@@ -4,6 +4,7 @@
 //! list items render a marker column (bullet / ordinal), and raw Markdown
 //! fallback renders as plain text.
 
+use gpui::prelude::FluentBuilder as _;
 use gpui::*;
 
 const BLOCK_EDITOR_CONTEXT: &str = "BlockEditor";
@@ -3088,6 +3089,10 @@ impl Render for Block {
                 .text_size(px(t.text_size))
                 .text_color(c.text_default)
                 .line_height(rems(t.text_line_height))
+                // Source mode shows Markdown like a code editor.
+                .when(self.uses_raw_text_editing(), |base| {
+                    base.font(FontSettings::code_font(cx))
+                })
                 .child(self.render_text_or_mixed_inline_visuals(
                     &theme,
                     focused,
