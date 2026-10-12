@@ -963,7 +963,7 @@ fn edit_menu(
 }
 
 /// Paragraph menu in the layout of Typora.
-fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+pub(crate) fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
     use crate::components::{
         DecreaseHeadingLevel, IncreaseHeadingLevel, InsertCallout, InsertCodeBlock, InsertFootnote,
         InsertFrontMatter, InsertHorizontalRule, InsertLinkReference, InsertMathBlock, InsertTable,
@@ -1039,7 +1039,7 @@ fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
 }
 
 /// Format menu in the layout of Typora.
-fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
+pub(crate) fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
     use crate::components::{
         BoldSelection, ClearFormat, CodeSelection, CommentSelection, HighlightSelection,
         InlineMathSelection, InsertLink, ItalicSelection, StrikethroughSelection,

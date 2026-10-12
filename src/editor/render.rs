@@ -2263,7 +2263,8 @@ impl Render for Editor {
         } else {
             base
         };
-        let base = if let Some(context_menu) = self.render_context_menu_overlay(&theme, cx) {
+        let base = if let Some(context_menu) = self.render_context_menu_overlay(&theme, window, cx)
+        {
             base.child(context_menu)
         } else {
             base
