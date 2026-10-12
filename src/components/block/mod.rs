@@ -11,6 +11,7 @@ mod interactions;
 mod render;
 mod runtime;
 mod scopes;
+mod smart_punctuation;
 mod state;
 
 pub(crate) use crate::components::markdown::code_highlight::*;
