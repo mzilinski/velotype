@@ -19,17 +19,15 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 Alles ist gepusht (Stand 2026-10-12): `integration` enthält alle Feature-Branches. Test-Exe unter Windows: `velotype-integration-8.exe`.
 Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
 
-**CI** (`.github/workflows/ci.yml`, `gh run list`): Windows grün. Linux baut (der `which`-Fehler ist in `fix/ci-linux-macos` behoben).
-Auf Linux und macOS stürzt der **Testprozess mit SIGSEGV** ab, schon seit dem ersten Lauf, also nicht durch die neuen Features.
-**Gefunden** (CI-Lauf mit `--test-threads=1` auf `fix/ci-segfault`): auf beiden Plattformen stürzt
-`editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores` ab, ein Upstream-Test.
-Er war der einzige Fenster-Test mit handgebautem `TestAppContext::single()` + `cx.quit()`. Fix-Versuch (Commit 775ebad auf
-`fix/ci-segfault`): auf `#[gpui::test]` umgestellt, unter Windows grün; ob Linux/macOS jetzt durchlaufen, zeigt die CI.
-Wenn grün: `fix/ci-segfault` ohne den CI-Diagnose-Commit (nur 775ebad) in `integration` übernehmen und `ci.yml` wieder parallel.
+**CI** (`.github/workflows/ci.yml`, `gh run list`): mit dem Test-Fix grün auf Linux, macOS und Windows (Lauf 38224033844 auf `fix/ci-segfault`).
+Ursache des SIGSEGV: der Upstream-Test `editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores`
+baute als einziger Fenster-Test seinen `TestAppContext::single()` von Hand und endete mit `cx.quit()`; jetzt `#[gpui::test]`.
+Der Fix liegt auf `fix/unix-test-segfault` und ist in `integration` gemergt. `fix/ci-segfault` (einzeln laufende Tests) war nur Diagnose
+und wird nicht gemergt. **Nicht gepusht:** `fix/unix-test-segfault` und `integration` (Merge des Fixes).
 
 ## Mac-Runde
 
-Ziel: auf macOS den SIGSEGV finden und beheben sowie einmal von Hand prüfen, was nur auf macOS anders läuft.
+Ziel: einmal von Hand prüfen, was nur auf macOS anders läuft (der SIGSEGV ist bereits behoben).
 Entwickelt wird danach weiter unter Windows. Funde und Fixes kommen hier in die Datei und auf eigene Branches.
 
 **Einrichtung**
@@ -46,7 +44,7 @@ cargo build
 Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausgeschlossenen Datei; stattdessen
 `git worktree add ../velotype-handoff handoff`, Datei hineinkopieren, dort committen und pushen.
 
-**1. SIGSEGV** (falls die CI nach dem Fix noch rot ist; sonst überspringen)
+**1. SIGSEGV** – erledigt (siehe oben), nur bei erneutem Absturz relevant.
 - `cargo test -- --test-threads=1 2>&1 | tail -40`: Der zuletzt gestartete Test ist der Absturzkandidat.
   Gegenprobe: nur diesen Test laufen lassen, dann parallel mit verwandten Tests.
 - Im Debugger: `lldb target/debug/deps/velotype-<hash> -- --test-threads=1 <testname>`, dann `run` und `bt`.
