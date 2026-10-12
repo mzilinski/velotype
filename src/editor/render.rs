@@ -1490,6 +1490,8 @@ impl Render for Editor {
         self.apply_pending_scroll_into_view(window, cx);
         self.last_selection_snapshot = self.capture_source_selection_snapshot(cx);
         self.sync_pending_save(window, cx);
+        self.sync_pending_autosave(window, cx);
+        self.schedule_autosave(cx);
         self.sync_pending_save_as(window, cx);
         self.sync_pending_open_link(window, cx);
         self.sync_pending_open_markdown_path(window, cx);
@@ -2128,6 +2130,7 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_export_with_pandoc))
             .on_action(cx.listener(Self::on_import_with_pandoc))
             .on_action(cx.listener(Self::on_print_document))
+            .on_action(cx.listener(Self::on_show_backups))
             .on_action(cx.listener(Self::on_upload_image))
             .on_action(cx.listener(Self::on_upload_all_images))
             .on_action(cx.listener(Self::on_open_emoji_picker))

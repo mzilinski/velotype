@@ -24,6 +24,7 @@ use crate::components::{
     TableAxisHighlight, TableAxisKind, TableAxisMarker, TableCellPosition, TableColumnAlignment,
     TableData, TableRuntime, UndoCaptureKind, serialize_table_cell_markdown,
 };
+mod autosave;
 mod clipboard_commands;
 mod close;
 mod context_menu;
@@ -150,6 +151,11 @@ pub struct Editor {
     /// Open Quick Open / Search in Folder palette, if any.
     palette: Option<workspace_search::PaletteState>,
     emoji_picker: Option<emoji_picker::EmojiPickerState>,
+    /// Pending Auto Save (see `autosave.rs`).
+    autosave_task: Option<Task<()>>,
+    pending_autosave: bool,
+    /// Set after a failed Auto Save; cleared by the next successful save.
+    autosave_suspended: bool,
     context_menu_submenu_close_task: Option<Task<()>>,
     table_axis_preview: Option<TableAxisSelection>,
     table_axis_selection: Option<TableAxisSelection>,
@@ -400,6 +406,9 @@ impl Editor {
             find: None,
             palette: None,
             emoji_picker: None,
+            autosave_task: None,
+            pending_autosave: false,
+            autosave_suspended: false,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,
             table_axis_selection: None,

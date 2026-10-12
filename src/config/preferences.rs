@@ -135,6 +135,8 @@ pub(crate) struct WritingPreferences {
     pub(crate) smart_quotes: bool,
     /// Turn `--` into an en dash and `---` into an em dash.
     pub(crate) smart_dashes: bool,
+    /// Save documents that have a file shortly after each change.
+    pub(crate) autosave: bool,
 }
 
 /// Zoom levels View > Zoom In/Out steps through, in percent.
@@ -175,6 +177,7 @@ impl Default for WritingPreferences {
             final_newline: false,
             smart_quotes: false,
             smart_dashes: false,
+            autosave: false,
         }
     }
 }
@@ -445,6 +448,7 @@ struct EditorPreferencesFile {
     final_newline: bool,
     smart_quotes: bool,
     smart_dashes: bool,
+    autosave: bool,
 }
 
 #[derive(Serialize)]
@@ -512,6 +516,7 @@ impl From<&AppPreferences> for PreferencesFile {
                 final_newline: value.writing.final_newline,
                 smart_quotes: value.writing.smart_quotes,
                 smart_dashes: value.writing.smart_dashes,
+                autosave: value.writing.autosave,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -636,6 +641,7 @@ fn app_preferences_from_toml_value(
         final_newline: editor_flag("final_newline", default_writing.final_newline),
         smart_quotes: editor_flag("smart_quotes", default_writing.smart_quotes),
         smart_dashes: editor_flag("smart_dashes", default_writing.smart_dashes),
+        autosave: editor_flag("autosave", default_writing.autosave),
     };
 
     let status_bar = value
@@ -1900,6 +1906,8 @@ impl PreferencesWindow {
             ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
+            ShortcutCommand::ToggleAutosave => strings.menu_autosave.clone(),
+            ShortcutCommand::ShowBackups => strings.menu_show_backups.clone(),
             ShortcutCommand::UploadImage => strings.menu_upload_image.clone(),
             ShortcutCommand::UploadAllImages => strings.menu_upload_all_images.clone(),
             ShortcutCommand::OpenEmojiPicker => strings.menu_emoji_picker.clone(),
@@ -3098,6 +3106,7 @@ mod tests {
                 final_newline: true,
                 smart_quotes: true,
                 smart_dashes: true,
+                autosave: true,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             image_upload_command: "picgo upload".into(),
@@ -3138,6 +3147,7 @@ mod tests {
         assert!(text.contains("final_newline = true"));
         assert!(text.contains("smart_quotes = true"));
         assert!(text.contains("smart_dashes = true"));
+        assert!(text.contains("autosave = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("image_upload_command = \"picgo upload\""));
         assert!(text.contains("[fonts]"));
