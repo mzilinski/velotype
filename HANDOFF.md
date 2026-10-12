@@ -21,9 +21,11 @@ Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der
 
 **CI** (`.github/workflows/ci.yml`, `gh run list`): Windows grün. Linux baut (der `which`-Fehler ist in `fix/ci-linux-macos` behoben).
 Auf Linux und macOS stürzt der **Testprozess mit SIGSEGV** ab, schon seit dem ersten Lauf, also nicht durch die neuen Features.
-Welcher Test, ist offen. Der Branch `fix/ci-segfault` (nicht in `integration`) lässt die Tests auf Unix einzeln laufen
-(`-- --test-threads=1`, `RUST_BACKTRACE=1`); der letzte Test vor dem Absturz im Log ist der Verdächtige.
-Verdacht: nativer, nicht thread-sicherer Code (Fonts/fontconfig, Browser-Start im PDF-Test, Tree-sitter, RaTeX/Mermaid).
+**Gefunden** (CI-Lauf mit `--test-threads=1` auf `fix/ci-segfault`): auf beiden Plattformen stürzt
+`editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores` ab, ein Upstream-Test.
+Er war der einzige Fenster-Test mit handgebautem `TestAppContext::single()` + `cx.quit()`. Fix-Versuch (Commit 775ebad auf
+`fix/ci-segfault`): auf `#[gpui::test]` umgestellt, unter Windows grün; ob Linux/macOS jetzt durchlaufen, zeigt die CI.
+Wenn grün: `fix/ci-segfault` ohne den CI-Diagnose-Commit (nur 775ebad) in `integration` übernehmen und `ci.yml` wieder parallel.
 
 ## Mac-Runde
 
@@ -44,7 +46,7 @@ cargo build
 Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausgeschlossenen Datei; stattdessen
 `git worktree add ../velotype-handoff handoff`, Datei hineinkopieren, dort committen und pushen.
 
-**1. SIGSEGV**
+**1. SIGSEGV** (falls die CI nach dem Fix noch rot ist; sonst überspringen)
 - `cargo test -- --test-threads=1 2>&1 | tail -40`: Der zuletzt gestartete Test ist der Absturzkandidat.
   Gegenprobe: nur diesen Test laufen lassen, dann parallel mit verwandten Tests.
 - Im Debugger: `lldb target/debug/deps/velotype-<hash> -- --test-threads=1 <testname>`, dann `run` und `bt`.
