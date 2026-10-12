@@ -2243,7 +2243,27 @@ impl Render for Editor {
         } else {
             main_content
         };
-        let base = base.child(main_content.child(content_area));
+        // With the toolbar the document column is the toolbar above the content.
+        let document_column = match self.render_toolbar(&theme, &strings, window, cx) {
+            Some(toolbar) => div()
+                .flex_1()
+                .min_w(px(0.0))
+                .h_full()
+                .flex()
+                .flex_col()
+                .child(toolbar)
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h(px(0.0))
+                        .relative()
+                        .flex()
+                        .child(content_area),
+                )
+                .into_any_element(),
+            None => content_area.into_any_element(),
+        };
+        let base = base.child(main_content.child(document_column));
         let base = if let Some(tab_strip) = tab_strip {
             base.child(tab_strip)
         } else {

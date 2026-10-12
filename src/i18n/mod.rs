@@ -141,6 +141,7 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub menu_toolbar: String,
     pub workspace_tab_articles: String,
     pub workspace_articles_loading: String,
     pub workspace_menu_open_in_new_window: String,
@@ -628,6 +629,7 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    menu_toolbar: Option<String>,
     workspace_tab_articles: Option<String>,
     workspace_articles_loading: Option<String>,
     workspace_menu_open_in_new_window: Option<String>,
@@ -1030,6 +1032,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "menu_toolbar",
     "workspace_tab_articles",
     "workspace_articles_loading",
     "workspace_menu_open_in_new_window",
@@ -1512,6 +1515,7 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            menu_toolbar: self.menu_toolbar.unwrap_or(defaults.menu_toolbar),
             workspace_tab_articles: self
                 .workspace_tab_articles
                 .unwrap_or(defaults.workspace_tab_articles),
@@ -2430,6 +2434,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            menu_toolbar: "工具栏".into(),
             workspace_tab_articles: "文章".into(),
             workspace_articles_loading: "正在读取文档…".into(),
             workspace_menu_open_in_new_window: "在新窗口中打开".into(),
@@ -2850,6 +2855,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            menu_toolbar: "Toolbar".into(),
             workspace_tab_articles: "Articles".into(),
             workspace_articles_loading: "Reading documents…".into(),
             workspace_menu_open_in_new_window: "Open in New Window".into(),
@@ -3272,6 +3278,7 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            menu_toolbar: "Werkzeugleiste".into(),
             workspace_tab_articles: "Artikel".into(),
             workspace_articles_loading: "Dokumente werden gelesen …".into(),
             workspace_menu_open_in_new_window: "In neuem Fenster öffnen".into(),

@@ -60,6 +60,7 @@ mod table_edit;
 mod tabs;
 #[cfg(test)]
 mod tests;
+mod toolbar;
 mod tree;
 mod update;
 mod window_state;
