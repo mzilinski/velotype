@@ -358,27 +358,31 @@ fn render_custom_button(
 /// Count words in mixed CJK / Latin text.
 ///
 /// Every CJK character counts as one word. Latin words are split on whitespace.
-pub fn count_words(text: &str) -> usize {
+/// Words in `text`: runs of non-space characters that contain a letter or
+/// digit (Markdown markers such as `#`, `-`, `>`, `|` do not count), and
+/// every CJK character.
+pub(super) fn count_words(text: &str) -> usize {
     let mut count = 0;
+    // Inside a run of non-space characters; whether it had a letter/digit.
     let mut in_latin_word = false;
+    let mut word_has_alnum = false;
 
     for ch in text.chars() {
-        if is_cjk_char(ch) {
-            if in_latin_word {
+        if is_cjk_char(ch) || ch.is_whitespace() {
+            if in_latin_word && word_has_alnum {
                 count += 1;
-                in_latin_word = false;
             }
-            count += 1;
-        } else if ch.is_whitespace() {
-            if in_latin_word {
+            in_latin_word = false;
+            word_has_alnum = false;
+            if is_cjk_char(ch) {
                 count += 1;
-                in_latin_word = false;
             }
         } else {
             in_latin_word = true;
+            word_has_alnum |= ch.is_alphanumeric();
         }
     }
-    if in_latin_word {
+    if in_latin_word && word_has_alnum {
         count += 1;
     }
     count
@@ -430,6 +434,11 @@ mod tests {
     #[test]
     fn mixed_cjk_and_english() {
         assert_eq!(count_words("hello 世界"), 3);
+        // Markdown markers are not words.
+        assert_eq!(count_words("# Title
+
+- item | ---
+> **bold**"), 3);
         assert_eq!(count_words("你好 world foo"), 4);
     }
 

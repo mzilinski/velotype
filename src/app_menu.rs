@@ -1121,6 +1121,8 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ImportWithPandoc>()
         || any.is::<crate::components::PrintDocument>()
         || any.is::<crate::components::ExportAgain>()
+        || any.is::<crate::components::MoveDocument>()
+        || any.is::<crate::components::ShowProperties>()
         || any.is::<crate::components::ExportHtmlPlain>()
         || any.is::<crate::components::ShowBackups>()
         || any.is::<crate::components::UploadImage>()
@@ -1447,6 +1449,10 @@ fn build_menus_with_view(
                     MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
                     MenuItem::action(strings.menu_save_all.clone(), SaveAll),
                     MenuItem::action(
+                        strings.menu_move_document.clone(),
+                        crate::components::MoveDocument,
+                    ),
+                    MenuItem::action(
                         if writing.autosave {
                             format!("✓ {}", strings.menu_autosave)
                         } else {
@@ -1466,6 +1472,10 @@ fn build_menus_with_view(
                     ),
                     MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
                     MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
+                    MenuItem::action(
+                        strings.menu_properties.clone(),
+                        crate::components::ShowProperties,
+                    ),
                     MenuItem::separator(),
                     MenuItem::action(
                         strings.menu_import.clone(),
@@ -1501,6 +1511,10 @@ fn build_menus_with_view(
                 MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
                 MenuItem::action(strings.menu_save_all.clone(), SaveAll),
                 MenuItem::action(
+                    strings.menu_move_document.clone(),
+                    crate::components::MoveDocument,
+                ),
+                MenuItem::action(
                     if writing.autosave {
                         format!("✓ {}", strings.menu_autosave)
                     } else {
@@ -1520,6 +1534,10 @@ fn build_menus_with_view(
                 ),
                 MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
                 MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
+                MenuItem::action(
+                    strings.menu_properties.clone(),
+                    crate::components::ShowProperties,
+                ),
                 MenuItem::separator(),
                 MenuItem::action(
                     strings.menu_import.clone(),
