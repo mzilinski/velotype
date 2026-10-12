@@ -127,6 +127,11 @@ pub(crate) fn record_recent_file(path: &Path) -> anyhow::Result<Vec<PathBuf>> {
     record_recent_file_with_dirs(path, &VelotypeConfigDirs::from_system()?)
 }
 
+/// Forgets every recent file (File > Open Recent > Clear Items).
+pub(crate) fn clear_recent_files() -> anyhow::Result<()> {
+    write_recent_files_with_dirs(&[], &VelotypeConfigDirs::from_system()?)
+}
+
 pub(crate) fn remove_recent_file(path: &Path) -> anyhow::Result<Vec<PathBuf>> {
     remove_recent_file_with_dirs(path, &VelotypeConfigDirs::from_system()?)
 }

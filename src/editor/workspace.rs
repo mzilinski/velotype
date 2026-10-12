@@ -51,19 +51,22 @@ enum WorkspaceSelection {
 #[derive(Default)]
 pub(super) struct WorkspaceState {
     pub(super) is_open: bool,
-    active_tab: WorkspaceTab,
+    pub(super) active_tab: WorkspaceTab,
     /// Folder opened with Open Folder; shared by all tabs of a window. Without
     /// one the workspace is the folder of the current file.
     pub(super) folder: Option<PathBuf>,
     /// Options of Search in Folder, kept between palette openings.
     pub(super) search_options: super::workspace_search::SearchOptions,
-    root: Option<PathBuf>,
+    pub(super) root: Option<PathBuf>,
     file_tree: Option<WorkspaceTreeNode>,
     file_error: Option<String>,
     outline_tree: Vec<WorkspaceTreeNode>,
     outline_source: Option<String>,
-    expanded: HashSet<String>,
+    pub(super) expanded: HashSet<String>,
     selected: Option<WorkspaceSelection>,
+    /// Open right-click menu of the file tree and name dialog, if any.
+    pub(super) tree_menu: Option<super::workspace_actions::TreeMenu>,
+    pub(super) name_dialog: Option<super::workspace_actions::NameDialog>,
 }
 
 impl Editor {
@@ -97,6 +100,17 @@ impl Editor {
         if self.workspace.is_open {
             self.sync_workspace_models(cx);
         }
+    }
+
+    /// Drops the cached file tree so the drawer rescans the disk.
+    pub(super) fn invalidate_workspace_tree(&mut self, cx: &mut Context<Self>) {
+        self.workspace.root = None;
+        self.workspace.file_tree = None;
+        self.workspace.file_error = None;
+        if self.workspace.is_open {
+            self.sync_workspace_models(cx);
+        }
+        cx.notify();
     }
 
     fn sync_workspace_models(&mut self, cx: &mut Context<Self>) {
@@ -285,7 +299,12 @@ impl Editor {
         true
     }
 
-    fn open_workspace_file(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn open_workspace_file(
+        &mut self,
+        path: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.workspace.selected = Some(WorkspaceSelection::File(path.clone()));
         if self.is_tab_hosted() {
             cx.emit(super::EditorTabEvent::OpenPaths {
@@ -614,6 +633,12 @@ impl Editor {
             WorkspaceTreeKind::Heading { .. } => None,
         };
 
+        let tree_menu_target = match &node.kind {
+            WorkspaceTreeKind::Directory(path) => Some((path.clone(), true)),
+            WorkspaceTreeKind::MarkdownFile(path) => Some((path.clone(), false)),
+            WorkspaceTreeKind::Heading { .. } => None,
+        };
+
         let label_color = if selected {
             c.text_default
         } else {
@@ -680,6 +705,17 @@ impl Editor {
                     .text_color(label_color)
                     .child(node.label.clone()),
             )
+            .when_some(tree_menu_target, |row, (target, is_dir)| {
+                let menu_editor = editor.clone();
+                row.on_mouse_down(MouseButton::Right, move |event, _window, cx| {
+                    let target = target.clone();
+                    let position = event.position;
+                    let _ = menu_editor.update(cx, |editor, cx| {
+                        editor.open_tree_menu(target, is_dir, position, cx)
+                    });
+                    cx.stop_propagation();
+                })
+            })
             .on_click(move |_event, window, cx| {
                 let node_id = node_id.clone();
                 let click_kind = click_kind.clone();
@@ -748,7 +784,7 @@ fn file_label(path: &Path) -> String {
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
 }
 
-fn file_node_id(path: &Path) -> String {
+pub(super) fn file_node_id(path: &Path) -> String {
     format!("file:{}", path.to_string_lossy())
 }
 

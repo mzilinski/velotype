@@ -10,11 +10,12 @@ use anyhow::Context as _;
 use gpui::*;
 
 use crate::components::{
-    AddLanguageConfig, AddThemeConfig, CheckForUpdates, CloseFolder, CloseTab, CloseWindow,
-    ExportHtml, ExportPdf, InstallCliTool, NewTab, NewWindow, NextTab, NoRecentFiles, OpenFile,
-    OpenFolder, OpenPreferences, OpenRecentFile, PrevTab, QuitApplication, SaveDocument,
-    SaveDocumentAs, SelectLanguage, SelectSpellcheckLanguage, SelectTheme, ShowAbout,
-    ToggleAutoPair, ToggleFocusMode, ToggleFollowSystemAppearance, ToggleReadOnly,
+    AddLanguageConfig, AddThemeConfig, CheckForUpdates, ClearRecentFiles, CloseFolder, CloseTab,
+    CloseWindow, DeleteCurrentFile, ExportHtml, ExportPdf, InstallCliTool, NewTab, NewWindow,
+    NextTab, NoRecentFiles, OpenFile, OpenFolder, OpenPreferences, OpenRecentFile, PrevTab,
+    QuitApplication, ReloadFromDisk, ReopenClosedTab, RevealInFileManager, RevealInSidebar,
+    SaveAll, SaveDocument, SaveDocumentAs, SelectLanguage, SelectSpellcheckLanguage, SelectTheme,
+    ShowAbout, ToggleAutoPair, ToggleFocusMode, ToggleFollowSystemAppearance, ToggleReadOnly,
     ToggleSpellcheck, ToggleTypewriterMode, ToggleWorkspace, UninstallCliTool,
 };
 use crate::config::{
@@ -506,6 +507,11 @@ fn is_editor_scoped_menu_action(action: &dyn Action) -> bool {
         || action.as_any().is::<ToggleWorkspace>()
         || action.as_any().is::<OpenFolder>()
         || action.as_any().is::<CloseFolder>()
+        || action.as_any().is::<ReloadFromDisk>()
+        || action.as_any().is::<SaveAll>()
+        || action.as_any().is::<RevealInFileManager>()
+        || action.as_any().is::<RevealInSidebar>()
+        || action.as_any().is::<DeleteCurrentFile>()
 }
 
 fn is_window_context_menu_action(action: &dyn Action) -> bool {
@@ -749,6 +755,28 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         let _ = with_active_editor(cx, |editor, _, cx| editor.prompt_open_folder(cx));
     } else if action.as_any().is::<CloseFolder>() {
         let _ = with_active_editor(cx, |editor, _, cx| editor.apply_workspace_folder(None, cx));
+    } else if action.as_any().is::<ReloadFromDisk>() {
+        let _ = with_active_editor(cx, |editor, window, cx| editor.reload_from_disk(window, cx));
+    } else if action.as_any().is::<SaveAll>() {
+        let _ = with_active_editor(cx, |editor, window, cx| editor.save_all(window, cx));
+    } else if action.as_any().is::<RevealInFileManager>() {
+        let _ = with_active_editor(cx, |editor, _, cx| editor.reveal_in_file_manager(cx));
+    } else if action.as_any().is::<RevealInSidebar>() {
+        let _ = with_active_editor(cx, |editor, _, cx| editor.reveal_in_sidebar(cx));
+    } else if action.as_any().is::<DeleteCurrentFile>() {
+        let _ = with_active_editor(cx, |editor, window, cx| {
+            editor.delete_current_file(window, cx)
+        });
+    } else if action.as_any().is::<ReopenClosedTab>() {
+        let _ = with_active_editor_window(cx, |host, window, cx| {
+            host.reopen_closed_tab(window, cx);
+        });
+    } else if action.as_any().is::<ClearRecentFiles>() {
+        if let Err(err) = crate::config::clear_recent_files() {
+            eprintln!("failed to clear recent file history: {err}");
+        }
+        install_menus(cx);
+        cx.refresh_windows();
     } else if action.as_any().is::<QuitApplication>() {
         request_quit_application(cx);
     } else if action.as_any().is::<CloseWindow>() {
@@ -1069,6 +1097,16 @@ pub(crate) fn dispatch_menu_action_for_editor(
         let _ = target.update(cx, |editor, cx| editor.prompt_open_folder(cx));
     } else if action.as_any().is::<CloseFolder>() {
         let _ = target.update(cx, |editor, cx| editor.apply_workspace_folder(None, cx));
+    } else if action.as_any().is::<ReloadFromDisk>() {
+        let _ = target.update(cx, |editor, cx| editor.reload_from_disk(window, cx));
+    } else if action.as_any().is::<SaveAll>() {
+        let _ = target.update(cx, |editor, cx| editor.save_all(window, cx));
+    } else if action.as_any().is::<RevealInFileManager>() {
+        let _ = target.update(cx, |editor, cx| editor.reveal_in_file_manager(cx));
+    } else if action.as_any().is::<RevealInSidebar>() {
+        let _ = target.update(cx, |editor, cx| editor.reveal_in_sidebar(cx));
+    } else if action.as_any().is::<DeleteCurrentFile>() {
+        let _ = target.update(cx, |editor, cx| editor.delete_current_file(window, cx));
     }
 }
 
@@ -1151,6 +1189,10 @@ fn build_menus(
                 let label = path.to_string_lossy().into_owned();
                 MenuItem::action(label.clone(), OpenRecentFile { path: label })
             })
+            .chain([
+                MenuItem::separator(),
+                MenuItem::action(strings.menu_clear_recent.clone(), ClearRecentFiles),
+            ])
             .collect()
     };
 
@@ -1189,9 +1231,19 @@ fn build_menus(
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_new_tab.clone(), NewTab),
                     MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
+                    MenuItem::action(strings.menu_reopen_closed_tab.clone(), ReopenClosedTab),
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_save.clone(), SaveDocument),
                     MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
+                    MenuItem::action(strings.menu_save_all.clone(), SaveAll),
+                    MenuItem::separator(),
+                    MenuItem::action(strings.menu_reload_from_disk.clone(), ReloadFromDisk),
+                    MenuItem::action(
+                        strings.menu_reveal_in_file_manager.clone(),
+                        RevealInFileManager,
+                    ),
+                    MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
+                    MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
                 ],
             },
         ]
@@ -1215,9 +1267,19 @@ fn build_menus(
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_new_tab.clone(), NewTab),
                 MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
+                MenuItem::action(strings.menu_reopen_closed_tab.clone(), ReopenClosedTab),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_save.clone(), SaveDocument),
                 MenuItem::action(strings.menu_save_as.clone(), SaveDocumentAs),
+                MenuItem::action(strings.menu_save_all.clone(), SaveAll),
+                MenuItem::separator(),
+                MenuItem::action(strings.menu_reload_from_disk.clone(), ReloadFromDisk),
+                MenuItem::action(
+                    strings.menu_reveal_in_file_manager.clone(),
+                    RevealInFileManager,
+                ),
+                MenuItem::action(strings.menu_reveal_in_sidebar.clone(), RevealInSidebar),
+                MenuItem::action(strings.menu_delete_file.clone(), DeleteCurrentFile),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_quit.clone(), QuitApplication),
             ],
@@ -1593,6 +1655,13 @@ pub(crate) fn init(cx: &mut App) {
         dispatch_menu_action(&ToggleWorkspace, cx);
     });
     cx.on_action(|_: &OpenFolder, cx| dispatch_menu_action(&OpenFolder, cx));
+    cx.on_action(|_: &ReloadFromDisk, cx| dispatch_menu_action(&ReloadFromDisk, cx));
+    cx.on_action(|_: &SaveAll, cx| dispatch_menu_action(&SaveAll, cx));
+    cx.on_action(|_: &ReopenClosedTab, cx| dispatch_menu_action(&ReopenClosedTab, cx));
+    cx.on_action(|_: &RevealInFileManager, cx| dispatch_menu_action(&RevealInFileManager, cx));
+    cx.on_action(|_: &RevealInSidebar, cx| dispatch_menu_action(&RevealInSidebar, cx));
+    cx.on_action(|_: &DeleteCurrentFile, cx| dispatch_menu_action(&DeleteCurrentFile, cx));
+    cx.on_action(|_: &ClearRecentFiles, cx| dispatch_menu_action(&ClearRecentFiles, cx));
     cx.on_action(|_: &CloseFolder, cx| dispatch_menu_action(&CloseFolder, cx));
     cx.on_action(|_: &ToggleAutoPair, cx| dispatch_menu_action(&ToggleAutoPair, cx));
     cx.on_action(|_: &ToggleFocusMode, cx| dispatch_menu_action(&ToggleFocusMode, cx));
@@ -1934,7 +2003,9 @@ mod tests {
         #[cfg(not(target_os = "macos"))]
         let recent_menu = submenu(&menus[0].items[5]);
 
-        assert_eq!(recent_menu.items.len(), 2);
+        // Two files, a separator and Clear Items.
+        assert_eq!(recent_menu.items.len(), 4);
+        assert_eq!(action_name(&recent_menu.items[3]), "Clear Items");
         assert_eq!(action_name(&recent_menu.items[0]), r"C:\docs\one.md");
         match &recent_menu.items[0] {
             MenuItem::Action { action, .. } => {

@@ -141,6 +141,28 @@ pub struct I18nStrings {
     /// Error title when a spell-check dictionary cannot be downloaded.
     pub spelling_download_failed_title: String,
     pub quick_open_placeholder: String,
+    pub workspace_menu_open: String,
+    pub workspace_menu_new_file: String,
+    pub workspace_menu_new_folder: String,
+    pub workspace_menu_rename: String,
+    pub workspace_menu_delete: String,
+    pub workspace_menu_copy_path: String,
+    pub menu_reveal_in_file_manager: String,
+    pub menu_reveal_in_sidebar: String,
+    pub menu_reload_from_disk: String,
+    pub menu_save_all: String,
+    pub menu_reopen_closed_tab: String,
+    pub menu_clear_recent: String,
+    pub menu_delete_file: String,
+    pub workspace_name_invalid: String,
+    pub workspace_name_exists: String,
+    pub workspace_default_file_name: String,
+    pub workspace_default_folder_name: String,
+    pub workspace_delete_confirm_message: String,
+    pub workspace_delete_dirty_message: String,
+    pub file_operation_failed_title: String,
+    pub reload_confirm_message: String,
+    pub reload_confirm_button: String,
     pub menu_edit: String,
     pub menu_copy_as_plain_text: String,
     pub menu_copy_as_html: String,
@@ -529,6 +551,28 @@ struct I18nStringsDe {
     context_spelling_no_suggestions: Option<String>,
     spelling_download_failed_title: Option<String>,
     quick_open_placeholder: Option<String>,
+    workspace_menu_open: Option<String>,
+    workspace_menu_new_file: Option<String>,
+    workspace_menu_new_folder: Option<String>,
+    workspace_menu_rename: Option<String>,
+    workspace_menu_delete: Option<String>,
+    workspace_menu_copy_path: Option<String>,
+    menu_reveal_in_file_manager: Option<String>,
+    menu_reveal_in_sidebar: Option<String>,
+    menu_reload_from_disk: Option<String>,
+    menu_save_all: Option<String>,
+    menu_reopen_closed_tab: Option<String>,
+    menu_clear_recent: Option<String>,
+    menu_delete_file: Option<String>,
+    workspace_name_invalid: Option<String>,
+    workspace_name_exists: Option<String>,
+    workspace_default_file_name: Option<String>,
+    workspace_default_folder_name: Option<String>,
+    workspace_delete_confirm_message: Option<String>,
+    workspace_delete_dirty_message: Option<String>,
+    file_operation_failed_title: Option<String>,
+    reload_confirm_message: Option<String>,
+    reload_confirm_button: Option<String>,
     menu_edit: Option<String>,
     menu_copy_as_plain_text: Option<String>,
     menu_copy_as_html: Option<String>,
@@ -832,6 +876,28 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_spelling_no_suggestions",
     "spelling_download_failed_title",
     "quick_open_placeholder",
+    "workspace_menu_open",
+    "workspace_menu_new_file",
+    "workspace_menu_new_folder",
+    "workspace_menu_rename",
+    "workspace_menu_delete",
+    "workspace_menu_copy_path",
+    "menu_reveal_in_file_manager",
+    "menu_reveal_in_sidebar",
+    "menu_reload_from_disk",
+    "menu_save_all",
+    "menu_reopen_closed_tab",
+    "menu_clear_recent",
+    "menu_delete_file",
+    "workspace_name_invalid",
+    "workspace_name_exists",
+    "workspace_default_file_name",
+    "workspace_default_folder_name",
+    "workspace_delete_confirm_message",
+    "workspace_delete_dirty_message",
+    "file_operation_failed_title",
+    "reload_confirm_message",
+    "reload_confirm_button",
     "menu_edit",
     "menu_copy_as_plain_text",
     "menu_copy_as_html",
@@ -1215,6 +1281,66 @@ impl I18nStringsDe {
             quick_open_placeholder: self
                 .quick_open_placeholder
                 .unwrap_or(defaults.quick_open_placeholder),
+            workspace_menu_open: self
+                .workspace_menu_open
+                .unwrap_or(defaults.workspace_menu_open),
+            workspace_menu_new_file: self
+                .workspace_menu_new_file
+                .unwrap_or(defaults.workspace_menu_new_file),
+            workspace_menu_new_folder: self
+                .workspace_menu_new_folder
+                .unwrap_or(defaults.workspace_menu_new_folder),
+            workspace_menu_rename: self
+                .workspace_menu_rename
+                .unwrap_or(defaults.workspace_menu_rename),
+            workspace_menu_delete: self
+                .workspace_menu_delete
+                .unwrap_or(defaults.workspace_menu_delete),
+            workspace_menu_copy_path: self
+                .workspace_menu_copy_path
+                .unwrap_or(defaults.workspace_menu_copy_path),
+            menu_reveal_in_file_manager: self
+                .menu_reveal_in_file_manager
+                .unwrap_or(defaults.menu_reveal_in_file_manager),
+            menu_reveal_in_sidebar: self
+                .menu_reveal_in_sidebar
+                .unwrap_or(defaults.menu_reveal_in_sidebar),
+            menu_reload_from_disk: self
+                .menu_reload_from_disk
+                .unwrap_or(defaults.menu_reload_from_disk),
+            menu_save_all: self.menu_save_all.unwrap_or(defaults.menu_save_all),
+            menu_reopen_closed_tab: self
+                .menu_reopen_closed_tab
+                .unwrap_or(defaults.menu_reopen_closed_tab),
+            menu_clear_recent: self.menu_clear_recent.unwrap_or(defaults.menu_clear_recent),
+            menu_delete_file: self.menu_delete_file.unwrap_or(defaults.menu_delete_file),
+            workspace_name_invalid: self
+                .workspace_name_invalid
+                .unwrap_or(defaults.workspace_name_invalid),
+            workspace_name_exists: self
+                .workspace_name_exists
+                .unwrap_or(defaults.workspace_name_exists),
+            workspace_default_file_name: self
+                .workspace_default_file_name
+                .unwrap_or(defaults.workspace_default_file_name),
+            workspace_default_folder_name: self
+                .workspace_default_folder_name
+                .unwrap_or(defaults.workspace_default_folder_name),
+            workspace_delete_confirm_message: self
+                .workspace_delete_confirm_message
+                .unwrap_or(defaults.workspace_delete_confirm_message),
+            workspace_delete_dirty_message: self
+                .workspace_delete_dirty_message
+                .unwrap_or(defaults.workspace_delete_dirty_message),
+            file_operation_failed_title: self
+                .file_operation_failed_title
+                .unwrap_or(defaults.file_operation_failed_title),
+            reload_confirm_message: self
+                .reload_confirm_message
+                .unwrap_or(defaults.reload_confirm_message),
+            reload_confirm_button: self
+                .reload_confirm_button
+                .unwrap_or(defaults.reload_confirm_button),
             menu_edit: self.menu_edit.unwrap_or(defaults.menu_edit),
             menu_copy_as_plain_text: self
                 .menu_copy_as_plain_text
@@ -1912,6 +2038,28 @@ impl I18nStrings {
             context_spelling_no_suggestions: "无建议".into(),
             spelling_download_failed_title: "词典下载失败".into(),
             quick_open_placeholder: "转到文件…".into(),
+            workspace_menu_open: "打开".into(),
+            workspace_menu_new_file: "新建文件".into(),
+            workspace_menu_new_folder: "新建文件夹".into(),
+            workspace_menu_rename: "重命名…".into(),
+            workspace_menu_delete: "移到废纸篓".into(),
+            workspace_menu_copy_path: "复制路径".into(),
+            menu_reveal_in_file_manager: "在文件管理器中显示".into(),
+            menu_reveal_in_sidebar: "在侧边栏中显示".into(),
+            menu_reload_from_disk: "从磁盘重新加载".into(),
+            menu_save_all: "全部保存".into(),
+            menu_reopen_closed_tab: "重新打开关闭的标签页".into(),
+            menu_clear_recent: "清除列表".into(),
+            menu_delete_file: "将文件移到废纸篓…".into(),
+            workspace_name_invalid: "名称无效。".into(),
+            workspace_name_exists: "已存在同名文件或文件夹。".into(),
+            workspace_default_file_name: "未命名".into(),
+            workspace_default_folder_name: "新建文件夹".into(),
+            workspace_delete_confirm_message: "将“{name}”移到废纸篓？".into(),
+            workspace_delete_dirty_message: "“{name}”已打开且有未保存的更改。请先保存或关闭。".into(),
+            file_operation_failed_title: "文件操作失败".into(),
+            reload_confirm_message: "放弃未保存的更改并从磁盘重新加载“{name}”？".into(),
+            reload_confirm_button: "重新加载".into(),
             menu_edit: "编辑".into(),
             menu_copy_as_plain_text: "复制为纯文本".into(),
             menu_copy_as_html: "复制为 HTML".into(),
@@ -2233,6 +2381,28 @@ impl I18nStrings {
             context_spelling_no_suggestions: "No Suggestions".into(),
             spelling_download_failed_title: "Dictionary Download Failed".into(),
             quick_open_placeholder: "Go to file…".into(),
+            workspace_menu_open: "Open".into(),
+            workspace_menu_new_file: "New File".into(),
+            workspace_menu_new_folder: "New Folder".into(),
+            workspace_menu_rename: "Rename…".into(),
+            workspace_menu_delete: "Move to Trash".into(),
+            workspace_menu_copy_path: "Copy Path".into(),
+            menu_reveal_in_file_manager: "Show in File Manager".into(),
+            menu_reveal_in_sidebar: "Reveal in Sidebar".into(),
+            menu_reload_from_disk: "Reload from Disk".into(),
+            menu_save_all: "Save All".into(),
+            menu_reopen_closed_tab: "Reopen Closed Tab".into(),
+            menu_clear_recent: "Clear Items".into(),
+            menu_delete_file: "Move File to Trash…".into(),
+            workspace_name_invalid: "This name is not valid.".into(),
+            workspace_name_exists: "A file or folder with this name already exists.".into(),
+            workspace_default_file_name: "Untitled".into(),
+            workspace_default_folder_name: "New Folder".into(),
+            workspace_delete_confirm_message: "Move “{name}” to the trash?".into(),
+            workspace_delete_dirty_message: "“{name}” is open with unsaved changes. Save or close it first.".into(),
+            file_operation_failed_title: "File Operation Failed".into(),
+            reload_confirm_message: "Discard unsaved changes and reload “{name}” from disk?".into(),
+            reload_confirm_button: "Reload".into(),
             menu_edit: "Edit".into(),
             menu_copy_as_plain_text: "Copy as Plain Text".into(),
             menu_copy_as_html: "Copy as HTML".into(),
@@ -2556,6 +2726,28 @@ impl I18nStrings {
             context_spelling_no_suggestions: "Keine Vorschläge".into(),
             spelling_download_failed_title: "Wörterbuch konnte nicht geladen werden".into(),
             quick_open_placeholder: "Gehe zu Datei …".into(),
+            workspace_menu_open: "Öffnen".into(),
+            workspace_menu_new_file: "Neue Datei".into(),
+            workspace_menu_new_folder: "Neuer Ordner".into(),
+            workspace_menu_rename: "Umbenennen …".into(),
+            workspace_menu_delete: "In den Papierkorb".into(),
+            workspace_menu_copy_path: "Pfad kopieren".into(),
+            menu_reveal_in_file_manager: "Im Dateimanager zeigen".into(),
+            menu_reveal_in_sidebar: "In Seitenleiste zeigen".into(),
+            menu_reload_from_disk: "Von Festplatte neu laden".into(),
+            menu_save_all: "Alle speichern".into(),
+            menu_reopen_closed_tab: "Geschlossenen Tab wieder öffnen".into(),
+            menu_clear_recent: "Liste leeren".into(),
+            menu_delete_file: "Datei in den Papierkorb …".into(),
+            workspace_name_invalid: "Dieser Name ist ungültig.".into(),
+            workspace_name_exists: "Es gibt bereits eine Datei oder einen Ordner mit diesem Namen.".into(),
+            workspace_default_file_name: "Unbenannt".into(),
+            workspace_default_folder_name: "Neuer Ordner".into(),
+            workspace_delete_confirm_message: "„{name}“ in den Papierkorb verschieben?".into(),
+            workspace_delete_dirty_message: "„{name}“ ist mit ungespeicherten Änderungen geöffnet. Bitte zuerst speichern oder schließen.".into(),
+            file_operation_failed_title: "Dateiaktion fehlgeschlagen".into(),
+            reload_confirm_message: "Ungespeicherte Änderungen verwerfen und „{name}“ neu von der Festplatte laden?".into(),
+            reload_confirm_button: "Neu laden".into(),
             menu_edit: "Bearbeiten".into(),
             menu_copy_as_plain_text: "Als reinen Text kopieren".into(),
             menu_copy_as_html: "Als HTML kopieren".into(),

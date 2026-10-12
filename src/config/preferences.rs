@@ -1799,6 +1799,13 @@ impl PreferencesWindow {
             ShortcutCommand::ToggleSpellcheck => strings.menu_spellcheck.clone(),
             ShortcutCommand::OpenFolder => strings.menu_open_folder.clone(),
             ShortcutCommand::CloseFolder => strings.menu_close_folder.clone(),
+            ShortcutCommand::ReloadFromDisk => strings.menu_reload_from_disk.clone(),
+            ShortcutCommand::SaveAll => strings.menu_save_all.clone(),
+            ShortcutCommand::ReopenClosedTab => strings.menu_reopen_closed_tab.clone(),
+            ShortcutCommand::RevealInFileManager => strings.menu_reveal_in_file_manager.clone(),
+            ShortcutCommand::RevealInSidebar => strings.menu_reveal_in_sidebar.clone(),
+            ShortcutCommand::DeleteCurrentFile => strings.menu_delete_file.clone(),
+            ShortcutCommand::ClearRecentFiles => strings.menu_clear_recent.clone(),
             ShortcutCommand::QuickOpen => strings.preferences_shortcut_quick_open.clone(),
             ShortcutCommand::SearchInWorkspace => {
                 strings.preferences_shortcut_search_workspace.clone()
