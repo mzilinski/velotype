@@ -11,7 +11,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 948 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 959 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -25,7 +25,7 @@ rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurück
 Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-Alles gepusht. Test-Exe: `velotype-integration-14.exe`.
+**Nicht gepusht:** `fix/source-fidelity` und `integration` (Merge); gepusht bis `fix/zoom-line-height`. Test-Exe: `velotype-integration-16.exe`.
 **Pandoc:** auf dem Windows-Rechner installiert (winget, 3.12.1, liegt in `%LOCALAPPDATA%Pandoc`, nicht im PATH; die Ersatzsuche findet es). Die Tests `round_trip_through_installed_pandoc` und `all_formats_and_import_with_images` laufen nur, wo Pandoc installiert ist, sonst überspringen sie sich.
 **PicGo:** nicht installiert (braucht ein Bild-Hosting-Konto); der Upload ist mit einem echten Skript getestet (`upload_script_receives_paths_with_spaces`).
 
@@ -114,6 +114,8 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/pandoc | Export-Menü: Word, ODT, RTF, EPUB, LaTeX, reStructuredText, MediaWiki, Org über Pandoc (`ExportWithPandoc { format }`); Datei → Importieren… (Word/ODT/HTML/LaTeX/EPUB → neuer Tab, Bilder nach `<name>-media`). Pandoc-Suche in PATH und Standardorten, sonst Dialog mit Link auf pandoc.org. `src/export/pandoc.rs`, `src/editor/pandoc.rs` |
 | feat/print | Datei → Drucken… (Alt+Shift+P): HTML-Export mit eingebetteten Bildern in Temp-Datei, Standardbrowser öffnet Druckdialog per Skript. `src/editor/print.rs` |
 | feat/image-upload | Format → Bild → Bild hochladen / Alle lokalen Bilder hochladen; Einstellung „Upload-Befehl“ (Einstellungen → Bild, `editor.image_upload_command`, z. B. `picgo upload`): Bilddateien als Argumente, letzte URL-Zeilen der Ausgabe ersetzen die Links (ein Undo-Schritt). Neue Einfügeoption „Mit dem Upload-Befehl hochladen“ für eingefügte/gezogene Bilder. `src/editor/image_upload.rs` |
+| fix/zoom-line-height | Zeilenhöhen (in rem) wachsen mit dem Zoom (Fenster-rem = 16 px × Zoom; vorher überlappten Zeilen bei 200 %). Quellcode-Modus nutzt die Code-Schrift statt der Fließtextschrift |
+| fix/source-fidelity | **Originaltreue beim Speichern:** Vorher schrieb Velotype jede Datei beim Speichern komplett neu (Leerzeilen zwischen Überschriften, eingerückter Code → Fences, `~`, `` ` `` …; geerbt von upstream). Jetzt meldet der Parser pro Root-Region die Originalzeilen (`build_root_blocks_with_regions`, `SourceRegion`), `src/editor/source_fidelity.rs` sucht deren normalisierten Text im Dokument; beim Speichern (`document_text_for_disk`) und beim Wechsel in den Quellcode-Modus werden per Zeilen-Diff (Crate `similar`) unveränderte Regionen und Leerzeilen aus dem Original geschrieben. Undo und Source-Mapping arbeiten weiter auf dem normalisierten Text. Geprüft an 790 echten .md-Dateien: 777 byte-gleich. Dazu Fix: Inline-Parser lief bei vielen nicht schließbaren `*`-Öffnern exponentiell (mkdocs-Glossar mit `*[ABK]: …` fror Velotype ein; auch upstream) |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
@@ -173,6 +175,9 @@ Velotype schon beim Tippen (Durchgestrichen, `==Markierung==`, Hoch-/Tiefgestell
 Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kürzeln~~ (erledigt), ~~2. Zwischenablage~~ (erledigt; Bild kopieren fehlt noch),
 ~~3. Dateibaum und Dateiaktionen~~ (erledigt; „Verschieben nach“, „Eigenschaften“, Kodierung, Autosave fehlen), ~~4. Auswahl- und Löschbefehle~~ (erledigt), ~~5. Ansicht (Zoom, Vollbild, Immer im Vordergrund)~~ (erledigt; Werkzeugleiste und Artikel-Liste fehlen),
 ~~6. Typografie/Zeilenenden/Emoji~~ (erledigt; Typora-Modus „beim Rendern umwandeln“ und Unicode-Satzzeichen-Mapping fehlen), ~~7. Pandoc, Drucken, Bild-Upload~~ (erledigt; „Export mit vorherigen Einstellungen“, HTML ohne Styles, Bild-Export, S3-Upload fehlen).
+
+**Offene Folgepunkte Originaltreue:** Der Inline-Parser liest manche Konstrukte nach dem ersten Rendern anders als beim Laden (mehrzeiliger Linktext mit `_` in Listen wird zu `*`, `*[Text][ref]*` → `[*Text*][ref]`), diese Regionen werden dann normalisiert gespeichert; bearbeitete Absätze bekommen weiter `~`/`` ` ``-Escapes; eingerückter Code wird beim Bearbeiten zu einem Fence mit überflüssiger Leerzeile. Gemischte Zeilenenden werden auf die Mehrheit vereinheitlicht (wie Typora).
+**Offene Entscheidung (Malte):** Zoom-Kürzel. Strg+- ist Typoras „Überschriftenebene verringern“, Strg++ zoomt (Zusatzbelegung). Vorschlag: Zoom wie im Browser auf Strg++/Strg+-/Strg+0, Überschriftenebene anders belegen. Außerdem Quellcode-Modus fehlt im Menü Ansicht; Vorschlag Strg+/ dafür und Strg+Tab für Tab-Wechsel (wie Typora).
 
 Nach Punkt 1 noch offen bzw. abweichend: Strg+T bleibt „Neuer Tab“ (Typora: Tabelle; Tabelle auf macOS Cmd+Alt+T, unter Windows ohne Standardkürzel). Absatz davor/danach einfügen fehlt. Kein Häkchen-Status im Menü für den aktuellen Blocktyp. Strg+Shift+[ / ] und Alt+Shift+5 sind unter Windows nicht von Hand geprüft (Tastenlayout).
 
