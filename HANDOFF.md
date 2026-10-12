@@ -23,7 +23,8 @@ Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der
 Ursache des SIGSEGV: der Upstream-Test `editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores`
 baute als einziger Fenster-Test seinen `TestAppContext::single()` von Hand und endete mit `cx.quit()`; jetzt `#[gpui::test]`.
 Der Fix liegt auf `fix/unix-test-segfault` und ist in `integration` gemergt. `fix/ci-segfault` (einzeln laufende Tests) war nur Diagnose
-und wird nicht gemergt. **Nicht gepusht:** `fix/unix-test-segfault` und `integration` (Merge des Fixes).
+und wird nicht gemergt.
+Alles gepusht (Stand 2026-10-12).
 
 ## Mac-Runde
 
