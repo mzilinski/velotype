@@ -24,6 +24,7 @@ use crate::components::{
     TableAxisHighlight, TableAxisKind, TableAxisMarker, TableCellPosition, TableColumnAlignment,
     TableData, TableRuntime, UndoCaptureKind, serialize_table_cell_markdown,
 };
+mod articles;
 mod autosave;
 mod clipboard_commands;
 mod close;
@@ -59,6 +60,7 @@ mod table_edit;
 mod tabs;
 #[cfg(test)]
 mod tests;
+mod toolbar;
 mod tree;
 mod update;
 mod window_state;

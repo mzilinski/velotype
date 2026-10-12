@@ -137,6 +137,8 @@ pub(crate) struct WritingPreferences {
     pub(crate) smart_dashes: bool,
     /// Save documents that have a file shortly after each change.
     pub(crate) autosave: bool,
+    /// Show the formatting toolbar above the document (View > Toolbar).
+    pub(crate) toolbar: bool,
 }
 
 /// Zoom levels View > Zoom In/Out steps through, in percent.
@@ -178,6 +180,7 @@ impl Default for WritingPreferences {
             smart_quotes: false,
             smart_dashes: false,
             autosave: false,
+            toolbar: false,
         }
     }
 }
@@ -449,6 +452,7 @@ struct EditorPreferencesFile {
     smart_quotes: bool,
     smart_dashes: bool,
     autosave: bool,
+    toolbar: bool,
 }
 
 #[derive(Serialize)]
@@ -517,6 +521,7 @@ impl From<&AppPreferences> for PreferencesFile {
                 smart_quotes: value.writing.smart_quotes,
                 smart_dashes: value.writing.smart_dashes,
                 autosave: value.writing.autosave,
+                toolbar: value.writing.toolbar,
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
             keybindings: normalize_shortcut_config(&value.keybindings),
@@ -642,6 +647,7 @@ fn app_preferences_from_toml_value(
         smart_quotes: editor_flag("smart_quotes", default_writing.smart_quotes),
         smart_dashes: editor_flag("smart_dashes", default_writing.smart_dashes),
         autosave: editor_flag("autosave", default_writing.autosave),
+        toolbar: editor_flag("toolbar", default_writing.toolbar),
     };
 
     let status_bar = value
@@ -1905,7 +1911,11 @@ impl PreferencesWindow {
             ShortcutCommand::SetLineEndingCrlf => strings.menu_line_ending_crlf.clone(),
             ShortcutCommand::SetLineEndingLf => strings.menu_line_ending_lf.clone(),
             ShortcutCommand::ToggleFinalNewline => strings.menu_final_newline.clone(),
+            ShortcutCommand::ShowFileTree => strings.workspace_tab_files.clone(),
+            ShortcutCommand::ShowOutline => strings.workspace_tab_outline.clone(),
+            ShortcutCommand::ShowArticles => strings.workspace_tab_articles.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
+            ShortcutCommand::ToggleToolbar => strings.menu_toolbar.clone(),
             ShortcutCommand::ExportAgain => strings.menu_export_again.clone(),
             ShortcutCommand::CopyImage => strings.menu_copy_image.clone(),
             ShortcutCommand::SetImageRoot => strings.menu_set_image_root.clone(),
@@ -3119,6 +3129,7 @@ mod tests {
                 smart_quotes: true,
                 smart_dashes: true,
                 autosave: true,
+                toolbar: true,
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             image_upload_command: "picgo upload".into(),
@@ -3160,6 +3171,7 @@ mod tests {
         assert!(text.contains("smart_quotes = true"));
         assert!(text.contains("smart_dashes = true"));
         assert!(text.contains("autosave = true"));
+        assert!(text.contains("toolbar = true"));
         assert!(text.contains("image_paste_behavior = \"copy_to_assets_folder\""));
         assert!(text.contains("image_upload_command = \"picgo upload\""));
         assert!(text.contains("[fonts]"));

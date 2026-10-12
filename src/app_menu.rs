@@ -677,6 +677,8 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
         });
     } else if action.as_any().is::<ToggleAutoPair>() {
         toggle_writing_aid(cx, |writing| writing.auto_pair = !writing.auto_pair);
+    } else if action.as_any().is::<crate::components::ToggleToolbar>() {
+        toggle_writing_aid(cx, |writing| writing.toolbar = !writing.toolbar);
     } else if action.as_any().is::<crate::components::ToggleAutosave>() {
         toggle_writing_aid(cx, |writing| writing.autosave = !writing.autosave);
     } else if action.as_any().is::<ToggleSmartQuotes>() {
@@ -1163,6 +1165,9 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
     any.is::<crate::components::OpenEmojiPicker>()
+        || any.is::<crate::components::ShowFileTree>()
+        || any.is::<crate::components::ShowOutline>()
+        || any.is::<crate::components::ShowArticles>()
         || any.is::<crate::components::ToggleViewMode>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
@@ -1703,6 +1708,19 @@ fn build_menus_with_view(
                     ),
                     MenuItem::separator(),
                     MenuItem::action(
+                        strings.workspace_tab_outline.clone(),
+                        crate::components::ShowOutline,
+                    ),
+                    MenuItem::action(
+                        strings.workspace_tab_articles.clone(),
+                        crate::components::ShowArticles,
+                    ),
+                    MenuItem::action(
+                        strings.workspace_tab_files.clone(),
+                        crate::components::ShowFileTree,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
                         checked(&strings.menu_focus_mode, writing.focus_mode),
                         ToggleFocusMode,
                     ),
@@ -1717,6 +1735,10 @@ fn build_menus_with_view(
                     MenuItem::action(
                         checked(&strings.menu_status_bar, view.status_bar),
                         ToggleStatusBar,
+                    ),
+                    MenuItem::action(
+                        checked(&strings.menu_toolbar, writing.toolbar),
+                        crate::components::ToggleToolbar,
                     ),
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_toggle_full_screen.clone(), ToggleFullScreen),
@@ -2045,6 +2067,9 @@ pub(crate) fn init(cx: &mut App) {
     cx.on_action(|_: &ToggleAutoPair, cx| dispatch_menu_action(&ToggleAutoPair, cx));
     cx.on_action(|_: &crate::components::ToggleAutosave, cx| {
         dispatch_menu_action(&crate::components::ToggleAutosave, cx)
+    });
+    cx.on_action(|_: &crate::components::ToggleToolbar, cx| {
+        dispatch_menu_action(&crate::components::ToggleToolbar, cx)
     });
     cx.on_action(|_: &ToggleSmartQuotes, cx| dispatch_menu_action(&ToggleSmartQuotes, cx));
     cx.on_action(|_: &ToggleSmartDashes, cx| dispatch_menu_action(&ToggleSmartDashes, cx));

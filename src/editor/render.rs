@@ -2132,6 +2132,9 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_print_document))
             .on_action(cx.listener(Self::on_show_backups))
             .on_action(cx.listener(Self::on_export_again))
+            .on_action(cx.listener(Self::on_show_file_tree))
+            .on_action(cx.listener(Self::on_show_outline))
+            .on_action(cx.listener(Self::on_show_articles))
             .on_action(cx.listener(Self::on_move_document))
             .on_action(cx.listener(Self::on_insert_image))
             .on_action(cx.listener(Self::on_copy_image))
@@ -2240,7 +2243,27 @@ impl Render for Editor {
         } else {
             main_content
         };
-        let base = base.child(main_content.child(content_area));
+        // With the toolbar the document column is the toolbar above the content.
+        let document_column = match self.render_toolbar(&theme, &strings, window, cx) {
+            Some(toolbar) => div()
+                .flex_1()
+                .min_w(px(0.0))
+                .h_full()
+                .flex()
+                .flex_col()
+                .child(toolbar)
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h(px(0.0))
+                        .relative()
+                        .flex()
+                        .child(content_area),
+                )
+                .into_any_element(),
+            None => content_area.into_any_element(),
+        };
+        let base = base.child(main_content.child(document_column));
         let base = if let Some(tab_strip) = tab_strip {
             base.child(tab_strip)
         } else {

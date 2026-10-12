@@ -25,6 +25,7 @@ pub(super) enum WorkspaceTab {
     #[default]
     Files,
     Outline,
+    Articles,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +68,9 @@ pub(super) struct WorkspaceState {
     /// Open right-click menu of the file tree and name dialog, if any.
     pub(super) tree_menu: Option<super::workspace_actions::TreeMenu>,
     pub(super) name_dialog: Option<super::workspace_actions::NameDialog>,
+    /// Articles tab: the folder's documents, newest first (None = not read).
+    pub(super) articles: Option<Vec<super::articles::Article>>,
+    pub(super) articles_task: Option<Task<()>>,
 }
 
 impl Editor {
@@ -107,6 +111,8 @@ impl Editor {
         self.workspace.root = None;
         self.workspace.file_tree = None;
         self.workspace.file_error = None;
+        self.workspace.articles = None;
+        self.workspace.articles_task = None;
         if self.workspace.is_open {
             self.sync_workspace_models(cx);
         }
@@ -116,6 +122,49 @@ impl Editor {
     fn sync_workspace_models(&mut self, cx: &mut Context<Self>) {
         self.sync_workspace_file_tree();
         self.sync_workspace_outline(cx);
+        if self.workspace.active_tab == WorkspaceTab::Articles {
+            self.sync_workspace_articles(cx);
+        }
+    }
+
+    /// Opens the sidebar on `tab` (View > File Tree / Outline / Articles).
+    pub(super) fn show_workspace_tab(
+        &mut self,
+        tab: WorkspaceTab,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.workspace.is_open {
+            self.toggle_workspace_drawer(window, cx);
+        }
+        self.set_workspace_tab(tab, cx);
+    }
+
+    pub(super) fn on_show_file_tree(
+        &mut self,
+        _: &crate::components::ShowFileTree,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_workspace_tab(WorkspaceTab::Files, window, cx);
+    }
+
+    pub(super) fn on_show_outline(
+        &mut self,
+        _: &crate::components::ShowOutline,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_workspace_tab(WorkspaceTab::Outline, window, cx);
+    }
+
+    pub(super) fn on_show_articles(
+        &mut self,
+        _: &crate::components::ShowArticles,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_workspace_tab(WorkspaceTab::Articles, window, cx);
     }
 
     /// The opened folder, or else the folder of the current file.
@@ -348,6 +397,7 @@ impl Editor {
             let tab_id = match tab {
                 WorkspaceTab::Files => "workspace-tab-files",
                 WorkspaceTab::Outline => "workspace-tab-outline",
+                WorkspaceTab::Articles => "workspace-tab-articles",
             };
             div()
                 .id(tab_id)
@@ -381,6 +431,7 @@ impl Editor {
         let body = match self.workspace.active_tab {
             WorkspaceTab::Files => self.render_workspace_files_tree(theme, strings, &editor),
             WorkspaceTab::Outline => self.render_workspace_outline_tree(theme, strings, &editor),
+            WorkspaceTab::Articles => self.render_workspace_articles(theme, strings, &editor),
         };
 
         Some(
@@ -412,6 +463,11 @@ impl Editor {
                             strings.workspace_tab_outline.clone(),
                             WorkspaceTab::Outline,
                             self.workspace.active_tab == WorkspaceTab::Outline,
+                        ))
+                        .child(tab(
+                            strings.workspace_tab_articles.clone(),
+                            WorkspaceTab::Articles,
+                            self.workspace.active_tab == WorkspaceTab::Articles,
                         )),
                 )
                 .child(
@@ -537,7 +593,7 @@ impl Editor {
             .into_any_element()
     }
 
-    fn render_workspace_empty_state(
+    pub(super) fn render_workspace_empty_state(
         &self,
         title: &str,
         message: &str,
