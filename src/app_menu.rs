@@ -1163,6 +1163,9 @@ fn is_document_command_action(action: &dyn Action) -> bool {
     use crate::components::{SetLineEndingCrlf, SetLineEndingLf, ToggleFinalNewline};
     let any = action.as_any();
     any.is::<crate::components::OpenEmojiPicker>()
+        || any.is::<crate::components::ShowFileTree>()
+        || any.is::<crate::components::ShowOutline>()
+        || any.is::<crate::components::ShowArticles>()
         || any.is::<crate::components::ToggleViewMode>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
@@ -1700,6 +1703,19 @@ fn build_menus_with_view(
                     MenuItem::action(
                         checked(&strings.menu_source_mode, view.source_mode),
                         crate::components::ToggleViewMode,
+                    ),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        strings.workspace_tab_outline.clone(),
+                        crate::components::ShowOutline,
+                    ),
+                    MenuItem::action(
+                        strings.workspace_tab_articles.clone(),
+                        crate::components::ShowArticles,
+                    ),
+                    MenuItem::action(
+                        strings.workspace_tab_files.clone(),
+                        crate::components::ShowFileTree,
                     ),
                     MenuItem::separator(),
                     MenuItem::action(
