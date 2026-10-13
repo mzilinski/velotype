@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::Result;
 use gpui::*;
 
 use super::{Editor, ViewMode};
@@ -115,8 +115,7 @@ impl Editor {
         path: &Path,
         cx: &mut Context<Self>,
     ) -> Result<()> {
-        let markdown = std::fs::read_to_string(path)
-            .with_context(|| format!("failed to read '{}'", path.display()))?;
+        let markdown = crate::text_file::read_text_file(path)?;
         self.replace_document_from_markdown(markdown, Some(path.to_path_buf()), cx);
         crate::app_menu::record_recent_file_from_editor(path, cx);
         Ok(())

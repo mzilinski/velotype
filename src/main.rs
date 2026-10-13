@@ -32,6 +32,7 @@ mod i18n;
 mod net;
 mod perf_log;
 mod spellcheck;
+mod text_file;
 mod theme;
 mod window_chrome;
 mod window_pin;
@@ -54,7 +55,7 @@ fn open_startup_document(cx: &mut App, startup_open: config::StartupOpenPreferen
     if startup_open == config::StartupOpenPreference::LastOpenedFile
         && let Some(path) = config::first_existing_recent_markdown_file()
     {
-        match std::fs::read_to_string(&path) {
+        match text_file::read_text_file(&path) {
             Ok(markdown) => {
                 open_editor_window(cx, markdown, Some(path));
                 return;
@@ -251,6 +252,7 @@ fn main() {
         }
 
         let mut startup_window: Option<WindowHandle<editor::EditorWindow>> = None;
+        let mut imports = Vec::new();
         for path in &input_paths {
             let absolute_path = if path.is_absolute() {
                 path.clone()
@@ -261,19 +263,32 @@ fn main() {
                 }
             };
 
-            let markdown = match std::fs::read_to_string(&absolute_path) {
+            if text_file::is_import_document(&absolute_path) {
+                imports.push(absolute_path);
+                continue;
+            }
+            let markdown = match text_file::read_text_file(&absolute_path) {
                 Ok(content) => {
                     if let Err(err) = config::record_recent_file(&absolute_path) {
                         eprintln!("failed to update recent file history: {err}");
                     }
                     content
                 }
-                Err(err) => {
+                // A file that does not exist yet opens empty and is created
+                // on save.
+                Err(err) if !absolute_path.exists() => {
                     eprintln!(
-                        "failed to read '{}': {err}. opened as empty document.",
+                        "failed to read '{}': {err:#}. opened as empty document.",
                         absolute_path.display()
                     );
                     String::new()
+                }
+                // Never bind an existing file that could not be read to an
+                // empty document: saving it would overwrite the file.
+                Err(err) => {
+                    eprintln!("failed to read '{}': {err:#}", absolute_path.display());
+                    perf_log::note(format!("Start: {err:#}"));
+                    continue;
                 }
             };
             match startup_window {
@@ -286,6 +301,12 @@ fn main() {
                     startup_window = Some(open_editor_window(cx, markdown, Some(absolute_path)))
                 }
             }
+        }
+        if startup_window.is_none() {
+            open_editor_window(cx, String::new(), None);
+        }
+        for path in imports {
+            app_menu::import_document_in_tab(cx, path);
         }
         app_menu::restore_session_drafts(cx);
         app_menu::install_menus(cx);

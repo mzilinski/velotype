@@ -252,8 +252,12 @@ impl EditorWindow {
         cx: &mut Context<Self>,
     ) {
         for path in paths {
+            if crate::text_file::is_import_document(&path) {
+                crate::app_menu::import_document_in_tab(cx, path);
+                continue;
+            }
             let read = crate::perf_log::Span::new(format!("Datei lesen: {}", path.display()));
-            let content = std::fs::read_to_string(&path);
+            let content = crate::text_file::read_text_file(&path);
             drop(read);
             match content {
                 Ok(markdown) => {
@@ -269,7 +273,7 @@ impl EditorWindow {
                 }
                 Err(err) => {
                     let strings = cx.global::<I18nManager>().strings().clone();
-                    let detail = format!("failed to read '{}': {err}", path.display());
+                    let detail = crate::app_menu::open_error_detail(&err, &path, cx);
                     let buttons = [strings.info_dialog_ok.as_str()];
                     let _ = window.prompt(
                         PromptLevel::Critical,
