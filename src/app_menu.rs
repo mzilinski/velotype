@@ -188,9 +188,12 @@ pub(crate) fn restore_session_drafts(cx: &mut App) {
 
 /// Reads `path` and opens it in a tab of the current editor window.
 pub(crate) fn open_file_in_tab(cx: &mut App, path: &Path) -> anyhow::Result<()> {
+    if crate::text_file::is_import_document(path) {
+        import_document_in_tab(cx, path.to_path_buf());
+        return Ok(());
+    }
     let read = crate::perf_log::Span::new(format!("Datei lesen: {}", path.display()));
-    let markdown = std::fs::read_to_string(path)
-        .with_context(|| format!("failed to read '{}'", path.display()))?;
+    let markdown = crate::text_file::read_text_file(path)?;
     drop(read);
     crate::perf_log::note(format!("  {} Bytes", markdown.len()));
     let open = crate::perf_log::Span::new("Dokument in Tab öffnen");
@@ -198,6 +201,66 @@ pub(crate) fn open_file_in_tab(cx: &mut App, path: &Path) -> anyhow::Result<()> 
     drop(open);
     record_recent_file_and_refresh(path, cx);
     Ok(())
+}
+
+/// Opens a Word, OpenDocument, RTF or EPUB file as a new untitled tab,
+/// converted to Markdown by Pandoc in the background.
+pub(crate) fn import_document_in_tab(cx: &mut App, path: PathBuf) {
+    crate::perf_log::step(format!("Import mit Pandoc: {}", path.display()));
+    let error_window = cx.active_window();
+    let strings = cx.global::<I18nManager>().strings().clone();
+    let Some(pandoc) = crate::export::pandoc::find_pandoc() else {
+        show_window_prompt(
+            error_window,
+            &strings.pandoc_missing_title,
+            &strings.pandoc_missing_message,
+            cx,
+        );
+        return;
+    };
+    let import = cx.background_executor().spawn(async move {
+        let media_dir = crate::export::pandoc::media_dir_for(&path);
+        crate::export::pandoc::import(&pandoc, &path, &media_dir)
+            .with_context(|| format!("failed to import '{}'", path.display()))
+    });
+    cx.spawn(async move |cx| {
+        let result = import.await;
+        let _ = cx.update(|cx| match result {
+            Ok(markdown) => {
+                crate::perf_log::note("  importiert");
+                open_markdown_in_current_window(cx, markdown, None);
+            }
+            Err(err) => {
+                crate::perf_log::note(format!("  Fehler: {err:#}"));
+                show_window_prompt(
+                    error_window,
+                    &strings.open_failed_title,
+                    &format!("{err:#}"),
+                    cx,
+                );
+            }
+        });
+    })
+    .detach();
+}
+
+/// The message for a file that could not be opened.
+pub(crate) fn open_error_detail(err: &anyhow::Error, path: &Path, cx: &App) -> String {
+    if err
+        .chain()
+        .any(|cause| cause.is::<crate::text_file::NotText>())
+    {
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.display().to_string());
+        cx.global::<I18nManager>()
+            .strings()
+            .open_not_text_message
+            .replace("{file}", &name)
+    } else {
+        format!("{err:#}")
+    }
 }
 
 fn record_recent_file_and_refresh(path: &Path, cx: &mut App) {
@@ -1957,7 +2020,8 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
                             .strings()
                             .open_failed_title
                             .clone();
-                        show_window_prompt(error_window, &title, &err.to_string(), cx);
+                        let detail = open_error_detail(&err, &path, cx);
+                        show_window_prompt(error_window, &title, &detail, cx);
                     } else {
                         crate::perf_log::note("  geöffnet");
                     }

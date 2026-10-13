@@ -150,7 +150,8 @@ impl Editor {
                     self.open_workspace_file(menu.target, window, cx);
                 }
             }
-            TreeMenuAction::OpenInNewWindow => match std::fs::read_to_string(&menu.target) {
+            TreeMenuAction::OpenInNewWindow => match crate::text_file::read_text_file(&menu.target)
+            {
                 Ok(markdown) => {
                     let path = menu.target.clone();
                     cx.defer(move |cx| {

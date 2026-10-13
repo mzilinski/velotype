@@ -472,6 +472,7 @@ pub struct I18nStrings {
     pub workspace_empty_files: String,
     pub workspace_loading_files: String,
     pub workspace_tree_truncated: String,
+    pub open_not_text_message: String,
     /// Message shown when the current document has no headings.
     pub workspace_empty_outline: String,
     /// Title shown when the workspace file tree cannot be scanned.
@@ -930,6 +931,7 @@ struct I18nStringsDe {
     workspace_empty_files: Option<String>,
     workspace_loading_files: Option<String>,
     workspace_tree_truncated: Option<String>,
+    open_not_text_message: Option<String>,
     workspace_empty_outline: Option<String>,
     workspace_scan_failed_title: Option<String>,
     open_link_title: Option<String>,
@@ -1340,6 +1342,7 @@ const I18N_STRING_KEYS: &[&str] = &[
     "workspace_empty_files",
     "workspace_loading_files",
     "workspace_tree_truncated",
+    "open_not_text_message",
     "workspace_empty_outline",
     "workspace_scan_failed_title",
     "open_link_title",
@@ -2260,6 +2263,9 @@ impl I18nStringsDe {
             workspace_tree_truncated: self
                 .workspace_tree_truncated
                 .unwrap_or(defaults.workspace_tree_truncated),
+            open_not_text_message: self
+                .open_not_text_message
+                .unwrap_or(defaults.open_not_text_message),
             workspace_empty_outline: self
                 .workspace_empty_outline
                 .unwrap_or(defaults.workspace_empty_outline),
@@ -2761,6 +2767,7 @@ impl I18nStrings {
             workspace_empty_files: "没有可显示的 Markdown 文件".into(),
             workspace_loading_files: "正在读取文件夹…".into(),
             workspace_tree_truncated: "文件夹过大：未显示全部文件。请打开较小的文件夹以查看全部。".into(),
+            open_not_text_message: "“{file}”不是文本或 Markdown 文件，无法打开。Word、OpenDocument、RTF 和 EPUB 文件可通过 Pandoc 打开（文件 → 导入…）。".into(),
             workspace_empty_outline: "当前文档没有标题".into(),
             workspace_scan_failed_title: "无法读取工作区".into(),
             open_link_title: "打开链接？".into(),
@@ -3200,6 +3207,7 @@ impl I18nStrings {
             workspace_empty_files: "No Markdown files to show".into(),
             workspace_loading_files: "Reading folder …".into(),
             workspace_tree_truncated: "Very large folder: not every file is shown. Open a smaller folder to see all of them.".into(),
+            open_not_text_message: "“{file}” is not a text or Markdown file and cannot be opened. Word, OpenDocument, RTF and EPUB files open through Pandoc (File → Import…).".into(),
             workspace_empty_outline: "This document has no headings".into(),
             workspace_scan_failed_title: "Unable to Read Workspace".into(),
             open_link_title: "Open link?".into(),
@@ -3633,6 +3641,7 @@ impl I18nStrings {
             workspace_empty_files: "Keine Markdown-Dateien vorhanden".into(),
             workspace_loading_files: "Ordner wird gelesen …".into(),
             workspace_tree_truncated: "Sehr großer Ordner: Nicht alle Dateien werden angezeigt. Öffne einen kleineren Ordner, um alle zu sehen.".into(),
+            open_not_text_message: "„{file}“ ist keine Text- oder Markdown-Datei und kann nicht geöffnet werden. Word-, OpenDocument-, RTF- und EPUB-Dateien öffnen sich über Pandoc (Datei → Importieren…).".into(),
             workspace_empty_outline: "Dieses Dokument hat keine Überschriften".into(),
             workspace_scan_failed_title: "Arbeitsbereich konnte nicht gelesen werden".into(),
             open_link_title: "Link öffnen?".into(),
