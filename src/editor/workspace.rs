@@ -1,8 +1,10 @@
 //! Lightweight workspace panel state, file-tree scanning, and outline parsing.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context as _, Result};
 use gpui::prelude::FluentBuilder as _;
@@ -19,6 +21,14 @@ const WORKSPACE_PANEL_MIN_WIDTH: f32 = 240.0;
 const WORKSPACE_PANEL_MAX_WIDTH: f32 = 360.0;
 const WORKSPACE_NODE_HEIGHT: f32 = 28.0;
 const WORKSPACE_NODE_INDENT: f32 = 18.0;
+/// Folder entries read for one file tree at most, so a huge folder (a home
+/// folder, a whole drive) cannot keep the scan busy for minutes.
+const WORKSPACE_SCAN_LIMIT: usize = 20_000;
+/// A cached tree older than this is read again (in the background) when a tab
+/// starts showing it or the drawer opens.
+const WORKSPACE_TREE_MAX_AGE: Duration = Duration::from_secs(10);
+/// Roots whose trees are kept at most.
+const WORKSPACE_TREE_CACHE_SIZE: usize = 16;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) enum WorkspaceTab {
@@ -59,8 +69,14 @@ pub(super) struct WorkspaceState {
     /// Options of Search in Folder, kept between palette openings.
     pub(super) search_options: super::workspace_search::SearchOptions,
     pub(super) root: Option<PathBuf>,
-    file_tree: Option<WorkspaceTreeNode>,
+    /// The root's tree from [`WorkspaceTreeCache`]; None while it is read.
+    file_tree: Option<Arc<WorkspaceTreeNode>>,
     file_error: Option<String>,
+    /// The tree stopped at [`WORKSPACE_SCAN_LIMIT`] entries.
+    tree_truncated: bool,
+    /// The cached tree was checked for age since the root changed or the
+    /// drawer opened.
+    tree_checked: bool,
     outline_tree: Vec<WorkspaceTreeNode>,
     outline_source: Option<String>,
     pub(super) expanded: HashSet<String>,
@@ -81,6 +97,7 @@ impl Editor {
             self.close_menu_bar(cx);
             self.dismiss_contextual_overlays(cx);
             self.workspace.is_open = true;
+            self.workspace.tree_checked = false;
             self.sync_workspace_models(cx);
             window.activate_window();
         }
@@ -108,6 +125,15 @@ impl Editor {
 
     /// Drops the cached file tree so the drawer rescans the disk.
     pub(super) fn invalidate_workspace_tree(&mut self, cx: &mut Context<Self>) {
+        if let Some(root) = self.workspace_root() {
+            forget_workspace_tree(&root, cx);
+        }
+        self.reset_workspace_tree(cx);
+    }
+
+    /// Lets this tab pick up its root's tree again, after the cache entry was
+    /// dropped (see [`forget_workspace_tree`]).
+    pub(super) fn reset_workspace_tree(&mut self, cx: &mut Context<Self>) {
         self.workspace.root = None;
         self.workspace.file_tree = None;
         self.workspace.file_error = None;
@@ -120,8 +146,8 @@ impl Editor {
     }
 
     fn sync_workspace_models(&mut self, cx: &mut Context<Self>) {
-        self.sync_workspace_file_tree();
-        self.sync_workspace_outline(cx);
+        self.sync_workspace_file_tree(cx);
+        self.sync_workspace_outline();
         if self.workspace.active_tab == WorkspaceTab::Articles {
             self.sync_workspace_articles(cx);
         }
@@ -165,6 +191,20 @@ impl Editor {
         cx: &mut Context<Self>,
     ) {
         self.show_workspace_tab(WorkspaceTab::Articles, window, cx);
+    }
+
+    /// Names in the drawer's file tree below the root, or None while it is
+    /// read.
+    #[cfg(test)]
+    pub(crate) fn workspace_tree_labels(&mut self, cx: &mut Context<Self>) -> Option<Vec<String>> {
+        self.sync_workspace_models(cx);
+        let tree = self.workspace.file_tree.as_ref()?;
+        Some(
+            tree.children
+                .iter()
+                .map(|node| node.label.clone())
+                .collect(),
+        )
     }
 
     /// The opened folder, or else the folder of the current file.
@@ -255,19 +295,25 @@ impl Editor {
         }
     }
 
-    fn sync_workspace_file_tree(&mut self) {
+    /// Shows the root's tree from the shared cache, which reads it in the
+    /// background when needed. Runs on every render of the drawer, so it does
+    /// no disk access itself.
+    fn sync_workspace_file_tree(&mut self, cx: &mut Context<Self>) {
         let next_root = self.workspace_root();
-        if self.workspace.root == next_root && self.workspace.file_tree.is_some() {
-            self.workspace.selected = self
-                .file_path
-                .as_ref()
-                .map(|path| WorkspaceSelection::File(path.clone()));
-            return;
+        if self.workspace.root != next_root {
+            self.workspace.root = next_root.clone();
+            self.workspace.file_tree = None;
+            self.workspace.file_error = None;
+            self.workspace.tree_truncated = false;
+            self.workspace.tree_checked = false;
+            if let Some(root) = next_root.as_deref() {
+                self.workspace.expanded.insert(file_node_id(root));
+            }
         }
-
-        self.workspace.root = next_root.clone();
-        self.workspace.file_tree = None;
-        self.workspace.file_error = None;
+        self.workspace.selected = self
+            .file_path
+            .as_ref()
+            .map(|path| WorkspaceSelection::File(path.clone()));
 
         let Some(root) = next_root else {
             self.workspace.selected = None;
@@ -281,27 +327,37 @@ impl Editor {
             return;
         }
 
-        match scan_workspace_dir(&root) {
-            Ok(tree) => {
-                self.workspace.expanded.insert(tree.id.clone());
-                self.workspace.file_tree = Some(tree);
-                self.workspace.selected = self
-                    .file_path
+        let revalidate = !std::mem::replace(&mut self.workspace.tree_checked, true);
+        match workspace_tree(&root, revalidate, cx) {
+            Some(Ok(scanned)) => {
+                let current = self
+                    .workspace
+                    .file_tree
                     .as_ref()
-                    .map(|path| WorkspaceSelection::File(path.clone()));
+                    .is_some_and(|tree| Arc::ptr_eq(tree, &scanned.root));
+                if !current {
+                    self.workspace.file_tree = Some(scanned.root);
+                    self.workspace.tree_truncated = scanned.truncated;
+                    self.workspace.file_error = None;
+                }
             }
-            Err(err) => {
-                self.workspace.file_error = Some(err.to_string());
+            Some(Err(error)) => {
+                self.workspace.file_tree = None;
+                self.workspace.file_error = Some(error);
             }
+            None => {}
         }
     }
 
-    fn sync_workspace_outline(&mut self, cx: &mut Context<Self>) {
-        let source = self.serialized_document_text(cx);
-        if self.workspace.outline_source.as_deref() == Some(source.as_str()) {
+    /// Rebuilds the outline when the document changed. Reuses the source the
+    /// editor keeps after every edit instead of serializing the document on
+    /// each render of the drawer.
+    fn sync_workspace_outline(&mut self) {
+        if self.workspace.outline_source.as_deref() == Some(self.last_stable_source_text.as_str()) {
             return;
         }
 
+        let source = self.last_stable_source_text.clone();
         let outline = build_outline_tree(&source);
         prune_outline_state(&mut self.workspace, &outline);
         self.workspace.outline_tree = outline;
@@ -563,15 +619,25 @@ impl Editor {
             );
         }
 
-        let Some(root) = self.workspace.file_tree.as_ref() else {
-            return self.render_workspace_empty_state("", &strings.workspace_empty_files, theme);
+        let Some(root) = self.workspace.file_tree.as_deref() else {
+            return self.render_workspace_empty_state("", &strings.workspace_loading_files, theme);
         };
+
+        let truncated = self.workspace.tree_truncated.then(|| {
+            div()
+                .px(px(8.0))
+                .py(px(6.0))
+                .text_size(px(theme.typography.text_size * 0.8))
+                .text_color(theme.colors.dialog_muted)
+                .child(strings.workspace_tree_truncated.clone())
+        });
 
         div()
             .w_full()
             .flex()
             .flex_col()
             .children(self.render_workspace_nodes(std::slice::from_ref(root), 0, theme, editor))
+            .children(truncated)
             .into_any_element()
     }
 
@@ -789,11 +855,138 @@ impl Editor {
     }
 }
 
-fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
+/// A file tree read from disk.
+#[derive(Clone)]
+pub(super) struct ScannedTree {
+    root: Arc<WorkspaceTreeNode>,
+    truncated: bool,
+}
+
+enum CachedTree {
+    /// Being read; the number tells this scan from a later one.
+    Scanning(u64),
+    Ready {
+        tree: Result<ScannedTree, String>,
+        scanned_at: Instant,
+        /// A newer read is running; the old tree is shown meanwhile.
+        rescan: Option<u64>,
+    },
+}
+
+/// File trees by root, shared by all tabs and windows: a new tab shows the
+/// tree at once, and folders are read once in the background instead of on
+/// the UI thread for every tab.
+#[derive(Default)]
+pub(crate) struct WorkspaceTreeCache {
+    entries: HashMap<PathBuf, CachedTree>,
+    next_scan: u64,
+}
+
+impl Global for WorkspaceTreeCache {}
+
+/// The tree of `root`, or None while it is first read. Starts a background
+/// read when the root is not cached, or with `revalidate` when its tree is
+/// older than [`WORKSPACE_TREE_MAX_AGE`] (the old tree is returned meanwhile).
+fn workspace_tree(
+    root: &Path,
+    revalidate: bool,
+    cx: &mut App,
+) -> Option<Result<ScannedTree, String>> {
+    let cache = cx.default_global::<WorkspaceTreeCache>();
+    let (result, stale) = match cache.entries.get(root) {
+        Some(CachedTree::Scanning(_)) => return None,
+        Some(CachedTree::Ready {
+            tree,
+            scanned_at,
+            rescan,
+        }) => (
+            Some(tree.clone()),
+            revalidate && rescan.is_none() && scanned_at.elapsed() > WORKSPACE_TREE_MAX_AGE,
+        ),
+        None => (None, true),
+    };
+    if !stale {
+        return result;
+    }
+
+    cache.next_scan += 1;
+    let scan = cache.next_scan;
+    match cache.entries.get_mut(root) {
+        Some(CachedTree::Ready { rescan, .. }) => *rescan = Some(scan),
+        _ => {
+            if cache.entries.len() >= WORKSPACE_TREE_CACHE_SIZE {
+                cache
+                    .entries
+                    .retain(|_, entry| matches!(entry, CachedTree::Scanning(_)));
+            }
+            cache
+                .entries
+                .insert(root.to_path_buf(), CachedTree::Scanning(scan));
+        }
+    }
+
+    let root = root.to_path_buf();
+    let read_root = root.clone();
+    let read = cx
+        .background_executor()
+        .spawn(async move { scan_workspace_tree(&read_root).map_err(|err| format!("{err:#}")) });
+    cx.spawn(async move |cx| {
+        let tree = read.await;
+        let _ = cx.update(|cx| {
+            let cache = cx.default_global::<WorkspaceTreeCache>();
+            let current = match cache.entries.get(&root) {
+                Some(CachedTree::Scanning(id)) => *id == scan,
+                Some(CachedTree::Ready { rescan, .. }) => *rescan == Some(scan),
+                None => false,
+            };
+            // A dropped entry or a newer read wins over this one.
+            if current {
+                cache.entries.insert(
+                    root,
+                    CachedTree::Ready {
+                        tree,
+                        scanned_at: Instant::now(),
+                        rescan: None,
+                    },
+                );
+                cx.refresh_windows();
+            }
+        });
+    })
+    .detach();
+    result
+}
+
+/// Drops the cached tree of `root` (after files changed), so the next look
+/// reads it again.
+pub(super) fn forget_workspace_tree(root: &Path, cx: &mut App) {
+    if let Some(cache) = cx.try_global::<WorkspaceTreeCache>()
+        && cache.entries.contains_key(root)
+    {
+        cx.global_mut::<WorkspaceTreeCache>().entries.remove(root);
+    }
+}
+
+fn scan_workspace_tree(path: &Path) -> Result<ScannedTree> {
+    let mut budget = WORKSPACE_SCAN_LIMIT;
+    let root = scan_workspace_dir(path, &mut budget)?;
+    Ok(ScannedTree {
+        root: Arc::new(root),
+        truncated: budget == 0,
+    })
+}
+
+/// Reads `path` recursively, counting every folder entry against `budget`
+/// and stopping when it is used up.
+fn scan_workspace_dir(path: &Path, budget: &mut usize) -> Result<WorkspaceTreeNode> {
     let mut children = Vec::new();
     for entry in
         fs::read_dir(path).with_context(|| format!("failed to read '{}'", path.display()))?
     {
+        if *budget == 0 {
+            break;
+        }
+        *budget -= 1;
         let entry = entry?;
         let entry_path = entry.path();
         let file_type = entry.file_type()?;
@@ -803,7 +996,7 @@ fn scan_workspace_dir(path: &Path) -> Result<WorkspaceTreeNode> {
             }
             // Unreadable subfolders are left out instead of failing the tree,
             // and so are folders without any Markdown file below them.
-            if let Ok(child) = scan_workspace_dir(&entry_path)
+            if let Ok(child) = scan_workspace_dir(&entry_path, budget)
                 && !child.children.is_empty()
             {
                 children.push(child);
@@ -982,7 +1175,8 @@ fn is_closing_fence(trimmed: &str, marker: char, len: usize) -> bool {
 mod tests {
     use super::{
         WorkspaceSelection, WorkspaceState, WorkspaceTreeKind, build_outline_tree,
-        prune_outline_state, scan_workspace_dir, workspace_panel_width_for_viewport,
+        prune_outline_state, scan_workspace_dir, scan_workspace_tree,
+        workspace_panel_width_for_viewport,
     };
     use std::fs;
 
@@ -1000,7 +1194,8 @@ mod tests {
         fs::create_dir_all(root.join("node_modules")).expect("create node_modules");
         fs::write(root.join("node_modules").join("readme.md"), "x").expect("write dep md");
 
-        let tree = scan_workspace_dir(&root).expect("scan tree");
+        let mut budget = usize::MAX;
+        let tree = scan_workspace_dir(&root, &mut budget).expect("scan tree");
         let labels = tree
             .children
             .iter()
@@ -1015,6 +1210,27 @@ mod tests {
             tree.children[1].kind,
             WorkspaceTreeKind::MarkdownFile(_)
         ));
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn workspace_scan_stops_at_its_budget() {
+        let root =
+            std::env::temp_dir().join(format!("velotype-workspace-test-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create dir");
+        for index in 0..5 {
+            fs::write(root.join(format!("{index}.md")), "x").expect("write md");
+        }
+
+        let mut budget = 3;
+        let tree = scan_workspace_dir(&root, &mut budget).expect("scan tree");
+        assert_eq!(budget, 0);
+        assert_eq!(tree.children.len(), 3);
+
+        let scanned = scan_workspace_tree(&root).expect("scan tree");
+        assert!(!scanned.truncated);
+        assert_eq!(scanned.root.children.len(), 5);
 
         let _ = fs::remove_dir_all(root);
     }

@@ -470,6 +470,8 @@ pub struct I18nStrings {
     pub workspace_no_file_message: String,
     /// Message shown when a workspace directory has no visible Markdown files.
     pub workspace_empty_files: String,
+    pub workspace_loading_files: String,
+    pub workspace_tree_truncated: String,
     /// Message shown when the current document has no headings.
     pub workspace_empty_outline: String,
     /// Title shown when the workspace file tree cannot be scanned.
@@ -926,6 +928,8 @@ struct I18nStringsDe {
     workspace_no_file_title: Option<String>,
     workspace_no_file_message: Option<String>,
     workspace_empty_files: Option<String>,
+    workspace_loading_files: Option<String>,
+    workspace_tree_truncated: Option<String>,
     workspace_empty_outline: Option<String>,
     workspace_scan_failed_title: Option<String>,
     open_link_title: Option<String>,
@@ -1334,6 +1338,8 @@ const I18N_STRING_KEYS: &[&str] = &[
     "workspace_no_file_title",
     "workspace_no_file_message",
     "workspace_empty_files",
+    "workspace_loading_files",
+    "workspace_tree_truncated",
     "workspace_empty_outline",
     "workspace_scan_failed_title",
     "open_link_title",
@@ -2248,6 +2254,12 @@ impl I18nStringsDe {
             workspace_empty_files: self
                 .workspace_empty_files
                 .unwrap_or(defaults.workspace_empty_files),
+            workspace_loading_files: self
+                .workspace_loading_files
+                .unwrap_or(defaults.workspace_loading_files),
+            workspace_tree_truncated: self
+                .workspace_tree_truncated
+                .unwrap_or(defaults.workspace_tree_truncated),
             workspace_empty_outline: self
                 .workspace_empty_outline
                 .unwrap_or(defaults.workspace_empty_outline),
@@ -2747,6 +2759,8 @@ impl I18nStrings {
             workspace_no_file_message: "打开或保存一个 .md 文件后，工作区会使用该文件所在目录。"
                 .into(),
             workspace_empty_files: "没有可显示的 Markdown 文件".into(),
+            workspace_loading_files: "正在读取文件夹…".into(),
+            workspace_tree_truncated: "文件夹过大：未显示全部文件。请打开较小的文件夹以查看全部。".into(),
             workspace_empty_outline: "当前文档没有标题".into(),
             workspace_scan_failed_title: "无法读取工作区".into(),
             open_link_title: "打开链接？".into(),
@@ -3184,6 +3198,8 @@ impl I18nStrings {
             workspace_no_file_message:
                 "Open or save a .md file to use its folder as the workspace.".into(),
             workspace_empty_files: "No Markdown files to show".into(),
+            workspace_loading_files: "Reading folder …".into(),
+            workspace_tree_truncated: "Very large folder: not every file is shown. Open a smaller folder to see all of them.".into(),
             workspace_empty_outline: "This document has no headings".into(),
             workspace_scan_failed_title: "Unable to Read Workspace".into(),
             open_link_title: "Open link?".into(),
@@ -3615,6 +3631,8 @@ impl I18nStrings {
                 "Öffne oder speichere eine .md-Datei, um ihren Ordner als Arbeitsbereich zu nutzen."
                     .into(),
             workspace_empty_files: "Keine Markdown-Dateien vorhanden".into(),
+            workspace_loading_files: "Ordner wird gelesen …".into(),
+            workspace_tree_truncated: "Sehr großer Ordner: Nicht alle Dateien werden angezeigt. Öffne einen kleineren Ordner, um alle zu sehen.".into(),
             workspace_empty_outline: "Dieses Dokument hat keine Überschriften".into(),
             workspace_scan_failed_title: "Arbeitsbereich konnte nicht gelesen werden".into(),
             open_link_title: "Link öffnen?".into(),
