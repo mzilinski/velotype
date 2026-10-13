@@ -1,4 +1,4 @@
-# Velotype – Handoff (Stand 2026-10-12)
+# Velotype – Handoff (Stand 2026-10-13)
 
 Ziel: Velotype (Rust/GPUI-Markdown-Editor) an Typora heranführen. Gearbeitet wird im Fork
 `origin = github.com/mzilinski/velotype`. `upstream = manyougz/velotype` bleibt unberührt,
@@ -11,7 +11,9 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
-- Tests mit `cargo test`. Zuletzt liefen 992 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Linux-Rechner (CachyOS): Klon in `~/Developer/velotype`, Rust per `pacman -S rustup` (stable 1.99). Test-Build ist einfach
+  `target/release/velotype`; die GPUI-Systembibliotheken waren schon installiert.
+- Tests mit `cargo test`. Zuletzt liefen 1013 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
@@ -26,6 +28,9 @@ Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, i
 ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
 überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
 Alles gepusht bis `fix/open-non-utf8` (2026-10-13). Test-Exe: `velotype-integration-28.exe`. Offen: nach der Fehlermeldung „Öffnen fehlgeschlagen“ (nativer TaskDialog) dauerte der nächste Öffnen-Dialog >4 min – Rückmeldung von Malte ausstehend, ob die Meldung hinter dem Fenster hing (dann durch In-Fenster-Meldung ersetzen). Test-Checkliste (Artifact, privat): https://claude.ai/artifact/DMG154bZTwyfnu49VYsSLB
+**Upstream v0.7.5 gemergt** (2026-10-13, Linux): `merge/upstream-0.7.5` (411f556) und darauf `feat/menu-cleanup` (d349576),
+`integration` per Fast-Forward auf d349576, alles gepusht. CI-Lauf 38439034623 auf `integration` grün (Linux, macOS, Windows).
+`dev` enthält upstream v0.7.5 noch nicht; neue Branches deshalb von `integration` abzweigen oder `dev` vorher nachziehen.
 **Pandoc:** auf dem Windows-Rechner installiert (winget, 3.12.1, liegt in `%LOCALAPPDATA%Pandoc`, nicht im PATH; die Ersatzsuche findet es). Die Tests `round_trip_through_installed_pandoc` und `all_formats_and_import_with_images` laufen nur, wo Pandoc installiert ist, sonst überspringen sie sich.
 **PicGo:** nicht installiert (braucht ein Bild-Hosting-Konto); der Upload ist mit einem echten Skript getestet (`upload_script_receives_paths_with_spaces`).
 
@@ -71,7 +76,7 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
   macOS-Crash-Report (`~/Library/Logs/DiagnosticReports/velotype-*.ips`) den Stack.
 
 **2. Von Hand prüfen** (`cargo run --release`, Testdatei z. B. `test.md`)
-- Native Menüleiste: Velotype, Datei, Bearbeiten, Absatz, Format, Export, Sprache, Theme, Arbeitsbereich, Ansicht, Hilfe.
+- Native Menüleiste: Velotype, Datei, Bearbeiten, Absatz, Format, Export, Theme, Ansicht, Sprache, Hilfe.
   Kommen Menübefehle beim Text an (z. B. Absatz → Zitat, Format → Durchgestrichen mit Auswahl)?
 - Kürzel: Cmd+B/I/U, Cmd+1…6, Cmd+0, Cmd+= / Cmd+-, Cmd+Alt+Q (Zitat), Cmd+Alt+O/U/X (Listen), Cmd+Alt+C (Code),
   Cmd+Alt+B (Mathe), Cmd+Alt+T (Tabelle), Cmd+K (Link), Cmd+\ (Formatierung entfernen), Ctrl+Shift+` (Durchgestrichen),
@@ -132,6 +137,8 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | diag/perf-log | Diagnose-Protokoll `<config>/logs/perf.log` (`src/perf_log.rs`): `perf_log::Span`/`step`/`note` an allen Stufen des Öffnens (Dialog, Lesen, Parsen, Runtimes, Fidelity, Undo-Snapshot, Recent, Menüs, Render, Rechtschreibung, Dateibaum) ab 15 ms; Watchdog-Thread meldet UI-Hänger ≥250 ms mit letztem Schritt; neu ab 2 MB; in Tests aus |
 | fix/open-non-utf8 | Ursache des „Hängers“ beim Öffnen: Word-Datei gewählt → UTF-8-Fehler. Jetzt `src/text_file.rs`: `read_text_file` (UTF-8 ±BOM, UTF-16 BOM, sonst Windows-1252, Binär → `NotText` mit Meldung `open_not_text_message`); .docx/.odt/.rtf/.epub öffnen über `app_menu::import_document_in_tab` (Pandoc im Hintergrund) aus Dialog, CLI, Dateibaum, Zuletzt geöffnet. CLI: vorhandene unlesbare Datei wird nicht mehr als leeres Dokument mit Pfad geöffnet (Überschreibgefahr) |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
+| merge/upstream-0.7.5 | Upstream v0.7.5: einstellbare Schriften für Text/Code/Oberfläche (#121), Doppelklick-Wortauswahl (#119, war schon in `dev`), Gliederungs-Navigation (#116), Markdown in `<div>`-Blöcken, IME-Unicode-Absturz behoben (`src/ime.rs`, `src/text_offsets.rs`). 36 Konfliktdateien, fast nur upstream-Doku-Kommentare an Fork-Code. Gliederung: Fork-Variante `jump_to_source_line` bleibt, upstreams `reveal_outline_heading` entfällt, sein Test bleibt. Upstream-Test `source_selection_snapshot_clips_partial_unicode_offsets` erwartet jetzt unescapten Quelltext (`*测试`, wegen `fix/source-fidelity`) |
+| feat/menu-cleanup | Menü „Arbeitsbereich“ entfernt (Seitenleiste ein/aus jetzt unter Ansicht über Gliederung/Artikel/Dateien), Sprache rechts vor Hilfe; Reihenfolge Export, Theme, Ansicht, Sprache, Hilfe. Deutsch „Theme“ statt „Design“ (Menü, Einstellungen, Dialoge). Wunsch von Malte: Sprache evtl. nur noch in den Einstellungen – dort gibt es noch keine Sprachauswahl |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
 ## Wichtige Stellen im Code
@@ -145,7 +152,7 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 - `src/components/actions.rs`: Actions plus SHORTCUT_DEFINITIONS. Beschriftungen stehen in `src/config/preferences.rs` (`shortcut_command_label`).
 - i18n-Helfer: `node <scratchpad>/add-i18n.js . <anchorKey> spec.json </dev/null` trägt Keys nach einem Anker in alle Stellen ein (der Anker muss in der Merge-Funktion mehrzeilig formatiert sein, z. B. `quick_open_placeholder`).
 - i18n: Jeder neue String braucht Einträge in `I18nStrings`, `I18nStringsDe`, der Key-Liste, der Merge-Funktion, in `en_us`, `zh_cn` und `de_de` sowie in `assets/custom-language.example.jsonc`.
-- Menü-Tests: Der View-Menüpunkt hat den Help-Index verschoben (HELP_IDX 6 bzw. 7).
+- Menü-Tests in `src/app_menu.rs`: Indizes EXPORT/THEME/VIEW/LANGUAGE/HELP_IDX = 4/5/6/7/8 (macOS je +1 wegen App-Menü).
 
 ## Bekannte Grenzen und mögliche nächste Schritte
 
