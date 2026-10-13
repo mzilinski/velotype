@@ -1,8 +1,8 @@
 //! Native application menu, app-level actions, and window close routing.
 //!
 //! This module owns menu construction and the actions that operate on the
-//! active editor window. The Quit action is routed to the current window so the
-//! existing unsaved-changes dialog remains authoritative for that window.
+//! active or explicitly targeted editor. Quit checks editor close guards in
+//! window-priority order and stops at the first unsaved-changes prompt.
 
 use std::path::{Path, PathBuf};
 
@@ -36,11 +36,13 @@ use crate::window_chrome::velotype_window_options;
 /// Global app-menu state for platform menu lifecycle hooks.
 #[derive(Default)]
 pub(crate) struct AppMenuState {
+    /// Retains the callback that quits when the final app window closes.
     window_closed_subscription: Option<Subscription>,
 }
 
 impl Global for AppMenuState {}
 
+/// Builds the initial window title from a filename, or uses the app name alone.
 fn window_title(file_path: Option<&Path>) -> SharedString {
     if let Some(path) = file_path {
         // OsStr::to_string_lossy returns Cow<str>; calling .to_string() on
@@ -92,6 +94,7 @@ pub(crate) fn open_editor_window(
 
     handle
         .update(cx, |host, window, cx| {
+            crate::ime::install_window_input_filter(window);
             window.activate_window();
             host.force_install_close_guard(window, cx);
             if crate::window_pin::AlwaysOnTop::enabled(cx) {
@@ -106,6 +109,7 @@ pub(crate) fn open_editor_window(
     handle
 }
 
+/// Reads a UTF-8 document, opens it, and records it in the recent-file menu.
 /// The editor window that "open" requests should target: the active window
 /// when it is an editor window, otherwise the most recent one.
 fn current_editor_window(cx: &mut App) -> Option<WindowHandle<EditorWindow>> {
@@ -263,6 +267,7 @@ pub(crate) fn open_error_detail(err: &anyhow::Error, path: &Path, cx: &App) -> S
     }
 }
 
+/// Records a recent path and refreshes menus/windows, logging persistence errors.
 fn record_recent_file_and_refresh(path: &Path, cx: &mut App) {
     let record = crate::perf_log::Span::new("Zuletzt geöffnet: Liste schreiben");
     if let Err(err) = record_recent_file(path) {
@@ -278,8 +283,8 @@ fn record_recent_file_and_refresh(path: &Path, cx: &mut App) {
 #[cfg(target_os = "macos")]
 /// Check whether `/usr/local/bin/velotype` is correctly installed for this app.
 ///
-/// Returns `true` only if the symlink exists **and** resolves (directly or via
-/// one level of canonicalization) to the currently running executable.
+/// Compares the canonicalized link target (or raw target if that fails) with
+/// the running executable path; relative targets resolve from the link's parent.
 fn is_cli_symlink_current_app() -> bool {
     let link = std::path::Path::new("/usr/local/bin/velotype");
     let Ok(target) = std::fs::read_link(link) else {
@@ -303,6 +308,7 @@ fn is_cli_symlink_current_app() -> bool {
 }
 
 #[cfg(any(target_os = "macos", test))]
+/// Quotes an AppleScript string, escaping backslashes, quotes, and line endings.
 fn applescript_string_literal(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len() + 2);
     escaped.push('"');
@@ -320,6 +326,7 @@ fn applescript_string_literal(value: &str) -> String {
 }
 
 #[cfg(target_os = "macos")]
+/// Prompts for administrator privileges to link a bundled app's CLI executable.
 pub(crate) fn install_cli_tool(cx: &mut App) {
     use std::process::Command;
 
@@ -402,6 +409,7 @@ do shell script "rm -f " & quoted form of linkPath & linefeed & "ln -s " & quote
 }
 
 #[cfg(target_os = "macos")]
+/// Removes the CLI symlink with administrator approval if it targets this app.
 pub(crate) fn uninstall_cli_tool(cx: &mut App) {
     use std::process::Command;
 
@@ -455,6 +463,7 @@ do shell script "rm -f " & quoted form of linkPath with administrator privileges
 }
 
 #[cfg(not(target_os = "macos"))]
+/// Reports that CLI symlink installation is only supported on macOS.
 pub(crate) fn install_cli_tool(cx: &mut App) {
     show_install_cli_error(
         cx,
@@ -463,6 +472,7 @@ pub(crate) fn install_cli_tool(cx: &mut App) {
 }
 
 #[cfg(not(target_os = "macos"))]
+/// Reports that CLI symlink removal is only supported on macOS.
 pub(crate) fn uninstall_cli_tool(cx: &mut App) {
     show_install_cli_error(
         cx,
@@ -470,6 +480,7 @@ pub(crate) fn uninstall_cli_tool(cx: &mut App) {
     );
 }
 
+/// Shows a critical CLI-operation prompt, or logs it when no window is active.
 fn show_install_cli_error(cx: &mut App, detail: &str) {
     let strings = cx.global::<I18nManager>().strings();
     let title = "Install Command-Line Tool Failed";
@@ -490,10 +501,12 @@ fn show_install_cli_error(cx: &mut App, detail: &str) {
     }
 }
 
+/// Updates recent-file history and menus after an editor saves a document.
 pub(crate) fn record_recent_file_from_editor(path: &Path, cx: &mut App) {
     record_recent_file_and_refresh(path, cx);
 }
 
+/// Shows a critical prompt on the supplied window, or logs if none was supplied.
 fn show_window_prompt(window: Option<AnyWindowHandle>, title: &str, detail: &str, cx: &mut App) {
     if let Some(window) = window {
         let ok = cx.global::<I18nManager>().strings().info_dialog_ok.clone();
@@ -531,6 +544,7 @@ fn toggle_writing_aid(cx: &mut App, update: impl FnOnce(&mut crate::config::Writ
     cx.refresh_windows();
 }
 
+/// Updates only an active editor window, returning `None` if it is unavailable.
 fn with_active_editor<R>(
     cx: &mut App,
     update: impl FnOnce(&mut Editor, &mut Window, &mut Context<Editor>) -> R,
@@ -557,18 +571,21 @@ fn with_active_editor_window<R>(
     window.update(cx, update).ok()
 }
 
+/// Requests an information overlay on the active editor, if there is one.
 fn show_info_dialog_on_active_editor(cx: &mut App, kind: InfoDialogKind) {
     let _ = with_active_editor(cx, move |editor, _window, cx| {
         editor.show_info_dialog(kind, cx);
     });
 }
 
+/// Delegates an update check to the active editor, if there is one.
 fn request_update_check_on_active_editor(cx: &mut App) {
     let _ = with_active_editor(cx, |editor, window, cx| {
         editor.request_check_updates(window, cx);
     });
 }
 
+/// Loads recent paths for menus, using an empty list if history cannot be read.
 fn recent_files_for_menu() -> Vec<PathBuf> {
     match read_recent_files() {
         Ok(paths) => paths,
@@ -579,11 +596,13 @@ fn recent_files_for_menu() -> Vec<PathBuf> {
     }
 }
 
+/// Opens a recent document, directing errors to the currently active window.
 fn open_recent_file(cx: &mut App, path: PathBuf) {
     let error_window = cx.active_window();
     open_recent_file_with_error_window(cx, path, error_window);
 }
 
+/// Opens a recent path, pruning missing entries and reporting errors on the target.
 fn open_recent_file_with_error_window(
     cx: &mut App,
     path: PathBuf,
@@ -618,6 +637,7 @@ fn open_recent_file_with_error_window(
     }
 }
 
+/// Identifies menu commands routed with an editor target, including guarded quit.
 fn is_editor_scoped_menu_action(action: &dyn Action) -> bool {
     action.as_any().is::<SaveDocument>()
         || action.as_any().is::<SaveDocumentAs>()
@@ -639,6 +659,7 @@ fn is_editor_scoped_menu_action(action: &dyn Action) -> bool {
         || action.as_any().is::<DeleteCurrentFile>()
 }
 
+/// Identifies commands that can dispatch immediately from an editor's menu.
 fn is_window_context_menu_action(action: &dyn Action) -> bool {
     action.as_any().is::<NewWindow>()
         || action.as_any().is::<OpenFile>()
@@ -652,6 +673,7 @@ fn is_window_context_menu_action(action: &dyn Action) -> bool {
         || is_editor_scoped_menu_action(action)
 }
 
+/// Lists distinct windows: active first, then stack order, then any remaining ones.
 fn current_window_candidates(cx: &mut App) -> Vec<AnyWindowHandle> {
     let mut candidates = Vec::new();
     let mut push_unique = |window: AnyWindowHandle| {
@@ -678,6 +700,7 @@ fn current_window_candidates(cx: &mut App) -> Vec<AnyWindowHandle> {
     candidates
 }
 
+/// Returns whether an editor accepted the close request, not whether it closed.
 fn request_close_editor_window(window: AnyWindowHandle, cx: &mut App) -> bool {
     if let Some(host) = window.downcast::<EditorWindow>() {
         return host
@@ -695,6 +718,7 @@ fn request_close_editor_window(window: AnyWindowHandle, cx: &mut App) -> bool {
         .is_ok()
 }
 
+/// Requests closing the first available editor; quits if no windows exist.
 fn request_close_current_editor_window(cx: &mut App) {
     let candidates = current_window_candidates(cx);
     if candidates.is_empty() {
@@ -709,6 +733,9 @@ fn request_close_current_editor_window(cx: &mut App) {
     }
 }
 
+/// Quits only if every available editor close guard allows it.
+///
+/// Stops at the first declined or failed guard; non-editor windows are skipped.
 pub(crate) fn request_quit_application(cx: &mut App) {
     let candidates = current_window_candidates(cx);
     if candidates.is_empty() {
@@ -1516,6 +1543,7 @@ impl Default for ViewMenuState {
 }
 
 #[cfg(test)]
+/// Builds localized platform menus with current theme/language and recent paths.
 fn build_menus(
     theme_manager: &ThemeManager,
     i18n_manager: &I18nManager,
@@ -1965,6 +1993,7 @@ fn build_menus_with_view(
     menus
 }
 
+/// Replaces the app menu tree from the current registries and recent-file history.
 pub(crate) fn install_menus(cx: &mut App) {
     let recent_files = recent_files_for_menu();
     let view = ViewMenuState {
@@ -1984,11 +2013,13 @@ pub(crate) fn install_menus(cx: &mut App) {
     cx.set_menus(menus);
 }
 
+/// Prompts for documents and directs read failures to the current active window.
 fn prompt_and_open_files(cx: &mut App) {
     let error_window = cx.active_window();
     prompt_and_open_files_with_error_window(cx, error_window);
 }
 
+/// Opens each selected file in a new window, reporting errors on a captured target.
 fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<AnyWindowHandle>) {
     let prompt_title = cx
         .global::<I18nManager>()
@@ -2048,11 +2079,13 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
     .detach();
 }
 
+/// Starts language import with the active window as the error-prompt target.
 fn prompt_and_import_language_config(cx: &mut App) {
     let error_window = cx.active_window();
     prompt_and_import_language_config_with_error_window(cx, error_window);
 }
 
+/// Imports and selects a chosen language config, refreshing menus on success.
 fn prompt_and_import_language_config_with_error_window(
     cx: &mut App,
     error_window: Option<AnyWindowHandle>,
@@ -2108,11 +2141,13 @@ fn prompt_and_import_language_config_with_error_window(
     .detach();
 }
 
+/// Starts theme import with the active window as the error-prompt target.
 fn prompt_and_import_theme_config(cx: &mut App) {
     let error_window = cx.active_window();
     prompt_and_import_theme_config_with_error_window(cx, error_window);
 }
 
+/// Imports and selects a chosen theme config, refreshing menus on success.
 fn prompt_and_import_theme_config_with_error_window(
     cx: &mut App,
     error_window: Option<AnyWindowHandle>,
@@ -2168,6 +2203,7 @@ fn prompt_and_import_theme_config_with_error_window(
     .detach();
 }
 
+/// Quits after the final window closes, including on macOS.
 fn handle_window_closed(cx: &mut App) {
     if cx.windows().is_empty() {
         cx.quit();

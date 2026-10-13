@@ -7279,7 +7279,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "velotype"
-version = "0.7.2"
+version = "0.7.5"
 dependencies = [
  "adot-tree-sitter-toml",
  "anyhow",
@@ -7337,6 +7337,7 @@ dependencies = [
  "url",
  "uuid",
  "windows 0.61.3",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

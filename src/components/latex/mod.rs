@@ -10,7 +10,9 @@ use gpui::{Hsla, Rgba};
 
 use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
 
+/// Display-math font multiplier relative to body text.
 const DISPLAY_MATH_SCALE: f32 = 1.25;
+/// Inline-math font multiplier relative to body text.
 const INLINE_MATH_SCALE: f32 = 1.12;
 
 /// Parsed display-math source preserved from Markdown.
@@ -22,7 +24,7 @@ pub(crate) struct DisplayMathSource {
     pub(crate) body: String,
 }
 
-/// Result of rendering display math into an SVG cache file.
+/// Result of rendering a LaTeX expression into an SVG cache file.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LatexSvgRender {
     /// Path to the SVG file consumed by GPUI's image element.
@@ -85,6 +87,7 @@ pub(crate) fn render_inline_math_svg(
     render_latex_svg_to_cache(latex, text_color, font_size)
 }
 
+/// Renders a formula and retains its SVG at a parameter-derived cache path.
 fn render_latex_svg_to_cache(
     latex: &str,
     text_color: Hsla,
@@ -133,11 +136,13 @@ pub(crate) fn latex_cache_key(latex: &str, text_color: Hsla, font_size: f32) -> 
     format!("{:016x}", hasher.finish())
 }
 
+/// Removes up to three leading spaces from a display-math delimiter line.
 fn strip_display_indent(line: &str) -> Option<&str> {
     let indent = line.bytes().take_while(|byte| *byte == b' ').count();
     (indent <= 3).then_some(&line[indent..])
 }
 
+/// Creates the per-user LaTeX SVG cache, falling back to the temp directory.
 fn latex_cache_dir() -> anyhow::Result<PathBuf> {
     let dir = velotype_cache_root().join("latex-svg");
     fs::create_dir_all(&dir)
@@ -145,6 +150,7 @@ fn latex_cache_dir() -> anyhow::Result<PathBuf> {
     Ok(dir)
 }
 
+/// Formats a GPUI color for replacement in RaTeX's SVG output.
 fn svg_color(color: Hsla) -> String {
     let color = Rgba::from(color);
     format!(
@@ -156,10 +162,12 @@ fn svg_color(color: Hsla) -> String {
     )
 }
 
+/// Clamps and rounds a normalized color component to an 8-bit channel.
 fn color_channel(channel: f32) -> u8 {
     (channel.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
+/// Formats opacity to three decimals without trailing zeroes.
 fn trim_float(value: f64) -> String {
     let formatted = format!("{value:.3}");
     formatted
@@ -168,6 +176,7 @@ fn trim_float(value: f64) -> String {
         .to_string()
 }
 
+/// Replaces RaTeX's default black fill with the theme text color.
 fn recolor_default_black(svg: &str, color: &str) -> String {
     svg.replace("rgba(0,0,0,1)", color)
         .replace("rgba(0, 0, 0, 1)", color)

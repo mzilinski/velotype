@@ -19,6 +19,7 @@ use crate::i18n::{I18nManager, I18nStrings};
 use crate::theme::{Theme, ThemeDimensions, ThemeManager};
 use crate::window_chrome::{custom_titlebar_height, render_custom_titlebar};
 
+/// Project URL used by the About dialog and its link action.
 /// This fork's repository.
 pub(crate) const ABOUT_GITHUB_URL: &str = "https://github.com/mzilinski/velotype";
 /// The original Velotype this fork is based on (Apache License 2.0).
@@ -28,6 +29,7 @@ pub(crate) const ABOUT_ORIGIN_URL: &str = "https://github.com/manyougz/velotype"
 /// paints them before they scroll in instead of showing a blank edge.
 const RENDER_OVERDRAW_PX: f32 = 800.0;
 
+/// Opens the project URL through GPUI's URL handler.
 pub(crate) fn open_about_github_url(cx: &mut App) {
     cx.open_url(ABOUT_GITHUB_URL);
 }
@@ -35,16 +37,24 @@ pub(crate) fn open_about_github_url(cx: &mut App) {
 /// Adjacent-row metadata used to collapse spacing inside visual groups.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct RenderedRowSpacingInfo {
+    /// Outermost quote group containing the row.
     quote_group_anchor: Option<uuid::Uuid>,
+    /// Quote group visible after excluding callout nesting.
     visible_quote_group_anchor: Option<uuid::Uuid>,
+    /// Callout owning the row, if any.
     callout_anchor: Option<uuid::Uuid>,
+    /// Callout style inherited by the row.
     callout_variant: Option<CalloutVariant>,
+    /// Whether this row is a callout header.
     is_callout_header: bool,
+    /// Footnote definition group owning the row.
     footnote_anchor: Option<uuid::Uuid>,
+    /// Whether this row is a footnote definition header.
     is_footnote_header: bool,
 }
 
 impl RenderedRowSpacingInfo {
+    /// Copies spacing-relevant ancestry and block kind from a rendered block.
     fn from_block(block: &Block) -> Self {
         Self {
             quote_group_anchor: block.quote_group_anchor,
@@ -58,6 +68,7 @@ impl RenderedRowSpacingInfo {
     }
 }
 
+/// Removes the default gap inside a single quote group.
 fn rendered_row_top_gap(
     previous: Option<RenderedRowSpacingInfo>,
     current: RenderedRowSpacingInfo,
@@ -76,6 +87,7 @@ fn rendered_row_top_gap(
     }
 }
 
+/// Returns border and background colors for a callout variant.
 fn callout_colors(variant: CalloutVariant, theme: &Theme) -> (Hsla, Hsla) {
     let c = &theme.colors;
     match variant {
@@ -87,6 +99,7 @@ fn callout_colors(variant: CalloutVariant, theme: &Theme) -> (Hsla, Hsla) {
     }
 }
 
+/// Chooses header/body spacing for a callout row outside a visible quote group.
 fn callout_row_top_gap(
     previous: Option<RenderedRowSpacingInfo>,
     current: RenderedRowSpacingInfo,
@@ -109,6 +122,7 @@ fn callout_row_top_gap(
     }
 }
 
+/// Tightens the gap immediately after a footnote definition header.
 fn footnote_row_top_gap(previous: Option<RenderedRowSpacingInfo>, default_gap: f32) -> f32 {
     let Some(previous) = previous else {
         return 0.0;
@@ -121,6 +135,7 @@ fn footnote_row_top_gap(previous: Option<RenderedRowSpacingInfo>, default_gap: f
     }
 }
 
+/// Recognizes characters estimated at one full menu text-size width.
 fn is_wide_menu_char(ch: char) -> bool {
     matches!(
         ch as u32,
@@ -134,6 +149,7 @@ fn is_wide_menu_char(ch: char) -> bool {
     )
 }
 
+/// Estimates menu-label width from character classes and theme text size.
 fn estimated_menu_label_width(label: &str, text_size: f32) -> f32 {
     label
         .chars()
@@ -153,20 +169,24 @@ fn estimated_menu_label_width(label: &str, text_size: f32) -> f32 {
         .sum()
 }
 
+/// Enforces the menu button's minimum width around its estimated label.
 fn menu_bar_button_width(label: &str, dimensions: &ThemeDimensions) -> f32 {
     let content_width = estimated_menu_label_width(label, dimensions.menu_text_size)
         + dimensions.menu_bar_button_padding_x * 2.0;
     dimensions.menu_bar_button_width.max(content_width.ceil())
 }
 
+/// Uses an in-window menu bar on non-macOS targets.
 fn supports_in_window_menu_for_target_os(target_os: &str) -> bool {
     target_os != "macos"
 }
 
+/// Checks whether this build uses the in-window menu bar.
 fn supports_in_window_menu() -> bool {
     supports_in_window_menu_for_target_os(std::env::consts::OS)
 }
 
+/// Returns menu-bar height only when an in-window menu is present.
 fn in_window_menu_bar_height_for_target_os(
     target_os: &str,
     has_menus: bool,
@@ -179,6 +199,7 @@ fn in_window_menu_bar_height_for_target_os(
     }
 }
 
+/// Computes a menu panel's left edge from preceding button widths.
 fn menu_panel_left<S: AsRef<str>>(
     open_index: usize,
     menu_labels: &[S],
@@ -192,6 +213,7 @@ fn menu_panel_left<S: AsRef<str>>(
     dimensions.menu_bar_padding_x + prior_width + dimensions.menu_bar_gap * open_index as f32
 }
 
+/// Enforces the panel's minimum width around its widest item label.
 fn menu_panel_width_for_labels<S: AsRef<str>>(labels: &[S], dimensions: &ThemeDimensions) -> f32 {
     let widest_label = labels
         .iter()
@@ -201,6 +223,7 @@ fn menu_panel_width_for_labels<S: AsRef<str>>(labels: &[S], dimensions: &ThemeDi
     dimensions.menu_panel_width.max(content_width.ceil())
 }
 
+/// Extracts visible labels from actions and submenus, excluding separators.
 fn owned_menu_item_labels(items: &[OwnedMenuItem]) -> Vec<String> {
     items
         .iter()
@@ -213,6 +236,7 @@ fn owned_menu_item_labels(items: &[OwnedMenuItem]) -> Vec<String> {
         .collect()
 }
 
+/// Returns the rendered height of an action row or separator.
 fn menu_item_visual_height(item: &OwnedMenuItem, dimensions: &ThemeDimensions) -> f32 {
     match item {
         OwnedMenuItem::Separator => {
@@ -224,8 +248,10 @@ fn menu_item_visual_height(item: &OwnedMenuItem, dimensions: &ThemeDimensions) -
     }
 }
 
+/// Maximum import-menu rows shown before the list scrolls.
 const SCROLLABLE_IMPORT_MENU_VISIBLE_ITEMS: usize = 12;
 
+/// Sums menu row heights and inter-row gaps.
 fn menu_items_visual_height_with_gaps(
     items: &[OwnedMenuItem],
     dimensions: &ThemeDimensions,
@@ -241,6 +267,7 @@ fn menu_items_visual_height_with_gaps(
     items_height + dimensions.menu_panel_gap * items.len().saturating_sub(1) as f32
 }
 
+/// Locates the import menu's fixed theme/language footer after its separator.
 fn import_menu_split_index(items: &[OwnedMenuItem]) -> Option<usize> {
     let [
         prefix @ ..,
@@ -260,6 +287,7 @@ fn import_menu_split_index(items: &[OwnedMenuItem]) -> Option<usize> {
     }
 }
 
+/// Fits the import menu's scrolling list above its fixed footer in the viewport.
 fn scrollable_import_menu_scroll_height(
     scroll_items: &[OwnedMenuItem],
     footer_items: &[OwnedMenuItem],
@@ -292,6 +320,7 @@ fn scrollable_import_menu_scroll_height(
     default_height.min(available_height.max(min_height))
 }
 
+/// Computes a submenu's top edge from preceding rows and gaps.
 fn submenu_panel_top(
     items: &[OwnedMenuItem],
     item_index: usize,
@@ -306,14 +335,20 @@ fn submenu_panel_top(
     dimensions.menu_panel_top + dimensions.menu_panel_padding + prior_items_height + prior_gaps
 }
 
+/// Hover bridge spanning the gap between a menu row and its submenu panel.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MenuSubmenuBridgeGeometry {
+    /// Left edge relative to the menu bar.
     left: f32,
+    /// Top edge relative to the menu bar.
     top: f32,
+    /// Horizontal span including the panel gap.
     width: f32,
+    /// Vertical span around the submenu's parent row.
     height: f32,
 }
 
+/// Computes the pointer-hover bridge for a submenu row.
 fn submenu_bridge_geometry<S: AsRef<str>, T: AsRef<str>>(
     open_index: usize,
     menu_labels: &[S],
@@ -337,6 +372,7 @@ fn submenu_bridge_geometry<S: AsRef<str>, T: AsRef<str>>(
     })
 }
 
+/// Wraps consecutive footnote rows in their shared visual shell.
 fn footnote_group_shell(
     children: Vec<AnyElement>,
     theme: &Theme,
@@ -359,6 +395,7 @@ fn footnote_group_shell(
 }
 
 impl Editor {
+    /// Routes a standard title-bar click through the guarded close flow.
     fn on_titlebar_close(
         &mut self,
         event: &ClickEvent,
@@ -370,6 +407,7 @@ impl Editor {
         }
     }
 
+    /// Registers the window close guard once.
     pub(crate) fn install_close_guard(&mut self, cx: &mut Context<Self>, window: &mut Window) {
         // A tab host owns the single should-close guard of its window.
         if self.close_guard_installed || self.is_tab_hosted() {
@@ -379,6 +417,7 @@ impl Editor {
         self.force_install_close_guard(cx, window);
     }
 
+    /// Replaces the window close callback with this editor's guard.
     pub(crate) fn force_install_close_guard(
         &mut self,
         cx: &mut Context<Self>,
@@ -393,6 +432,7 @@ impl Editor {
         self.close_guard_installed = true;
     }
 
+    /// Applies a queued block focus request when its entity is still addressable.
     fn apply_pending_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(entity_id) = self.pending_focus.take()
             && let Some(block) = self.focusable_entity_by_id(entity_id)
@@ -401,6 +441,7 @@ impl Editor {
         }
     }
 
+    /// Scrolls the focused caret into the padded viewport when bounds are known.
     fn ensure_focused_caret_visible(&mut self, window: &Window, cx: &App) -> bool {
         // While the find field has focus, the current match is the scroll target.
         let Some(focused_block) = self
@@ -439,6 +480,7 @@ impl Editor {
         true
     }
 
+    /// Completes or reschedules a queued caret scroll after layout.
     fn apply_pending_scroll_into_view(&mut self, window: &Window, cx: &mut Context<Self>) {
         if self.scrollbar_drag.is_some() {
             return;
@@ -485,6 +527,7 @@ impl Editor {
         }));
     }
 
+    /// Executes a queued save during render synchronization.
     fn sync_pending_save(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.pending_save {
             self.pending_save = false;
@@ -492,6 +535,7 @@ impl Editor {
         }
     }
 
+    /// Executes a queued Save As during render synchronization.
     fn sync_pending_save_as(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.pending_save_as {
             self.pending_save_as = false;
@@ -499,6 +543,7 @@ impl Editor {
         }
     }
 
+    /// Prompts before opening a queued link target.
     fn sync_pending_open_link(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(link) = self.pending_open_link.take() else {
             return;
@@ -538,6 +583,7 @@ impl Editor {
         }
     }
 
+    /// Applies a pending native window edited-state update.
     fn sync_window_edited_state(&mut self, window: &mut Window) {
         if self.pending_window_edited {
             self.pending_window_edited = false;
@@ -545,6 +591,7 @@ impl Editor {
         }
     }
 
+    /// Tracks viewport size and requests caret scrolling after meaningful resize.
     fn sync_scroll_viewport(&mut self, viewport_size: Size<Pixels>, cx: &mut Context<Self>) {
         match self.last_scroll_viewport_size {
             Some(previous) if Self::viewport_size_changed(previous, viewport_size) => {
@@ -558,6 +605,7 @@ impl Editor {
         }
     }
 
+    /// Applies a pending native window title refresh.
     fn sync_window_title(&mut self, window: &mut Window, strings: &I18nStrings) {
         if self.pending_window_title_refresh {
             self.pending_window_title_refresh = false;
@@ -650,6 +698,7 @@ impl Editor {
         )
     }
 
+    /// Builds a separator, action, or submenu row for the in-window menu.
     fn render_in_window_menu_item(
         &self,
         item: OwnedMenuItem,
@@ -1309,6 +1358,7 @@ impl Editor {
             )
     }
 
+    /// Returns the localized title for an information dialog.
     fn info_dialog_title<'a>(&self, strings: &'a I18nStrings, kind: InfoDialogKind) -> &'a str {
         match kind {
             InfoDialogKind::CheckForUpdates => &strings.help_check_updates_title,
@@ -1316,6 +1366,7 @@ impl Editor {
         }
     }
 
+    /// Builds the About dialog's version, project link, and supporting lines.
     pub(crate) fn about_dialog_body_lines(strings: &I18nStrings) -> Vec<String> {
         vec![
             format!("Velotype {}", env!("CARGO_PKG_VERSION")),
@@ -1326,6 +1377,7 @@ impl Editor {
         ]
     }
 
+    /// Returns the plain-text body for an information dialog.
     fn info_dialog_body(&self, strings: &I18nStrings, kind: InfoDialogKind) -> String {
         match kind {
             InfoDialogKind::CheckForUpdates => strings.help_check_updates_message.clone(),
@@ -1333,6 +1385,7 @@ impl Editor {
         }
     }
 
+    /// Renders the About link as interactive text or the update-check message.
     fn render_info_dialog_body(
         &self,
         theme: &Theme,
@@ -1407,6 +1460,7 @@ impl Editor {
         }
     }
 
+    /// Dismisses the active information dialog from its button.
     fn on_dismiss_info_dialog(
         &mut self,
         _: &ClickEvent,
@@ -1416,6 +1470,7 @@ impl Editor {
         self.hide_info_dialog(cx);
     }
 
+    /// Renders a modal information dialog over the editor.
     fn render_info_dialog_overlay(
         &self,
         theme: &Theme,
@@ -1498,6 +1553,7 @@ impl Editor {
 }
 
 impl Render for Editor {
+    /// Synchronizes deferred window work and renders the editor and overlays.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let _render = crate::perf_log::Span::new(format!(
             "Editor rendern: {}",

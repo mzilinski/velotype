@@ -3,10 +3,12 @@
 use super::*;
 
 impl Editor {
+    /// Creates a table block backed by the supplied serializable table data.
     pub(crate) fn new_table_block(cx: &mut Context<Self>, table: TableData) -> Entity<Block> {
         Self::new_block(cx, BlockRecord::table(table))
     }
 
+    /// Creates editable header/body cell entities and binds them to a table block.
     pub(super) fn install_table_runtime_for_block(
         &mut self,
         table_block: &Entity<Block>,
@@ -77,6 +79,7 @@ impl Editor {
         });
     }
 
+    /// Recreates table cell runtimes and their lookup bindings for visible tables.
     pub(super) fn rebuild_table_runtimes(&mut self, cx: &mut Context<Self>) {
         self.table_cells.clear();
         self.table_axis_preview = None;
@@ -98,6 +101,7 @@ impl Editor {
         self.sync_table_axis_visuals(cx);
     }
 
+    /// Copies live cell titles into the table's serializable record.
     pub(super) fn sync_table_record_from_runtime(
         &mut self,
         table_block: &Entity<Block>,
@@ -136,6 +140,7 @@ impl Editor {
         });
     }
 
+    /// Adds a column using the last alignment and focuses its header cell.
     pub(super) fn append_table_column(
         &mut self,
         table_block: &Entity<Block>,
@@ -179,6 +184,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Adds a body row and focuses its first cell.
     pub(super) fn append_table_row(&mut self, table_block: &Entity<Block>, cx: &mut Context<Self>) {
         self.sync_table_record_from_runtime(table_block, cx);
 
@@ -294,6 +300,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Updates the hovered row/column preview without clearing a newer hover.
     pub(super) fn preview_table_axis(
         &mut self,
         table_block_id: EntityId,
@@ -318,6 +325,7 @@ impl Editor {
         }
     }
 
+    /// Selects a visual row or column and previews the same axis.
     pub(super) fn select_table_axis(
         &mut self,
         table_block_id: EntityId,
@@ -334,6 +342,7 @@ impl Editor {
         self.set_table_axis_selection(Some(selection), cx);
     }
 
+    /// Selects an axis and opens its context menu at a window position.
     pub(super) fn open_table_axis_menu(
         &mut self,
         table_block_id: EntityId,
@@ -348,6 +357,7 @@ impl Editor {
         }
     }
 
+    /// Sets a column's alignment and keeps its header selected and focused.
     pub(super) fn set_table_column_alignment(
         &mut self,
         table_block: &Entity<Block>,
@@ -385,6 +395,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Swaps visual rows, where row zero is the header, and follows the moved row.
     pub(super) fn move_table_row(
         &mut self,
         table_block: &Entity<Block>,
@@ -442,6 +453,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Swaps columns and follows the moved column's header cell.
     pub(super) fn move_table_column(
         &mut self,
         table_block: &Entity<Block>,
@@ -497,6 +509,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Removes a zero-based body row and focuses the nearest surviving visual row.
     pub(super) fn delete_table_row(
         &mut self,
         table_block: &Entity<Block>,
@@ -558,6 +571,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Promotes the first body row to header; does nothing without a body row.
     pub(super) fn delete_table_header_row(
         &mut self,
         table_block: &Entity<Block>,
@@ -593,6 +607,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Removes a column only when at least one other column remains.
     pub(super) fn delete_table_column(
         &mut self,
         table_block: &Entity<Block>,
@@ -681,6 +696,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Converts an axis selection to the marker stored on a table block.
     pub(super) fn table_axis_marker(selection: TableAxisSelection) -> TableAxisMarker {
         TableAxisMarker {
             kind: selection.kind,
@@ -688,18 +704,21 @@ impl Editor {
         }
     }
 
+    /// Clears the hovered axis and updates table visuals if it was present.
     pub(super) fn clear_table_axis_preview(&mut self, cx: &mut Context<Self>) {
         if self.table_axis_preview.take().is_some() {
             self.sync_table_axis_visuals(cx);
         }
     }
 
+    /// Clears the selected axis and updates table visuals if it was present.
     pub(super) fn clear_table_axis_selection(&mut self, cx: &mut Context<Self>) {
         if self.table_axis_selection.take().is_some() {
             self.sync_table_axis_visuals(cx);
         }
     }
 
+    /// Changes the hovered axis and refreshes table visuals when needed.
     pub(super) fn set_table_axis_preview(
         &mut self,
         preview: Option<TableAxisSelection>,
@@ -711,6 +730,7 @@ impl Editor {
         }
     }
 
+    /// Changes the selected axis and refreshes table visuals when needed.
     pub(super) fn set_table_axis_selection(
         &mut self,
         selection: Option<TableAxisSelection>,
@@ -722,6 +742,7 @@ impl Editor {
         }
     }
 
+    /// Checks that an axis index still addresses a live row or column.
     pub(super) fn table_axis_selection_valid(
         &self,
         selection: TableAxisSelection,
@@ -740,6 +761,7 @@ impl Editor {
         }
     }
 
+    /// Drops preview/selection markers invalidated by table changes.
     pub(super) fn normalize_table_axis_state(&mut self, cx: &mut Context<Self>) {
         if let Some(selection) = self.table_axis_selection
             && !self.table_axis_selection_valid(selection, cx)
@@ -753,6 +775,7 @@ impl Editor {
         }
     }
 
+    /// Propagates axis preview and selection to visible tables and cell runtimes.
     pub(super) fn sync_table_axis_visuals(&mut self, cx: &mut Context<Self>) {
         self.normalize_table_axis_state(cx);
 

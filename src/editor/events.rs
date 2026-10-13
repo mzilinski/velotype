@@ -17,6 +17,7 @@ use crate::components::{
 };
 
 impl Editor {
+    /// Finds the focused block or table cell for unmodified Tab handling.
     fn focused_block_for_tab_key(
         &self,
         window: &mut Window,
@@ -48,6 +49,7 @@ impl Editor {
             .find_map(|visible| is_focused(&visible.entity).then(|| visible.entity.clone()))
     }
 
+    /// Routes unmodified Tab/Shift-Tab to indentation on eligible focused blocks.
     pub(crate) fn on_editor_key_down_capture(
         &mut self,
         event: &KeyDownEvent,
@@ -95,6 +97,7 @@ impl Editor {
         cx.stop_propagation();
     }
 
+    /// Builds paragraph blocks from nonblank pasted lines, retaining an all-blank paste.
     fn build_plain_paste_blocks_from_lines(
         cx: &mut Context<Self>,
         lines: &[String],
@@ -120,6 +123,7 @@ impl Editor {
         blocks
     }
 
+    /// Identifies rendered blocks whose quote metadata may need rebuilding.
     fn block_is_quote_structure_related(&self, block: &Entity<super::Block>, cx: &App) -> bool {
         if self.view_mode != super::ViewMode::Rendered {
             return false;
@@ -131,6 +135,7 @@ impl Editor {
             || block_ref.quote_group_anchor.is_some()
     }
 
+    /// Refreshes quote ancestry metadata after an edit to quote-related content.
     fn refresh_rendered_quote_metadata_if_needed(
         &mut self,
         block: &Entity<super::Block>,
@@ -143,6 +148,7 @@ impl Editor {
         self.document.rebuild_metadata_and_snapshot(cx);
     }
 
+    /// Detects multiline quote text containing a structural Markdown line.
     fn rendered_quote_text_requires_reparse(block: &Entity<super::Block>, cx: &App) -> bool {
         let block_ref = block.read(cx);
         if block_ref.quote_depth == 0 && !block_ref.kind().is_quote_container() {
@@ -173,6 +179,7 @@ impl Editor {
         })
     }
 
+    /// Lists block events that invalidate an editor-wide selection.
     fn block_event_clears_cross_block_selection(event: &BlockEvent) -> bool {
         matches!(
             event,
@@ -194,12 +201,14 @@ impl Editor {
         )
     }
 
+    /// Queues focus and scroll for a block entity.
     pub(crate) fn focus_block(&mut self, entity_id: EntityId) {
         self.pending_focus = Some(entity_id);
         self.active_entity_id = Some(entity_id);
         self.pending_scroll_active_block_into_view = true;
     }
 
+    /// Collapses a block selection at the supplied visible offset.
     fn reset_block_cursor(block: &Entity<super::Block>, cursor: usize, cx: &mut Context<Self>) {
         block.update(cx, move |block, cx| {
             block.selected_range = cursor..cursor;
@@ -211,6 +220,7 @@ impl Editor {
         });
     }
 
+    /// Assigns a block selection and queues focus on that block.
     pub(super) fn focus_block_range(
         &mut self,
         block: &Entity<super::Block>,
@@ -232,6 +242,7 @@ impl Editor {
         self.image_markdown_for_source(source, Self::current_image_paste_behavior())
     }
 
+    /// Reports image paste failure in a prompt or stderr when no window is active.
     pub(super) fn show_image_paste_error(&self, err: anyhow::Error, cx: &mut Context<Self>) {
         let strings = cx.global::<crate::i18n::I18nManager>().strings().clone();
         if let Some(window) = cx.active_window() {
@@ -247,6 +258,7 @@ impl Editor {
         }
     }
 
+    /// Parses inserted image Markdown unless the block edits raw/code text.
     fn inserted_image_tree_for_block(block: &super::Block, markdown: &str) -> InlineTextTree {
         if block.uses_raw_text_editing() || block.kind().is_code_block() {
             InlineTextTree::plain(markdown.to_string())
@@ -255,6 +267,7 @@ impl Editor {
         }
     }
 
+    /// Replaces a local block selection with image Markdown and restores focus.
     pub(super) fn replace_current_block_selection_with_image_text(
         &mut self,
         block: &Entity<super::Block>,
@@ -278,6 +291,7 @@ impl Editor {
         self.rebuild_image_runtimes(cx);
     }
 
+    /// Splits a paragraph around a pasted standalone image block.
     fn insert_image_block_after_paragraph(
         &mut self,
         block: &Entity<super::Block>,
@@ -337,6 +351,7 @@ impl Editor {
         self.rebuild_image_runtimes(cx);
     }
 
+    /// Pastes an image as a standalone block or inline text, with undo capture.
     fn handle_paste_image_request(
         &mut self,
         block: Entity<super::Block>,
@@ -394,6 +409,7 @@ impl Editor {
         true
     }
 
+    /// Focuses the registered definition for a footnote ID.
     fn jump_to_footnote_definition(&mut self, id: &str, cx: &mut Context<Self>) -> bool {
         let Some(binding) = self.footnote_registry.binding(id) else {
             return false;
@@ -405,6 +421,7 @@ impl Editor {
         true
     }
 
+    /// Selects the first registered reference for a footnote ID.
     fn jump_to_footnote_backref(&mut self, id: &str, cx: &mut Context<Self>) -> bool {
         let Some(binding) = self.footnote_registry.binding(id) else {
             return false;
@@ -423,6 +440,7 @@ impl Editor {
         true
     }
 
+    /// Inserts an empty paragraph before a block to separate list groups.
     fn insert_list_group_separator_before(
         &mut self,
         entity_id: EntityId,
@@ -438,6 +456,7 @@ impl Editor {
         true
     }
 
+    /// Applies paragraph shortcuts and updates a block's kind, title, and caret.
     fn set_block_title_and_kind(
         block: &Entity<super::Block>,
         kind: BlockKind,
@@ -624,6 +643,7 @@ impl Editor {
         true
     }
 
+    /// Absorbs a typed body row into a preceding native table.
     fn extend_table_with_typed_row(
         &mut self,
         table_block: &Entity<super::Block>,
@@ -706,6 +726,7 @@ impl Editor {
             .insert_blocks_at(location.parent, location.index + 1, vec![trailing], cx);
     }
 
+    /// Converts a typed paragraph prefix to a supported block kind.
     fn apply_paragraph_shortcuts(
         kind: BlockKind,
         mut title: InlineTextTree,
@@ -724,6 +745,7 @@ impl Editor {
         (kind, title, cursor)
     }
 
+    /// Keeps the custom scrollbar visible briefly and schedules its fade repaint.
     pub(crate) fn bump_scrollbar_visibility(&mut self, cx: &mut Context<Self>) {
         let duration = Duration::from_millis(900);
         self.scrollbar_visible_until = Instant::now() + duration;
@@ -744,6 +766,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Tracks editor hover for scrollbar visibility.
     pub(crate) fn on_editor_hover(
         &mut self,
         hovered: &bool,
@@ -758,6 +781,7 @@ impl Editor {
         }
     }
 
+    /// Forwards menu-bar hover to the menu close scheduler.
     pub(crate) fn on_menu_bar_hover(
         &mut self,
         hovered: &bool,
@@ -767,6 +791,7 @@ impl Editor {
         self.set_menu_bar_hovered(*hovered, cx);
     }
 
+    /// Forwards menu-panel hover to the menu close scheduler.
     pub(crate) fn on_menu_panel_hover(
         &mut self,
         hovered: &bool,
@@ -776,6 +801,7 @@ impl Editor {
         self.set_menu_panel_hovered(*hovered, cx);
     }
 
+    /// Forwards submenu-panel hover to the menu close scheduler.
     pub(crate) fn on_menu_submenu_panel_hover(
         &mut self,
         hovered: &bool,
@@ -785,6 +811,7 @@ impl Editor {
         self.set_menu_submenu_panel_hovered(*hovered, cx);
     }
 
+    /// Forwards submenu bridge hover to the menu close scheduler.
     pub(crate) fn on_menu_submenu_bridge_hover(
         &mut self,
         hovered: &bool,
@@ -794,6 +821,7 @@ impl Editor {
         self.set_menu_submenu_bridge_hovered(*hovered, cx);
     }
 
+    /// Dismisses menus and table-axis highlights on editor body press.
     pub(crate) fn on_editor_mouse_down(
         &mut self,
         _event: &MouseDownEvent,
@@ -805,6 +833,7 @@ impl Editor {
         self.clear_table_axis_selection(cx);
     }
 
+    /// Reveals the custom scrollbar after wheel scrolling.
     pub(crate) fn on_editor_scroll_wheel(
         &mut self,
         _event: &ScrollWheelEvent,
@@ -814,6 +843,7 @@ impl Editor {
         self.bump_scrollbar_visibility(cx);
     }
 
+    /// Scrolls upward by one viewport height.
     pub(crate) fn on_page_up(
         &mut self,
         _: &crate::components::PageUp,
@@ -824,6 +854,7 @@ impl Editor {
         self.scroll_viewport_by(page, cx);
     }
 
+    /// Scrolls downward by one viewport height.
     pub(crate) fn on_page_down(
         &mut self,
         _: &crate::components::PageDown,
@@ -834,6 +865,7 @@ impl Editor {
         self.scroll_viewport_by(-page, cx);
     }
 
+    /// Scrolls the viewport to its top without moving the caret.
     pub(crate) fn on_jump_to_top(
         &mut self,
         _: &crate::components::JumpToTop,
@@ -843,6 +875,7 @@ impl Editor {
         self.set_vertical_scroll_offset(px(0.0), cx);
     }
 
+    /// Scrolls the viewport to its bottom without moving the caret.
     pub(crate) fn on_jump_to_bottom(
         &mut self,
         _: &crate::components::JumpToBottom,
@@ -876,6 +909,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Starts dragging a scrollbar thumb and cancels caret recentering.
     pub(crate) fn start_scrollbar_drag(
         &mut self,
         pointer_offset_y: f32,
@@ -896,6 +930,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Converts a pointer position in the track to a document scroll offset.
     pub(crate) fn update_scrollbar_drag(
         &mut self,
         pointer_y_in_track: f32,
@@ -921,6 +956,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Ends a scrollbar drag and refreshes its visibility timer.
     pub(crate) fn end_scrollbar_drag(&mut self, cx: &mut Context<Self>) {
         if self.scrollbar_drag.take().is_some() {
             self.bump_scrollbar_visibility(cx);
@@ -928,6 +964,7 @@ impl Editor {
         }
     }
 
+    /// Queues focus for an existing table runtime cell at a visual row/column.
     pub(super) fn focus_table_cell_position(
         &mut self,
         table_block: &Entity<super::Block>,
@@ -1030,6 +1067,7 @@ impl Editor {
         cx.notify();
     }
 
+    /// Moves horizontally through table cells in row-major order.
     fn focus_table_cell_horizontal_neighbor(
         &mut self,
         table_block: &Entity<super::Block>,
@@ -1066,6 +1104,7 @@ impl Editor {
         let _ = self.focus_table_cell_position(table_block, next_position, cx);
     }
 
+    /// Moves vertically through a table, leaving it at its top or bottom edge.
     fn focus_table_cell_vertical_neighbor(
         &mut self,
         table_block: &Entity<super::Block>,
@@ -1096,6 +1135,7 @@ impl Editor {
         let _ = self.focus_table_cell_position(table_block, next_position, cx);
     }
 
+    /// Handles table-cell edits, navigation, and events on their owning table.
     fn on_table_cell_event(
         &mut self,
         binding: super::TableCellBinding,
@@ -1206,6 +1246,7 @@ impl Editor {
         }
     }
 
+    /// Finds the closest enclosing quote or callout block.
     fn nearest_quote_ancestor(
         &self,
         entity_id: EntityId,
@@ -1221,6 +1262,7 @@ impl Editor {
         }
     }
 
+    /// Finds the highest directly nested quote/callout ancestor.
     fn topmost_quote_ancestor(
         &self,
         entity_id: EntityId,
@@ -1242,6 +1284,7 @@ impl Editor {
         Some(current)
     }
 
+    /// Finds the sibling position immediately after the nearest quote container.
     fn quote_break_insertion_target(
         &self,
         entity_id: EntityId,
@@ -1252,6 +1295,7 @@ impl Editor {
         Some((location.parent.clone(), location.index + 1))
     }
 
+    /// Finds the sibling position after the topmost quote/callout group.
     fn callout_break_insertion_target(
         &self,
         entity_id: EntityId,
@@ -1264,6 +1308,7 @@ impl Editor {
         Some((location.parent.clone(), location.index + 1))
     }
 
+    /// Returns a callout's first child, creating an empty body paragraph if needed.
     fn ensure_callout_body_entry(
         &mut self,
         callout: &Entity<super::Block>,
@@ -1283,6 +1328,7 @@ impl Editor {
         Some(body)
     }
 
+    /// Converts an empty quote with a callout marker into a callout with a body.
     fn materialize_empty_callout_shortcut(
         &mut self,
         block: &Entity<super::Block>,
@@ -1323,6 +1369,7 @@ impl Editor {
         Some(body.entity_id())
     }
 
+    /// Reverts a callout with only an empty body to an editable quote header.
     fn downgrade_empty_callout_body_to_quote(
         &mut self,
         block: &Entity<super::Block>,

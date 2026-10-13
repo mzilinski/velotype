@@ -22,6 +22,7 @@ pub(crate) enum LastExport {
 }
 
 impl Editor {
+    /// Suggests an export directory and filename using the document stem and format extension.
     fn export_dialog_defaults(&self, format: ExportFormat) -> (PathBuf, String) {
         self.export_dialog_defaults_for(format.extension())
     }
@@ -47,6 +48,7 @@ impl Editor {
         )
     }
 
+    /// Uses the nonempty document stem as the export title, or `Untitled`.
     pub(super) fn export_title(&self) -> String {
         self.file_path
             .as_ref()
@@ -56,6 +58,7 @@ impl Editor {
             .unwrap_or_else(|| "Untitled".to_string())
     }
 
+    /// Renders HTML as UTF-8 bytes or PDF through Chromium with the supplied font snapshot.
     fn render_export_bytes(
         format: ExportFormat,
         markdown: &str,
@@ -92,6 +95,7 @@ impl Editor {
         }
     }
 
+    /// Renders first, then writes bytes with destination context on filesystem errors.
     fn write_export_bytes(
         format: ExportFormat,
         markdown: &str,
@@ -114,6 +118,7 @@ impl Editor {
         std::fs::write(path, bytes).with_context(|| format!("failed to write '{}'", path.display()))
     }
 
+    /// Synchronously exports the current text, theme, fonts, and resource base directory.
     #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn export_document_to_path(
         &self,
@@ -138,6 +143,8 @@ impl Editor {
         )
     }
 
+    /// Captures export inputs before prompting and renders/writes on a worker thread.
+    /// Cancellation is silent; worker, rendering, and write errors are shown in the window.
     pub(crate) fn export_document_via_prompt(
         &mut self,
         format: ExportFormat,
@@ -324,6 +331,7 @@ impl Editor {
     }
 }
 
+/// Presents a localized critical export error with the supplied diagnostic detail.
 /// Confirms a finished export and offers to open the file with the system's
 /// default application.
 fn show_export_succeeded(window: &mut Window, cx: &mut App, path: PathBuf) {

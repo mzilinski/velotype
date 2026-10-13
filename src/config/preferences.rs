@@ -23,29 +23,41 @@ use crate::window_chrome::{
     custom_titlebar_height, render_custom_titlebar, velotype_window_options,
 };
 
+/// Built-in dark theme used when a configured theme is absent or unavailable.
 const DEFAULT_THEME_ID: &str = "velotype";
+/// Language fallback for ordinary preference reads without locale detection.
 const DEFAULT_LANGUAGE_ID: &str = "en-US";
 
 /// A user-configurable button shown in the status bar.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct StatusBarButton {
+    /// Stable identifier for the configured button.
     pub id: String,
+    /// Text displayed on the button.
     pub label: String,
+    /// Action identifier stored with the button configuration.
     pub action_id: String,
 }
 
 /// Status bar visibility and component toggles.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct StatusBarPreferences {
+    /// Whether the status bar is visible.
     pub enabled: bool,
+    /// Whether to display the document word count.
     pub show_word_count: bool,
+    /// Whether to display the cursor's line and column.
     pub show_cursor_position: bool,
+    /// Whether to display the workspace drawer toggle.
     pub show_sidebar_toggle: bool,
+    /// Whether to display the source/rendered mode switch.
     pub show_mode_switch: bool,
+    /// Additional button definitions retained in the preferences file.
     pub custom_buttons: Vec<StatusBarButton>,
 }
 
 impl Default for StatusBarPreferences {
+    /// Enables the bar and all built-in items, with no custom buttons.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -61,11 +73,14 @@ impl Default for StatusBarPreferences {
 /// Startup document selection stored in `config.toml`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum StartupOpenPreference {
+    /// Start with an empty document.
     NewFile,
+    /// Try the first existing recent file, falling back to an empty document.
     LastOpenedFile,
 }
 
 impl StartupOpenPreference {
+    /// Returns the stable TOML value for this startup mode.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::NewFile => "new_file",
@@ -73,6 +88,7 @@ impl StartupOpenPreference {
         }
     }
 
+    /// Parses a persisted value, using a new document for unrecognized values.
     fn from_str(value: &str) -> Self {
         match value {
             "last_opened_file" => Self::LastOpenedFile,
@@ -84,15 +100,20 @@ impl StartupOpenPreference {
 /// Where pasted clipboard images should be stored before inserting Markdown.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ImagePasteBehavior {
+    /// Keep existing image paths; write clipboard image bytes into the paste root.
     None,
+    /// Copy into the document directory, or the working directory for unsaved files.
     CopyToDocumentFolder,
+    /// Copy into an `assets` subdirectory of the document or working directory.
     CopyToAssetsFolder,
+    /// Copy into `<document-stem>.assets`, choosing an unused `untitle` name if unsaved.
     CopyToNamedAssetsFolder,
     /// Keep the image local first, then upload it with the upload command.
     Upload,
 }
 
 impl ImagePasteBehavior {
+    /// Returns the stable TOML value for this image storage policy.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::None => "none",
@@ -103,6 +124,7 @@ impl ImagePasteBehavior {
         }
     }
 
+    /// Parses a persisted policy, disabling file copying for unrecognized values.
     fn from_str(value: &str) -> Self {
         match value {
             "copy_to_document_folder" => Self::CopyToDocumentFolder,
@@ -188,25 +210,34 @@ impl Default for WritingPreferences {
 /// User preferences persisted under the app config directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct AppPreferences {
+    /// Document selection policy used at startup.
     pub(crate) startup_open: StartupOpenPreference,
+    /// Selected built-in or imported UI language identifier.
     pub(crate) default_language_id: String,
+    /// Selected built-in or imported theme identifier.
     pub(crate) default_theme_id: String,
     /// Light/dark theme pair applied when the theme follows the OS appearance.
     pub(crate) appearance_themes: AppearanceThemes,
+    /// Whether table top rows receive header styling.
     pub(crate) show_table_headers: bool,
     pub(crate) writing: WritingPreferences,
+    /// Storage policy for images inserted from the clipboard.
     pub(crate) image_paste_behavior: ImagePasteBehavior,
     /// Command that uploads images given as arguments and prints their URLs
     /// (Format > Image > Upload Image), e.g. `picgo upload`.
     pub(crate) image_upload_command: String,
+    /// Command identifiers mapped to user-supplied shortcut lists.
     pub(crate) keybindings: BTreeMap<String, Vec<String>>,
+    /// Status bar visibility, built-in items, and stored custom buttons.
     pub(crate) status_bar: StatusBarPreferences,
+    /// Unresolved family lists for body, code, and UI text.
     pub(crate) fonts: FontPreferences,
     /// Page setup for File > Export > PDF.
     pub(crate) pdf_export: PdfExportOptions,
 }
 
 impl Default for AppPreferences {
+    /// Uses a new document, English, the dark theme, and built-in editor defaults.
     fn default() -> Self {
         Self {
             startup_open: StartupOpenPreference::NewFile,
@@ -225,12 +256,17 @@ impl Default for AppPreferences {
     }
 }
 
-/// Status Bar Settings
+/// In-memory visibility flags read by the status bar renderer.
 struct StatusBarSettings {
+    /// Visibility of the entire status bar.
     status_bar_enabled: bool,
+    /// Visibility of the word count item.
     status_bar_show_word_count: bool,
+    /// Visibility of the cursor position item.
     status_bar_show_cursor_position: bool,
+    /// Visibility of the workspace drawer toggle.
     status_bar_show_sidebar_toggle: bool,
+    /// Visibility of the source/rendered mode switch.
     status_bar_show_mode_switch: bool,
 }
 
@@ -238,14 +274,17 @@ struct StatusBarSettings {
 /// render path can read them without touching disk. Toggling persists the new
 /// value back to the preferences file.
 pub struct EditorSettings {
+    /// Whether native tables style their top row as a header.
     show_table_headers: bool,
     writing: WritingPreferences,
+    /// Status bar flags mirrored from persisted preferences.
     status_bar_settings: StatusBarSettings,
 }
 
 impl Global for EditorSettings {}
 
 impl EditorSettings {
+    /// Installs table styling and status bar flags, defaulting unreadable bar settings.
     pub fn init(cx: &mut App, show_table_headers: bool) {
         let preferences = read_app_preferences().ok();
         let status_bar = preferences
@@ -256,6 +295,7 @@ impl EditorSettings {
         Self::set_global(cx, show_table_headers, writing, &status_bar);
     }
 
+    /// Replaces the runtime flags without reading or writing preferences.
     fn set_global(
         cx: &mut App,
         show_table_headers: bool,
@@ -283,6 +323,7 @@ impl EditorSettings {
             .unwrap_or(true)
     }
 
+    /// Updates table styling immediately and attempts to persist it, logging failures.
     pub fn set_show_table_headers(cx: &mut App, show_table_headers: bool) {
         let status_bar = cx
             .try_global::<Self>()
@@ -370,6 +411,7 @@ impl EditorSettings {
         }
     }
 
+    /// Returns runtime bar flags or defaults; custom buttons are not stored globally.
     pub fn status_bar_preferences(cx: &App) -> StatusBarPreferences {
         cx.try_global::<Self>()
             .map(|s| StatusBarPreferences {
@@ -384,14 +426,22 @@ impl EditorSettings {
     }
 }
 
+/// TOML output shape for normalized app preferences.
 #[derive(Serialize)]
 struct PreferencesFile {
+    /// Startup document selection table.
     startup: StartupPreferencesFile,
+    /// Default UI language table.
     language: LanguagePreferencesFile,
+    /// Default theme table.
     theme: ThemePreferencesFile,
+    /// Editor behavior table.
     editor: EditorPreferencesFile,
+    /// Status bar configuration table.
     status_bar: StatusBarPreferencesFile,
+    /// Normalized user shortcut overrides.
     keybindings: BTreeMap<String, Vec<String>>,
+    /// Font family lists table.
     fonts: FontPreferencesFile,
     pdf_export: PdfExportPreferencesFile,
 }
@@ -415,14 +465,19 @@ impl From<&PdfExportOptions> for PdfExportPreferencesFile {
     }
 }
 
+/// Persisted font family lists, kept as user-editable strings.
 #[derive(Serialize)]
 struct FontPreferencesFile {
+    /// Body text family list.
     body_stack: String,
+    /// Code text family list.
     code_stack: String,
+    /// Application UI family list.
     ui_stack: String,
 }
 
 impl From<&FontPreferences> for FontPreferencesFile {
+    /// Copies unresolved font preferences into their TOML representation.
     fn from(value: &FontPreferences) -> Self {
         Self {
             body_stack: value.body_stack.clone(),
@@ -432,14 +487,19 @@ impl From<&FontPreferences> for FontPreferencesFile {
     }
 }
 
+/// Persisted startup document policy.
 #[derive(Serialize)]
 struct StartupPreferencesFile {
+    /// Serialized startup mode identifier.
     open: String,
 }
 
+/// Persisted editor rendering and paste settings.
 #[derive(Serialize)]
 struct EditorPreferencesFile {
+    /// Whether to style the first table row as a header.
     show_table_headers: bool,
+    /// Serialized clipboard image storage policy.
     image_paste_behavior: String,
     image_upload_command: String,
     auto_pair: bool,
@@ -455,31 +515,43 @@ struct EditorPreferencesFile {
     toolbar: bool,
 }
 
+/// Persisted default UI language selection.
 #[derive(Serialize)]
 struct LanguagePreferencesFile {
+    /// Built-in or imported language identifier.
     default_language_id: String,
 }
 
+/// Persisted default theme selection.
 #[derive(Serialize)]
 struct ThemePreferencesFile {
+    /// Built-in or imported theme identifier.
     default_theme_id: String,
     follow_system_appearance: bool,
     light_theme_id: String,
     dark_theme_id: String,
 }
 
+/// TOML status bar settings, omitting an empty custom button list.
 #[derive(Serialize)]
 struct StatusBarPreferencesFile {
+    /// Visibility of the entire bar.
     enabled: bool,
+    /// Visibility of the word count.
     show_word_count: bool,
+    /// Visibility of the cursor position.
     show_cursor_position: bool,
+    /// Visibility of the workspace drawer toggle.
     show_sidebar_toggle: bool,
+    /// Visibility of the source/rendered mode switch.
     show_mode_switch: bool,
+    /// Stored custom button definitions.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     custom_buttons: Vec<StatusBarButton>,
 }
 
 impl From<&StatusBarPreferences> for StatusBarPreferencesFile {
+    /// Copies visibility flags and custom buttons into the TOML output shape.
     fn from(value: &StatusBarPreferences) -> Self {
         Self {
             enabled: value.enabled,
@@ -493,6 +565,7 @@ impl From<&StatusBarPreferences> for StatusBarPreferencesFile {
 }
 
 impl From<&AppPreferences> for PreferencesFile {
+    /// Converts enum values and normalizes shortcuts for TOML serialization.
     fn from(value: &AppPreferences) -> Self {
         Self {
             startup: StartupPreferencesFile {
@@ -531,10 +604,12 @@ impl From<&AppPreferences> for PreferencesFile {
     }
 }
 
+/// Reads system preferences without writing, using English for a missing language.
 pub(crate) fn read_app_preferences() -> anyhow::Result<AppPreferences> {
     read_app_preferences_with_dirs(&VelotypeConfigDirs::from_system()?)
 }
 
+/// Reads preferences from the supplied root; missing or malformed TOML uses defaults.
 pub(crate) fn read_app_preferences_with_dirs(
     dirs: &VelotypeConfigDirs,
 ) -> anyhow::Result<AppPreferences> {
@@ -555,11 +630,13 @@ pub(crate) fn read_app_preferences_with_dirs(
     Ok(app_preferences_from_toml_value(&value, DEFAULT_LANGUAGE_ID))
 }
 
+/// Loads and rewrites normalized preferences, detecting an unset language from locales.
 pub(crate) fn load_or_create_app_preferences() -> anyhow::Result<AppPreferences> {
     let dirs = VelotypeConfigDirs::from_system()?;
     load_or_create_app_preferences_with_dirs_and_locales(&dirs, sys_locale::get_locales())
 }
 
+/// Extracts known settings with per-field defaults and independent font validation.
 fn app_preferences_from_toml_value(
     value: &toml::Value,
     fallback_language_id: &str,
@@ -766,6 +843,7 @@ fn appearance_themes_from_toml_value(value: &toml::Value) -> AppearanceThemes {
     }
 }
 
+/// Maps preferred system locales to a supported built-in language.
 fn detected_language_id_from_locales<I, S>(locales: I) -> &'static str
 where
     I: IntoIterator<Item = S>,
@@ -774,6 +852,7 @@ where
     language_id_for_locale_preferences(locales)
 }
 
+/// Loads or repairs preferences using locale fallback, then saves the normalized result.
 fn load_or_create_app_preferences_with_dirs_and_locales<I, S>(
     dirs: &VelotypeConfigDirs,
     locales: I,
@@ -803,10 +882,12 @@ where
     Ok(preferences)
 }
 
+/// Writes normalized preferences to the platform configuration directory.
 pub(crate) fn save_app_preferences(preferences: &AppPreferences) -> anyhow::Result<()> {
     save_app_preferences_with_dirs(preferences, &VelotypeConfigDirs::from_system()?)
 }
 
+/// Creates the config directory as needed and writes pretty-printed TOML preferences.
 pub(crate) fn save_app_preferences_with_dirs(
     preferences: &AppPreferences,
     dirs: &VelotypeConfigDirs,
@@ -820,11 +901,15 @@ pub(crate) fn save_app_preferences_with_dirs(
     std::fs::write(&path, text).with_context(|| format!("failed to write '{}'", path.display()))
 }
 
+/// Returns the first history path that is a file, without checking its extension.
+/// Unreadable history yields no startup file.
 pub(crate) fn first_existing_recent_markdown_file() -> Option<PathBuf> {
     let recent_files = read_recent_files().ok()?;
     recent_files.into_iter().find(|path| path.is_file())
 }
 
+/// Activates and persists a recognized language, returning whether its ID changed.
+/// Unknown IDs return `false`; persistence errors occur after runtime selection.
 pub(crate) fn apply_configured_language(cx: &mut App, language_id: &str) -> anyhow::Result<bool> {
     let mut applied = false;
     let changed = cx.update_global::<I18nManager, _>(|i18n_manager, _cx| {
@@ -841,6 +926,8 @@ pub(crate) fn apply_configured_language(cx: &mut App, language_id: &str) -> anyh
     Ok(changed)
 }
 
+/// Activates and persists a theme, returning `true` for any recognized ID.
+/// Persistence errors occur after runtime selection; unknown IDs return `false`.
 pub(crate) fn apply_configured_theme(cx: &mut App, theme_id: &str) -> anyhow::Result<bool> {
     let mut applied = false;
     let dark = system_appearance_is_dark(cx.window_appearance());
@@ -935,6 +1022,7 @@ pub(crate) fn toggle_follow_system_appearance(cx: &mut App) -> anyhow::Result<()
     Ok(())
 }
 
+/// Imports and activates a language pack, then persists its ID as the default.
 pub(crate) fn import_language_config_and_select(
     cx: &mut App,
     path: impl AsRef<std::path::Path>,
@@ -948,6 +1036,7 @@ pub(crate) fn import_language_config_and_select(
     Ok(imported_id)
 }
 
+/// Imports and activates a theme pack, then persists its ID as the default.
 pub(crate) fn import_theme_config_and_select(
     cx: &mut App,
     path: impl AsRef<std::path::Path>,
@@ -961,6 +1050,7 @@ pub(crate) fn import_theme_config_and_select(
     Ok(imported_id)
 }
 
+/// Persists editable window settings while retaining language and table-header settings.
 pub(crate) fn save_preferences_from_window(
     startup_open: StartupOpenPreference,
     default_theme_id: &str,
@@ -981,6 +1071,7 @@ pub(crate) fn save_preferences_from_window(
     )
 }
 
+/// Updates window-owned fields in the supplied config root and returns the saved values.
 fn save_preferences_from_window_with_dirs(
     startup_open: StartupOpenPreference,
     default_theme_id: &str,
@@ -1002,6 +1093,7 @@ fn save_preferences_from_window_with_dirs(
     Ok(preferences)
 }
 
+/// Loads normalized preferences, applies one mutation, and saves the result.
 fn update_app_preferences(
     update: impl FnOnce(&mut AppPreferences),
 ) -> anyhow::Result<AppPreferences> {
@@ -1011,16 +1103,23 @@ fn update_app_preferences(
     Ok(preferences)
 }
 
+/// Preferences page currently displayed in the navigation pane.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PreferencesNav {
+    /// Startup document selection.
     File,
+    /// Theme selection and font family lists.
     Theme,
+    /// Clipboard image storage policy.
     Image,
+    /// Keyboard shortcut overrides.
     Shortcuts,
+    /// Status bar visibility controls.
     StatusBar,
     Export,
 }
 
+/// Checks body, code, and UI availability; syntax errors are handled separately.
 fn font_uses_system_default(fonts: &FontPreferences, catalog: &FontCatalog) -> [bool; 3] {
     [
         FontSettings::stack_uses_system_default(&fonts.body_stack, catalog, std::env::consts::OS)
@@ -1034,38 +1133,71 @@ fn font_uses_system_default(fonts: &FontPreferences, catalog: &FontCatalog) -> [
 
 /// Independent preferences window view.
 pub(crate) struct PreferencesWindow {
+    /// Active page in the navigation pane.
     nav: PreferencesNav,
+    /// Draft startup document policy.
     startup_open: StartupOpenPreference,
+    /// Draft theme selection.
     selected_theme_id: String,
+    /// Draft clipboard image storage policy.
     image_paste_behavior: ImagePasteBehavior,
+    /// Draft shortcut overrides.
     keybindings: BTreeMap<String, Vec<String>>,
+    /// Startup policy at the last successful save.
     saved_startup_open: StartupOpenPreference,
+    /// Theme ID at the last successful save.
     saved_theme_id: String,
+    /// Image policy at the last successful save.
     saved_image_paste_behavior: ImagePasteBehavior,
+    /// Shortcut overrides used as the dirty-state baseline.
     saved_keybindings: BTreeMap<String, Vec<String>>,
+    /// Theme catalog snapshot captured when this window opens.
     theme_options: Vec<ThemeCatalogEntry>,
+    /// Window-level focus target and shortcut recording receiver.
     focus_handle: FocusHandle,
+    /// Whether startup policy options are expanded.
     startup_dropdown_open: bool,
+    /// Whether theme options are expanded.
     theme_dropdown_open: bool,
+    /// Whether image storage options are expanded.
     image_dropdown_open: bool,
+    /// Command awaiting a replacement keystroke.
     recording_shortcut: Option<ShortcutCommand>,
+    /// Localized invalid-key or conflict message for shortcut recording.
     shortcut_error: Option<String>,
+    /// Draft visibility of the status bar.
     status_bar_enabled: bool,
+    /// Draft visibility of word count.
     status_bar_show_word_count: bool,
+    /// Draft visibility of cursor position.
     status_bar_show_cursor_position: bool,
+    /// Draft visibility of the workspace toggle.
     status_bar_show_sidebar_toggle: bool,
+    /// Draft visibility of the view-mode switch.
     status_bar_show_mode_switch: bool,
+    /// Saved bar visibility for dirty-state comparison.
     saved_status_bar_enabled: bool,
+    /// Saved word-count visibility for dirty-state comparison.
     saved_status_bar_show_word_count: bool,
+    /// Saved cursor-position visibility for dirty-state comparison.
     saved_status_bar_show_cursor_position: bool,
+    /// Saved workspace-toggle visibility for dirty-state comparison.
     saved_status_bar_show_sidebar_toggle: bool,
+    /// Saved mode-switch visibility for dirty-state comparison.
     saved_status_bar_show_mode_switch: bool,
+    /// Draft family lists synchronized from the text inputs.
     fonts: FontPreferences,
+    /// Font family lists at the last successful save.
     saved_fonts: FontPreferences,
+    /// Available family snapshot used to validate local availability.
     font_catalog: FontCatalog,
+    /// Flags for stacks with no available requested family, in body, code, UI order.
     font_uses_system_default: [bool; 3],
+    /// Editable body font family list.
     body_font_input: Entity<SingleLineInput>,
+    /// Editable code font family list.
     code_font_input: Entity<SingleLineInput>,
+    /// Editable application UI font family list.
     ui_font_input: Entity<SingleLineInput>,
     pdf_export: PdfExportOptions,
     saved_pdf_export: PdfExportOptions,
@@ -1075,6 +1207,7 @@ pub(crate) struct PreferencesWindow {
 }
 
 impl PreferencesWindow {
+    /// Builds the draft, saved baselines, and subscribed font inputs from preferences.
     fn new(
         preferences: AppPreferences,
         theme_options: Vec<ThemeCatalogEntry>,
@@ -1179,6 +1312,7 @@ impl PreferencesWindow {
         }
     }
 
+    /// Returns the first localized font syntax error in body, code, UI order.
     fn font_validation_error(&self, strings: &I18nStrings) -> Option<String> {
         [
             (&strings.preferences_font_body, &self.fonts.body_stack),
@@ -1199,6 +1333,7 @@ impl PreferencesWindow {
         })
     }
 
+    /// Rechecks one indexed font stack; invalid syntax does not show an availability warning.
     fn refresh_font_availability(&mut self, index: usize) {
         let input = match index {
             0 => &self.fonts.body_stack,
@@ -1214,6 +1349,7 @@ impl PreferencesWindow {
         .unwrap_or(false);
     }
 
+    /// Looks up the draft theme's display name, falling back to `Velotype`.
     fn selected_theme_name(&self) -> String {
         self.theme_options
             .iter()
@@ -1222,6 +1358,7 @@ impl PreferencesWindow {
             .unwrap_or_else(|| "Velotype".into())
     }
 
+    /// Compares draft values with saved baselines, normalizing shortcut overrides.
     fn has_unsaved_changes(&self) -> bool {
         self.startup_open != self.saved_startup_open
             || self.selected_theme_id != self.saved_theme_id
@@ -1238,6 +1375,7 @@ impl PreferencesWindow {
             || self.upload_command.trim() != self.saved_upload_command.trim()
     }
 
+    /// Shows startup settings and closes dropdowns and shortcut recording.
     fn set_nav_file(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::File;
         self.startup_dropdown_open = false;
@@ -1247,6 +1385,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Shows theme/font settings and closes dropdowns and shortcut recording.
     fn set_nav_theme(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::Theme;
         self.startup_dropdown_open = false;
@@ -1256,6 +1395,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Shows image settings and closes dropdowns and shortcut recording.
     fn set_nav_image(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::Image;
         self.startup_dropdown_open = false;
@@ -1265,6 +1405,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Shows shortcut settings, closes dropdowns, and clears the recording error.
     fn set_nav_shortcuts(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::Shortcuts;
         self.startup_dropdown_open = false;
@@ -1274,6 +1415,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Shows status bar settings and closes dropdowns and shortcut recording.
     fn set_nav_status_bar(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.nav = PreferencesNav::StatusBar;
         self.startup_dropdown_open = false;
@@ -1292,6 +1434,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Toggles startup options and closes the other dropdowns.
     fn toggle_startup_dropdown(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.startup_dropdown_open = !self.startup_dropdown_open;
         self.theme_dropdown_open = false;
@@ -1299,6 +1442,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Toggles theme options and closes the other dropdowns.
     fn toggle_theme_dropdown(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.theme_dropdown_open = !self.theme_dropdown_open;
         self.startup_dropdown_open = false;
@@ -1306,6 +1450,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Toggles image storage options and closes the other dropdowns.
     fn toggle_image_dropdown(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.image_dropdown_open = !self.image_dropdown_open;
         self.startup_dropdown_open = false;
@@ -1313,10 +1458,12 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Closes the window without persisting the draft.
     fn cancel(&mut self, _: &ClickEvent, window: &mut Window, _: &mut Context<Self>) {
         window.remove_window();
     }
 
+    /// Closes without saving when the custom titlebar receives a standard click.
     fn on_titlebar_close(
         &mut self,
         event: &ClickEvent,
@@ -1328,6 +1475,7 @@ impl PreferencesWindow {
         }
     }
 
+    /// Validates and saves a changed draft, prompting on write failure before applying it.
     fn save(&mut self, _: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
         if !self.has_unsaved_changes() {
             return;
@@ -1381,6 +1529,8 @@ impl PreferencesWindow {
         self.apply_saved_preferences(preferences, window, cx);
     }
 
+    /// Applies saved theme, shortcuts, bar flags, and fonts, then resets dirty baselines.
+    /// Keeps this window open, active, and focused.
     fn apply_saved_preferences(
         &mut self,
         preferences: AppPreferences,
@@ -1442,6 +1592,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Builds a navigation button with selected-page styling and a click listener.
     fn nav_button(
         &self,
         id: &'static str,
@@ -1487,6 +1638,7 @@ impl PreferencesWindow {
             .on_click(cx.listener(on_click))
     }
 
+    /// Builds the current-value button that opens a preferences dropdown.
     fn dropdown_button(
         id: &'static str,
         label: String,
@@ -1519,6 +1671,7 @@ impl PreferencesWindow {
             .on_click(cx.listener(on_click))
     }
 
+    /// Builds a selectable dropdown row with current-selection highlighting.
     fn dropdown_item(
         id: impl Into<ElementId>,
         label: String,
@@ -1552,6 +1705,7 @@ impl PreferencesWindow {
             .on_click(cx.listener(on_click))
     }
 
+    /// Stacks a field label above its full-width control.
     fn labeled_row(&self, label: &str, control: impl IntoElement, theme: &Theme) -> Div {
         let c = &theme.colors;
         let t = &theme.typography;
@@ -1573,6 +1727,7 @@ impl PreferencesWindow {
             .child(div().w_full().min_w(px(0.0)).child(control))
     }
 
+    /// Renders the draft startup document policy dropdown.
     fn render_startup_page(
         &self,
         theme: &Theme,
@@ -1630,6 +1785,7 @@ impl PreferencesWindow {
         self.labeled_row(&strings.preferences_startup_option, dropdown, theme)
     }
 
+    /// Renders theme selection, font inputs, syntax errors, and availability warnings.
     fn render_theme_page(
         &self,
         theme: &Theme,
@@ -1755,6 +1911,7 @@ impl PreferencesWindow {
             .child(fields)
     }
 
+    /// Resolves the localized label for an image storage policy.
     fn image_paste_behavior_label(
         behavior: ImagePasteBehavior,
         strings: &crate::i18n::I18nStrings,
@@ -1774,6 +1931,7 @@ impl PreferencesWindow {
         }
     }
 
+    /// Renders the clipboard image storage policy dropdown.
     fn render_image_page(
         &self,
         theme: &Theme,
@@ -1842,6 +2000,7 @@ impl PreferencesWindow {
             )
     }
 
+    /// Resolves the localized heading for a shortcut category.
     pub(crate) fn shortcut_category_label(
         category: ShortcutCategory,
         strings: &crate::i18n::I18nStrings,
@@ -1856,6 +2015,7 @@ impl PreferencesWindow {
         }
     }
 
+    /// Resolves the localized preferences label for a shortcut command.
     pub(crate) fn shortcut_command_label(
         command: ShortcutCommand,
         strings: &crate::i18n::I18nStrings,
@@ -2042,10 +2202,12 @@ impl PreferencesWindow {
         )
     }
 
+    /// Replaces every occurrence of one placeholder in a localized message.
     fn format_template(template: &str, key: &str, value: &str) -> String {
         template.replace(key, value)
     }
 
+    /// Arms a command for key capture and focuses the window-level receiver.
     fn begin_recording_shortcut(
         &mut self,
         command: ShortcutCommand,
@@ -2059,6 +2221,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Removes a command override and clears any recording state for that command.
     fn reset_shortcut(
         &mut self,
         command: ShortcutCommand,
@@ -2079,6 +2242,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Captures a nonrepeated key, rejecting invalid/conflicting bindings; Escape cancels.
     fn capture_shortcut_key(
         &mut self,
         event: &KeyDownEvent,
@@ -2144,6 +2308,7 @@ impl PreferencesWindow {
         cx.notify();
     }
 
+    /// Builds a compact shortcut-key or recording-state label.
     fn shortcut_chip(label: &str, theme: &Theme) -> impl IntoElement {
         let c = &theme.colors;
         let d = &theme.dimensions;
@@ -2164,6 +2329,7 @@ impl PreferencesWindow {
             .child(SharedString::from(label.to_string()))
     }
 
+    /// Builds a shortcut row's record or reset button.
     fn shortcut_action_button(
         id: impl Into<ElementId>,
         label: String,
@@ -2194,6 +2360,7 @@ impl PreferencesWindow {
             .on_click(cx.listener(on_click))
     }
 
+    /// Renders one command's resolved keys and record/reset controls.
     fn render_shortcut_row(
         &self,
         definition: ShortcutDefinition,
@@ -2265,6 +2432,7 @@ impl PreferencesWindow {
             )
     }
 
+    /// Renders categorized shortcut rows and the current validation error.
     fn render_shortcuts_page(
         &self,
         theme: &Theme,
@@ -2347,6 +2515,7 @@ impl PreferencesWindow {
         page.child(content)
     }
 
+    /// Renders the draft status bar and built-in item visibility switches.
     fn render_status_bar_page(
         &self,
         theme: &Theme,
@@ -2593,6 +2762,7 @@ impl PreferencesWindow {
 }
 
 impl Render for PreferencesWindow {
+    /// Renders navigation, the active page, and draft-aware save/cancel controls.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ThemeManager>().current().clone();
         let strings = cx.global::<I18nManager>().strings().clone();
@@ -2867,6 +3037,8 @@ impl Render for PreferencesWindow {
     }
 }
 
+/// Opens a preferences draft and installs the input filter before activation and focus.
+/// Panics if the window cannot be opened or its initial update fails.
 fn open_preferences_window_with_state(
     cx: &mut App,
     preferences: AppPreferences,
@@ -2886,6 +3058,7 @@ fn open_preferences_window_with_state(
 
     handle
         .update(cx, |preferences, window, _cx| {
+            crate::ime::install_window_input_filter(window);
             window.activate_window();
             preferences.focus_handle.focus(window);
         })
@@ -2894,6 +3067,7 @@ fn open_preferences_window_with_state(
     handle
 }
 
+/// Opens a new preferences window using persisted settings and current global catalogs.
 pub(crate) fn open_preferences_window(cx: &mut App) -> WindowHandle<PreferencesWindow> {
     let preferences = match read_app_preferences() {
         Ok(preferences) => preferences,

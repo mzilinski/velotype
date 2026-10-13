@@ -7,9 +7,11 @@
 use crate::fonts::FontSettings;
 use crate::theme::Theme;
 
+/// Markdown-to-HTML rendering shared by standalone and PDF export.
 mod html;
 mod options;
 pub(crate) mod pandoc;
+/// Headless Chromium PDF generation.
 mod pdf;
 
 pub(crate) use options::{DEFAULT_PDF_MARGIN_MM, PdfExportOptions, PdfOrientation, PdfPaperSize};
@@ -41,6 +43,7 @@ impl ExportFormat {
 pub(crate) use html::render_html;
 pub(crate) use html::{render_html_with_base_dir_and_fonts, render_html_without_styles};
 
+/// Renders Markdown as PDF bytes with the selected theme and font stacks.
 pub(crate) fn render_pdf_with_fonts(
     markdown: &str,
     theme: &Theme,

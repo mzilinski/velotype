@@ -14,6 +14,7 @@ use gpui::*;
 use super::{Editor, EditorTabEvent};
 
 impl Editor {
+    /// Closes a clean window immediately, or opens the unsaved-changes dialog.
     pub(crate) fn request_close_current_window(
         &mut self,
         window: &mut Window,
@@ -34,6 +35,7 @@ impl Editor {
         }
     }
 
+    /// Consumes the dialog's saved focus target and queues focus and scrolling.
     pub(crate) fn restore_focus_after_close_dialog(&mut self, cx: &mut Context<Self>) {
         if let Some(focus_id) = self.close_dialog_restore_focus.take() {
             self.pending_focus = Some(focus_id);
@@ -42,6 +44,7 @@ impl Editor {
         }
     }
 
+    /// Hides the close overlay without changing the pending save or focus target.
     pub(crate) fn hide_unsaved_changes_dialog(&mut self, cx: &mut Context<Self>) {
         if self.show_unsaved_changes_dialog {
             self.show_unsaved_changes_dialog = false;
@@ -49,6 +52,7 @@ impl Editor {
         }
     }
 
+    /// Cancels close-after-save and restores focus when that flow was pending.
     pub(crate) fn abort_pending_close_after_save(&mut self, cx: &mut Context<Self>) {
         let had_pending_close = self.pending_close_after_save;
         self.pending_close_after_save = false;
@@ -62,6 +66,7 @@ impl Editor {
         }
     }
 
+    /// Returns whether closing is allowed; dirty documents show an overlay and blur focus.
     pub(crate) fn on_window_should_close(
         &mut self,
         window: &mut Window,
@@ -90,6 +95,7 @@ impl Editor {
         false
     }
 
+    /// Keeps the window open and restores the block focused before the close dialog.
     pub(crate) fn on_cancel_close_dialog(
         &mut self,
         _: &ClickEvent,
@@ -103,6 +109,7 @@ impl Editor {
         self.notify_close_cancelled(cx);
     }
 
+    /// Removes the window without saving or restoring its previous focus.
     pub(crate) fn on_discard_and_close(
         &mut self,
         _: &ClickEvent,
@@ -116,6 +123,7 @@ impl Editor {
         self.finish_confirmed_close(window, cx);
     }
 
+    /// Queues a save whose successful completion will remove the window.
     pub(crate) fn on_save_and_close(
         &mut self,
         _: &ClickEvent,

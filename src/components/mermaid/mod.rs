@@ -11,10 +11,15 @@ use gpui::{Hsla, Rgba};
 use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
 use crate::theme::Theme;
 
+/// Maximum semantic line count that retains the renderer's original size.
 const SIMPLE_MERMAID_LINE_LIMIT: usize = 8;
+/// Desired fraction of the editor column for more complex diagrams.
 const MERMAID_COMPLEX_TARGET_WIDTH_RATIO: f32 = 0.9;
+/// Largest diagram dimension relative to the viewport during upscaling.
 const MERMAID_MAX_VIEWPORT_WIDTH_RATIO: f32 = 1.15;
+/// Added complexity scale for each line beyond the simple-diagram limit.
 const MERMAID_SCALE_PER_EXTRA_LINE: f32 = 0.035;
+/// Upper bound on editor display scale.
 const MERMAID_MAX_SCALE: f32 = 1.75;
 
 /// Opening fence metadata for a Mermaid fenced code block.
@@ -55,7 +60,9 @@ pub(crate) struct MermaidSvgRender {
 /// Concrete dimensions encoded into a display SVG.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct MermaidSvgSize {
+    /// Intrinsic SVG width.
     pub(crate) width: f32,
+    /// Intrinsic SVG height.
     pub(crate) height: f32,
 }
 
@@ -241,6 +248,7 @@ pub(crate) fn render_mermaid_svg_for_display(
     )
 }
 
+/// Reuses base and scaled SVG caches with an injectable renderer.
 fn render_mermaid_svg_for_display_with(
     source: &MermaidSource,
     palette: &MermaidPalette,
@@ -306,8 +314,10 @@ pub(crate) fn render_mermaid_to_svg(
     render_mermaid_to_svg_cached_with(source, palette, &path, render_mermaid_raw)
 }
 
+/// Renderer callback used by the base SVG cache and its tests.
 type MermaidRenderer = fn(&str, &MermaidPalette) -> anyhow::Result<String>;
 
+/// Reads a cached base SVG or renders and writes one on a cache miss.
 fn render_mermaid_to_svg_cached_with(
     source: &str,
     palette: &MermaidPalette,
@@ -331,6 +341,7 @@ fn render_mermaid_to_svg_cached_with(
     Ok(svg)
 }
 
+/// Renders supported Mermaid syntax, rejecting renderer-produced error SVGs.
 fn render_mermaid_raw(source: &str, palette: &MermaidPalette) -> anyhow::Result<String> {
     if !looks_like_supported_mermaid_source(source) {
         return Err(anyhow::anyhow!("unsupported Mermaid diagram"));
@@ -427,6 +438,7 @@ pub(crate) fn mermaid_display_scale(
         .max(1.0)
 }
 
+/// Removes up to three leading spaces from a Markdown fence line.
 fn strip_fence_indent(line: &str) -> Option<&str> {
     let indent = line.bytes().take_while(|byte| *byte == b' ').count();
     (indent <= 3).then_some(&line[indent..])
@@ -453,11 +465,13 @@ pub(crate) fn scale_mermaid_svg_for_display(
     Ok((rewritten, size))
 }
 
+/// Reads intrinsic dimensions from an SVG root tag.
 fn mermaid_svg_intrinsic_size(svg: &str) -> anyhow::Result<MermaidSvgSize> {
     let (start, end) = svg_root_tag_range(svg)?;
     svg_root_size(&svg[start..end])
 }
 
+/// Locates the SVG opening tag while respecting quoted `>` characters.
 fn svg_root_tag_range(svg: &str) -> anyhow::Result<(usize, usize)> {
     let start = svg
         .find("<svg")
@@ -483,6 +497,7 @@ fn svg_root_tag_range(svg: &str) -> anyhow::Result<(usize, usize)> {
     ))
 }
 
+/// Prefers `viewBox` dimensions, falling back to root width and height.
 fn svg_root_size(root_tag: &str) -> anyhow::Result<MermaidSvgSize> {
     if let Some(view_box) = svg_root_attr(root_tag, "viewBox")
         && let Some(size) = parse_view_box_size(&view_box)
@@ -499,6 +514,7 @@ fn svg_root_size(root_tag: &str) -> anyhow::Result<MermaidSvgSize> {
     Ok(MermaidSvgSize { width, height })
 }
 
+/// Parses the positive-clamped width and height from a four-value viewBox.
 fn parse_view_box_size(view_box: &str) -> Option<MermaidSvgSize> {
     let values = view_box
         .split(|ch: char| ch.is_ascii_whitespace() || ch == ',')
@@ -514,6 +530,7 @@ fn parse_view_box_size(view_box: &str) -> Option<MermaidSvgSize> {
     )
 }
 
+/// Parses a positive numeric SVG length, ignoring any unit suffix.
 fn parse_svg_length(value: &str) -> Option<f32> {
     let value = value.trim();
     let end = value
@@ -525,6 +542,7 @@ fn parse_svg_length(value: &str) -> Option<f32> {
     (parsed.is_finite() && parsed > 0.0).then_some(parsed)
 }
 
+/// Returns a root attribute's value using case-insensitive name matching.
 fn svg_root_attr(root_tag: &str, attr_name: &str) -> Option<String> {
     svg_root_attrs(root_tag)
         .into_iter()
@@ -532,6 +550,7 @@ fn svg_root_attr(root_tag: &str, attr_name: &str) -> Option<String> {
         .and_then(|attr| attr.value)
 }
 
+/// Replaces responsive root sizing with explicit display dimensions.
 fn rewrite_svg_root_tag(root_tag: &str, size: MermaidSvgSize) -> anyhow::Result<String> {
     let attrs = svg_root_attrs(root_tag)
         .into_iter()
@@ -555,13 +574,18 @@ fn rewrite_svg_root_tag(root_tag: &str, size: MermaidSvgSize) -> anyhow::Result<
     Ok(rewritten)
 }
 
+/// Parsed root attribute with its original source text.
 #[derive(Debug)]
 struct SvgRootAttr {
+    /// Attribute name used for filtering and lookup.
     name: String,
+    /// Parsed value, when the attribute has an assignment.
     value: Option<String>,
+    /// Original attribute text retained when rewriting the root.
     raw: String,
 }
 
+/// Parses SVG root attributes, retaining their original text and values.
 fn svg_root_attrs(root_tag: &str) -> Vec<SvgRootAttr> {
     let Some(mut index) = root_tag.find("<svg").map(|index| index + "<svg".len()) else {
         return Vec::new();
@@ -629,6 +653,7 @@ fn svg_root_attrs(root_tag: &str) -> Vec<SvgRootAttr> {
     attrs
 }
 
+/// Creates the per-user Mermaid cache, falling back to the temp directory.
 fn mermaid_cache_dir() -> anyhow::Result<PathBuf> {
     let dir = velotype_cache_root().join("mermaid-svg");
     fs::create_dir_all(&dir)
@@ -636,14 +661,17 @@ fn mermaid_cache_dir() -> anyhow::Result<PathBuf> {
     Ok(dir)
 }
 
+/// Returns a base-render SVG path for a content hash.
 fn mermaid_base_cache_path(key: &str) -> anyhow::Result<PathBuf> {
     mermaid_cache_file_path("base", key)
 }
 
+/// Returns a scaled-display SVG path for a content-and-scale hash.
 fn mermaid_display_cache_path(key: &str) -> anyhow::Result<PathBuf> {
     mermaid_cache_file_path("display", key)
 }
 
+/// Creates a cache subdirectory and returns its keyed SVG path.
 fn mermaid_cache_file_path(kind: &str, key: &str) -> anyhow::Result<PathBuf> {
     let dir = mermaid_cache_dir()?.join(kind);
     fs::create_dir_all(&dir).with_context(|| {
@@ -655,6 +683,7 @@ fn mermaid_cache_file_path(kind: &str, key: &str) -> anyhow::Result<PathBuf> {
     Ok(dir.join(format!("{key}.svg")))
 }
 
+/// Checks the first non-comment diagram line for a supported Mermaid kind.
 fn looks_like_supported_mermaid_source(source: &str) -> bool {
     let mut in_frontmatter = false;
     for line in source.lines() {

@@ -1,7 +1,8 @@
 //! Velotype - a block-based Markdown editor built with GPUI.
 //!
 //! Reads file paths from command-line arguments and opens them as tabs of one
-//! GPUI window. With no arguments, a single empty window is created.
+//! GPUI window. With no arguments, startup preferences select a recent file or
+//! an empty document; macOS open-file events can replace that startup choice.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -29,10 +30,12 @@ mod file_url;
 mod fonts;
 mod help;
 mod i18n;
+mod ime;
 mod net;
 mod perf_log;
 mod spellcheck;
 mod text_file;
+mod text_offsets;
 mod theme;
 mod window_chrome;
 mod window_pin;
@@ -44,8 +47,10 @@ use file_url::parse_file_url;
 use i18n::I18nManager;
 use theme::ThemeManager;
 
+/// Serves the workspace and titlebar SVGs embedded in the executable.
 struct VelotypeAssets;
 
+/// Opens the preferred recent Markdown file, falling back to an empty document.
 fn open_startup_window(cx: &mut App, startup_open: config::StartupOpenPreference) {
     open_startup_document(cx, startup_open);
     app_menu::restore_session_drafts(cx);
@@ -73,6 +78,7 @@ fn open_startup_document(cx: &mut App, startup_open: config::StartupOpenPreferen
 }
 
 impl AssetSource for VelotypeAssets {
+    /// Returns embedded bytes for known icon paths, or `None` for other assets.
     fn load(&self, path: &str) -> gpui::Result<Option<Cow<'static, [u8]>>> {
         match path {
             "icon/workspace/folder.svg" => Ok(Some(Cow::Borrowed(include_bytes!(
@@ -97,11 +103,13 @@ impl AssetSource for VelotypeAssets {
         }
     }
 
+    /// Returns no directory entries; embedded assets are loaded by exact path.
     fn list(&self, _path: &str) -> gpui::Result<Vec<SharedString>> {
         Ok(Vec::new())
     }
 }
 
+/// Parses CLI options, initializes app services, and opens startup documents.
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 

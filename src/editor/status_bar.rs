@@ -9,14 +9,19 @@ use crate::config::preferences::{StatusBarButton, StatusBarPreferences};
 use crate::i18n::I18nStrings;
 use crate::theme::Theme;
 
+/// Hover state for the interactive status-bar controls.
 #[derive(Default)]
 pub(super) struct StatusBarState {
+    /// Whether the workspace toggle is hovered.
     pub sidebar_hovered: bool,
+    /// Whether the view-mode switch is hovered.
     pub mode_hovered: bool,
+    /// ID of the hovered configured button, if any.
     custom_button_hovered: Option<String>,
 }
 
 impl Editor {
+    /// Builds the enabled status bar from current preferences and document state.
     pub(super) fn render_status_bar(
         &mut self,
         theme: &Theme,
@@ -127,6 +132,7 @@ impl Editor {
         Some(bar)
     }
 
+    /// Reads the effective status-bar settings.
     fn status_bar_preferences(&self, cx: &App) -> StatusBarPreferences {
         crate::config::preferences::EditorSettings::status_bar_preferences(cx)
     }
@@ -145,6 +151,7 @@ impl Editor {
     }
 }
 
+/// Builds the workspace drawer toggle and its hover/click handlers.
 fn render_sidebar_toggle(
     state: &mut StatusBarState,
     _is_open: bool,
@@ -191,6 +198,7 @@ fn render_sidebar_toggle(
         .into_any_element()
 }
 
+/// Builds the control that switches to the opposite editor mode.
 fn render_mode_switch(
     state: &mut StatusBarState,
     view_mode: super::ViewMode,
@@ -271,6 +279,7 @@ fn render_line_ending(
         .into_any_element()
 }
 
+/// Renders a one-based source cursor line and grapheme column.
 fn render_cursor((line, col): (usize, usize), theme: &Theme) -> AnyElement {
     let c = &theme.colors;
     let d = &theme.dimensions;
@@ -284,6 +293,7 @@ fn render_cursor((line, col): (usize, usize), theme: &Theme) -> AnyElement {
         .into_any_element()
 }
 
+/// Renders total words and, when present, selected words.
 fn render_word_count(
     selection_count: Option<usize>,
     total_count: usize,
@@ -309,6 +319,7 @@ fn render_word_count(
         .into_any_element()
 }
 
+/// Builds a configured status-bar label with hover state.
 fn render_custom_button(
     state: &mut StatusBarState,
     button: &StatusBarButton,
@@ -357,10 +368,9 @@ fn render_custom_button(
 
 /// Count words in mixed CJK / Latin text.
 ///
-/// Every CJK character counts as one word. Latin words are split on whitespace.
 /// Words in `text`: runs of non-space characters that contain a letter or
-/// digit (Markdown markers such as `#`, `-`, `>`, `|` do not count), and
-/// every CJK character.
+/// digit (Markdown markers such as `#`, `-`, `>`, `|` do not count). Every
+/// supported CJK character counts separately.
 pub(super) fn count_words(text: &str) -> usize {
     let mut count = 0;
     // Inside a run of non-space characters; whether it had a letter/digit.
@@ -388,6 +398,7 @@ pub(super) fn count_words(text: &str) -> usize {
     count
 }
 
+/// Recognizes the CJK ranges counted as individual words by the status bar.
 fn is_cjk_char(ch: char) -> bool {
     matches!(
         ch as u32,
