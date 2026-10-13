@@ -30,6 +30,7 @@ mod fonts;
 mod help;
 mod i18n;
 mod net;
+mod perf_log;
 mod spellcheck;
 mod theme;
 mod window_chrome;
@@ -194,6 +195,8 @@ fn main() {
     }
 
     app.run(move |cx: &mut App| {
+        perf_log::start(cx);
+        let startup = perf_log::Span::new("Start: Einstellungen, Themes, Wörterbuch, Menüs");
         let preferences = config::load_or_create_app_preferences().unwrap_or_else(|err| {
             eprintln!("failed to initialize app preferences: {err}");
             Default::default()
@@ -211,6 +214,7 @@ fn main() {
         net::install_http_client(cx);
         init_editor(cx, &preferences.keybindings);
         init_app_menu(cx);
+        drop(startup);
 
         #[cfg(target_os = "macos")]
         cx.spawn(async move |cx| {

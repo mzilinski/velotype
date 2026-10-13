@@ -855,7 +855,12 @@ impl BlockTextElement {
             return Vec::new();
         }
         let clean = input.clean_text().to_string();
+        let spelling = crate::perf_log::Span::new(format!(
+            "Rechtschreibprüfung eines Blocks ({} Zeichen)",
+            clean.len()
+        ));
         let clean_ranges = crate::spellcheck::SpellChecker::misspelled(cx, &clean);
+        drop(spelling);
         if clean_ranges.is_empty() {
             return clean_ranges;
         }

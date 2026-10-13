@@ -927,9 +927,21 @@ fn workspace_tree(
 
     let root = root.to_path_buf();
     let read_root = root.clone();
-    let read = cx
-        .background_executor()
-        .spawn(async move { scan_workspace_tree(&read_root).map_err(|err| format!("{err:#}")) });
+    let read = cx.background_executor().spawn(async move {
+        let start = Instant::now();
+        let tree = scan_workspace_tree(&read_root).map_err(|err| format!("{err:#}"));
+        crate::perf_log::note(format!(
+            "Dateibaum im Hintergrund gelesen: {} – {} ms{}",
+            read_root.display(),
+            start.elapsed().as_millis(),
+            if tree.as_ref().is_ok_and(|tree| tree.truncated) {
+                " (abgeschnitten)"
+            } else {
+                ""
+            }
+        ));
+        tree
+    });
     cx.spawn(async move |cx| {
         let tree = read.await;
         let _ = cx.update(|cx| {

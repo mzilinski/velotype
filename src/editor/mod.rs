@@ -364,13 +364,17 @@ impl Editor {
         file_path: Option<PathBuf>,
     ) -> Self {
         let normalized = markdown.replace("\r\n", "\n").replace('\r', "\n");
+        let parse = crate::perf_log::Span::new("  Markdown parsen");
         let (mut roots, regions) = Self::build_root_blocks_with_regions(cx, &normalized);
+        drop(parse);
         if roots.is_empty() {
             roots.push(Self::new_block(cx, BlockRecord::paragraph(String::new())));
         }
 
+        let metadata = crate::perf_log::Span::new("  Dokument-Metadaten");
         let mut document = DocumentTree::new(roots);
         document.rebuild_metadata_and_snapshot(cx);
+        drop(metadata);
         let pending_focus = document.first_root().map(|block| block.entity_id());
 
         let mut editor = Self {
@@ -451,15 +455,21 @@ impl Editor {
             tab_host: None,
             draft_id: None,
         };
+        let runtimes = crate::perf_log::Span::new("  Tabellen und Bilder vorbereiten");
         editor.rebuild_table_runtimes(cx);
         editor.rebuild_image_runtimes(cx);
+        drop(runtimes);
         // After the runtimes: link reference definitions change how blocks
         // serialize (`[text][ref]`).
+        let fidelity = crate::perf_log::Span::new("  Quelltext-Treue berechnen");
         editor.source_fidelity =
             source_fidelity::fidelity_for_document(&editor.document, &normalized, &regions, cx);
+        drop(fidelity);
         editor.pending_focus = editor.first_focusable_entity_id(cx);
         editor.active_entity_id = editor.pending_focus;
+        let snapshot = crate::perf_log::Span::new("  Undo-Schnappschuss");
         editor.refresh_stable_document_snapshot(cx);
+        drop(snapshot);
         editor
     }
 }
