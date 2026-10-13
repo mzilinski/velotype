@@ -84,6 +84,10 @@ impl VelotypeConfigDirs {
     pub(crate) fn workspace_folder_file(&self) -> PathBuf {
         self.root.join(".workspace")
     }
+
+    pub(crate) fn logs_dir(&self) -> PathBuf {
+        self.root.join("logs")
+    }
 }
 
 /// The folder last opened with Open Folder, if it still exists.

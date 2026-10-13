@@ -188,18 +188,26 @@ pub(crate) fn restore_session_drafts(cx: &mut App) {
 
 /// Reads `path` and opens it in a tab of the current editor window.
 pub(crate) fn open_file_in_tab(cx: &mut App, path: &Path) -> anyhow::Result<()> {
+    let read = crate::perf_log::Span::new(format!("Datei lesen: {}", path.display()));
     let markdown = std::fs::read_to_string(path)
         .with_context(|| format!("failed to read '{}'", path.display()))?;
+    drop(read);
+    crate::perf_log::note(format!("  {} Bytes", markdown.len()));
+    let open = crate::perf_log::Span::new("Dokument in Tab öffnen");
     open_markdown_in_current_window(cx, markdown, Some(path.to_path_buf()));
+    drop(open);
     record_recent_file_and_refresh(path, cx);
     Ok(())
 }
 
 fn record_recent_file_and_refresh(path: &Path, cx: &mut App) {
+    let record = crate::perf_log::Span::new("Zuletzt geöffnet: Liste schreiben");
     if let Err(err) = record_recent_file(path) {
         eprintln!("failed to update recent file history: {err}");
         return;
     }
+    drop(record);
+    let _menus = crate::perf_log::Span::new("Menüs neu aufbauen");
     install_menus(cx);
     cx.refresh_windows();
 }
@@ -1915,15 +1923,21 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
         .strings()
         .open_markdown_files_prompt
         .clone();
+    crate::perf_log::step("Öffnen-Dialog angefordert");
     let prompt = cx.prompt_for_paths(PathPromptOptions {
         files: true,
         directories: false,
         multiple: true,
         prompt: Some(prompt_title.into()),
     });
+    crate::perf_log::step("Öffnen-Dialog offen");
 
     cx.spawn(async move |cx| match prompt.await {
         Ok(Ok(Some(paths))) => {
+            crate::perf_log::step(format!(
+                "Öffnen-Dialog geschlossen: {} Datei(en)",
+                paths.len()
+            ));
             let _ = cx.update(move |cx| {
                 for path in paths {
                     if let Err(err) = open_file_in_tab(cx, &path) {

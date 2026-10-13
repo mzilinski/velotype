@@ -1499,6 +1499,14 @@ impl Editor {
 
 impl Render for Editor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _render = crate::perf_log::Span::new(format!(
+            "Editor rendern: {}",
+            self.file_path
+                .as_deref()
+                .and_then(|path| path.file_name())
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "unbenannt".into())
+        ));
         self.install_close_guard(cx, window);
         // Line heights are given in rems; scale them with the document zoom
         // like the font sizes (GPUI's default rem is 16px).

@@ -252,8 +252,15 @@ impl EditorWindow {
         cx: &mut Context<Self>,
     ) {
         for path in paths {
-            match std::fs::read_to_string(&path) {
+            let read = crate::perf_log::Span::new(format!("Datei lesen: {}", path.display()));
+            let content = std::fs::read_to_string(&path);
+            drop(read);
+            match content {
                 Ok(markdown) => {
+                    let _open = crate::perf_log::Span::new(format!(
+                        "Dokument in Tab öffnen ({} Bytes)",
+                        markdown.len()
+                    ));
                     let editor = self.open_document(markdown, Some(path.clone()), window, cx);
                     if open_workspace {
                         editor.update(cx, |editor, cx| editor.open_workspace_drawer(cx));
@@ -573,6 +580,7 @@ impl EditorWindow {
 
 impl Render for EditorWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let _render = crate::perf_log::Span::new("Fenster rendern (Tabs)");
         self.install_close_guard(window, cx);
         div()
             .size_full()
