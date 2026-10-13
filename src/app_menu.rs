@@ -1866,19 +1866,8 @@ fn build_menus_with_view(
             .collect(),
         },
         Menu {
-            name: strings.menu_language.into(),
-            items: language_items,
-        },
-        Menu {
             name: strings.menu_theme.into(),
             items: theme_items,
-        },
-        Menu {
-            name: strings.menu_workspace.into(),
-            items: vec![MenuItem::action(
-                strings.menu_toggle_workspace.clone(),
-                ToggleWorkspace,
-            )],
         },
         Menu {
             name: strings.menu_view.clone().into(),
@@ -1896,6 +1885,7 @@ fn build_menus_with_view(
                         crate::components::ToggleViewMode,
                     ),
                     MenuItem::separator(),
+                    MenuItem::action(strings.menu_toggle_workspace.clone(), ToggleWorkspace),
                     MenuItem::action(
                         strings.workspace_tab_outline.clone(),
                         crate::components::ShowOutline,
@@ -1984,6 +1974,10 @@ fn build_menus_with_view(
                 ])
                 .collect()
             },
+        },
+        Menu {
+            name: strings.menu_language.into(),
+            items: language_items,
         },
         Menu {
             name: strings.menu_help.into(),
@@ -2372,32 +2366,33 @@ mod tests {
         );
     }
 
-    // On macOS the menu bar is: [Velotype app menu, File, Export, Language, Theme, Workspace, Help]
-    // On other platforms:       [File, Export, Language, Theme, Workspace, Help]
+    // On macOS the menu bar is: [Velotype app menu, File, Edit, Paragraph,
+    // Format, Export, Theme, View, Language, Help]; other platforms omit the
+    // app menu.
     #[cfg(target_os = "macos")]
     const EXPORT_IDX: usize = 5;
     #[cfg(not(target_os = "macos"))]
     const EXPORT_IDX: usize = 4;
 
     #[cfg(target_os = "macos")]
-    const LANGUAGE_IDX: usize = 6;
-    #[cfg(not(target_os = "macos"))]
-    const LANGUAGE_IDX: usize = 5;
-
-    #[cfg(target_os = "macos")]
-    const THEME_IDX: usize = 7;
-    #[cfg(not(target_os = "macos"))]
     const THEME_IDX: usize = 6;
+    #[cfg(not(target_os = "macos"))]
+    const THEME_IDX: usize = 5;
 
     #[cfg(target_os = "macos")]
-    const WORKSPACE_IDX: usize = 8;
+    const VIEW_IDX: usize = 7;
     #[cfg(not(target_os = "macos"))]
-    const WORKSPACE_IDX: usize = 7;
+    const VIEW_IDX: usize = 6;
 
     #[cfg(target_os = "macos")]
-    const HELP_IDX: usize = 10;
+    const LANGUAGE_IDX: usize = 8;
     #[cfg(not(target_os = "macos"))]
+    const LANGUAGE_IDX: usize = 7;
+
+    #[cfg(target_os = "macos")]
     const HELP_IDX: usize = 9;
+    #[cfg(not(target_os = "macos"))]
+    const HELP_IDX: usize = 8;
 
     #[test]
     fn view_menu_has_status_bar_full_screen_and_zoom() {
@@ -2489,10 +2484,9 @@ mod tests {
                 "Paragraph",
                 "Format",
                 "Export",
-                "Language",
                 "Theme",
-                "Workspace",
                 "View",
+                "Language",
                 "Help"
             ]
         );
@@ -2505,10 +2499,9 @@ mod tests {
                 "Paragraph",
                 "Format",
                 "Export",
-                "Language",
                 "Theme",
-                "Workspace",
                 "View",
+                "Language",
                 "Help"
             ]
         );
@@ -2551,10 +2544,7 @@ mod tests {
             action_name(&menus[LANGUAGE_IDX].items[1]),
             "\u{2713} English"
         );
-        assert_eq!(
-            action_name(&menus[WORKSPACE_IDX].items[0]),
-            "Toggle Workspace"
-        );
+        assert_eq!(action_name(&menus[VIEW_IDX].items[2]), "Toggle Workspace");
     }
 
     #[test]
@@ -2583,33 +2573,14 @@ mod tests {
         assert_eq!(
             menu_names,
             vec![
-                "Velotype",
-                "文件",
-                "编辑",
-                "段落",
-                "格式",
-                "导出",
-                "语言",
-                "主题",
-                "工作区",
-                "视图",
-                "帮助"
+                "Velotype", "文件", "编辑", "段落", "格式", "导出", "主题", "视图", "语言", "帮助"
             ]
         );
         #[cfg(not(target_os = "macos"))]
         assert_eq!(
             menu_names,
             vec![
-                "文件",
-                "编辑",
-                "段落",
-                "格式",
-                "导出",
-                "语言",
-                "主题",
-                "工作区",
-                "视图",
-                "帮助"
+                "文件", "编辑", "段落", "格式", "导出", "主题", "视图", "语言", "帮助"
             ]
         );
 
@@ -2624,7 +2595,7 @@ mod tests {
             "\u{2713} 简体中文"
         );
         assert_eq!(action_name(&menus[LANGUAGE_IDX].items[1]), "English");
-        assert_eq!(action_name(&menus[WORKSPACE_IDX].items[0]), "切换工作区");
+        assert_eq!(action_name(&menus[VIEW_IDX].items[2]), "切换工作区");
     }
 
     #[test]
