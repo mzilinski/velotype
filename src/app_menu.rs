@@ -434,11 +434,20 @@ pub(crate) fn record_recent_file_from_editor(path: &Path, cx: &mut App) {
 fn show_window_prompt(window: Option<AnyWindowHandle>, title: &str, detail: &str, cx: &mut App) {
     if let Some(window) = window {
         let ok = cx.global::<I18nManager>().strings().info_dialog_ok.clone();
-        let _ = window.update(cx, |_view, window, cx| {
+        let shown = window.update(cx, |_view, window, cx| {
             let buttons = [ok.as_str()];
             let _ = window.prompt(PromptLevel::Critical, title, Some(detail), &buttons, cx);
         });
+        crate::perf_log::note(format!(
+            "  Fehlermeldung {}: {title}",
+            if shown.is_ok() {
+                "angezeigt"
+            } else {
+                "NICHT angezeigt (Fenster belegt)"
+            }
+        ));
     } else {
+        crate::perf_log::note(format!("  Fehlermeldung ohne Fenster: {title}: {detail}"));
         eprintln!("{title}: {detail}");
     }
 }
@@ -1938,18 +1947,25 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
                 "Öffnen-Dialog geschlossen: {} Datei(en)",
                 paths.len()
             ));
-            let _ = cx.update(move |cx| {
+            let updated = cx.update(move |cx| {
                 for path in paths {
+                    crate::perf_log::step(format!("Datei öffnen: {}", path.display()));
                     if let Err(err) = open_file_in_tab(cx, &path) {
+                        crate::perf_log::note(format!("  Fehler: {err:#}"));
                         let title = cx
                             .global::<I18nManager>()
                             .strings()
                             .open_failed_title
                             .clone();
                         show_window_prompt(error_window, &title, &err.to_string(), cx);
+                    } else {
+                        crate::perf_log::note("  geöffnet");
                     }
                 }
             });
+            if let Err(err) = updated {
+                crate::perf_log::note(format!("  App-Update fehlgeschlagen: {err:#}"));
+            }
         }
         Ok(Err(err)) => {
             let detail = err.to_string();
@@ -1962,7 +1978,8 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
                 show_window_prompt(error_window, &title, &detail, cx);
             });
         }
-        Ok(Ok(None)) | Err(_) => {}
+        Ok(Ok(None)) => crate::perf_log::note("Öffnen-Dialog abgebrochen"),
+        Err(_) => crate::perf_log::note("Öffnen-Dialog: keine Antwort (Kanal geschlossen)"),
     })
     .detach();
 }
