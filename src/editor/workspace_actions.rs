@@ -77,11 +77,23 @@ impl Editor {
     /// Rescans the drawer of every tab in the window.
     pub(super) fn refresh_workspace_trees(&mut self, cx: &mut Context<Self>) {
         let own_id = cx.entity_id();
-        for (editor, _, _) in self.open_documents(cx) {
-            if editor.entity_id() == own_id {
-                self.invalidate_workspace_tree(cx);
+        let editors = self.open_documents(cx);
+        // Drop every root first, so tabs sharing a root read it only once.
+        for (editor, _, _) in &editors {
+            let root = if editor.entity_id() == own_id {
+                self.workspace_root()
             } else {
-                editor.update(cx, |editor, cx| editor.invalidate_workspace_tree(cx));
+                editor.read(cx).workspace_root()
+            };
+            if let Some(root) = root {
+                super::workspace::forget_workspace_tree(&root, cx);
+            }
+        }
+        for (editor, _, _) in editors {
+            if editor.entity_id() == own_id {
+                self.reset_workspace_tree(cx);
+            } else {
+                editor.update(cx, |editor, cx| editor.reset_workspace_tree(cx));
             }
         }
     }

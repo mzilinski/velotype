@@ -632,6 +632,59 @@ async fn opened_folder_is_shared_by_all_tabs_and_new_ones(cx: &mut TestAppContex
 }
 
 #[gpui::test]
+async fn file_tree_is_read_once_in_the_background_and_shared_by_tabs(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-tab-tree-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(root.join("nested")).unwrap();
+    fs::write(root.join("a.md"), "a").unwrap();
+    fs::write(root.join("nested").join("b.md"), "b").unwrap();
+    let handle = open_tab_window(cx, "first");
+
+    // Opening the folder does not read it on the UI thread: the tree is
+    // missing until the background read finishes.
+    let folder = root.clone();
+    let loading = handle
+        .update(cx, |host, _window, cx| {
+            host.set_workspace_folder(Some(folder), cx);
+            let editor = host.editors().next().cloned().unwrap();
+            editor.update(cx, |editor, cx| editor.workspace_tree_labels(cx))
+        })
+        .unwrap();
+    assert_eq!(loading, None);
+    cx.run_until_parked();
+    let first = editor_at(&handle, 0, cx);
+    let labels = first.update(cx, |editor, cx| editor.workspace_tree_labels(cx));
+    assert_eq!(labels, Some(vec!["nested".to_string(), "a.md".to_string()]));
+
+    // A new tab shows the cached tree at once.
+    let second = handle
+        .update(cx, |host, window, cx| {
+            host.new_tab(window, cx);
+            host.editors().nth(1).cloned().unwrap()
+        })
+        .unwrap();
+    let labels = second.update(cx, |editor, cx| editor.workspace_tree_labels(cx));
+    assert_eq!(labels, Some(vec!["nested".to_string(), "a.md".to_string()]));
+
+    // After a file change the tree is read again, once for both tabs.
+    fs::write(root.join("c.md"), "c").unwrap();
+    first.update(cx, |editor, cx| editor.refresh_workspace_trees(cx));
+    cx.run_until_parked();
+    for editor in [&first, &second] {
+        let labels = editor.update(cx, |editor, cx| editor.workspace_tree_labels(cx));
+        assert_eq!(
+            labels,
+            Some(vec![
+                "nested".to_string(),
+                "a.md".to_string(),
+                "c.md".to_string()
+            ])
+        );
+    }
+    let _ = fs::remove_dir_all(root);
+}
+
+#[gpui::test]
 async fn replace_in_files_reloads_clean_tabs_and_skips_dirty_ones(cx: &mut TestAppContext) {
     use crate::editor::workspace_search::{SearchOptions, build_matcher};
 
