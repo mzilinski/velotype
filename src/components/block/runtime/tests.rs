@@ -3511,3 +3511,26 @@ async fn smart_punctuation_types_curly_quotes_and_dashes(cx: &mut TestAppContext
         assert_eq!(block.display_text(), "“Hi” – it’s")
     });
 }
+
+#[gpui::test]
+async fn typing_inside_auto_paired_wiki_brackets_keeps_the_caret_inside(
+    cx: &mut TestAppContext,
+) {
+    let block = cx.new(|cx| {
+        Block::with_record(
+            cx,
+            BlockRecord::new(BlockKind::Paragraph, InlineTextTree::from_markdown("S [[]]")),
+        )
+    });
+    block.update(cx, |block, cx| {
+        block.sync_inline_projection_for_focus(true);
+        block.selected_range = 4..4;
+        block.replace_text_in_visible_range(4..4, "a", None, false, cx);
+        let caret = block.cursor_offset();
+        block.replace_text_in_visible_range(caret..caret, "n", None, false, cx);
+    });
+    assert_eq!(
+        block.read_with(cx, |block, _cx| block.record.title.serialize_markdown()),
+        "S [[an]]"
+    );
+}

@@ -285,6 +285,13 @@ pub(crate) enum CollapsedCaretAffinity {
     OuterEnd,
 }
 
+/// Whether inserted text can be the closing marker of a span (`)`, `]]`,
+/// `**`, a backtick …). Text ending in a letter typed between existing
+/// brackets, as in `[[a|]]`, completes the span's content, not the span.
+fn typed_text_may_close_span(new_text: &str) -> bool {
+    new_text.ends_with(|ch: char| ch.is_ascii_punctuation())
+}
+
 impl Block {
     /// Creates runtime state and caches for a persistent block record.
     pub fn with_record(cx: &mut Context<Self>, record: BlockRecord) -> Self {
@@ -892,6 +899,7 @@ impl Block {
         // closing delimiter instead of landing inside the span.
         let caret_may_have_closed_span = !new_text.is_empty()
             && !mark_inserted_text
+            && typed_text_may_close_span(new_text)
             && next_title.visible_text().len() < old_visible_len + new_text.len();
 
         self.apply_title_edit(
@@ -2020,6 +2028,7 @@ impl Block {
         let caret_may_have_closed_span = !self.uses_raw_text_editing()
             && !new_text.is_empty()
             && !mark_inserted_text
+            && typed_text_may_close_span(new_text)
             && result.tree.visible_text().len() < expected_visible_len;
         let quote_structure_edit = !self.uses_raw_text_editing()
             && self.quote_depth > 0
