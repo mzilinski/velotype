@@ -2237,6 +2237,22 @@ impl Block {
         );
     }
 
+    /// Window bounds of the caret from the last layout, for popups that
+    /// follow it.
+    pub(crate) fn caret_bounds(&self) -> Option<Bounds<Pixels>> {
+        let lines = self.last_layout.as_ref()?;
+        let bounds = self.last_bounds?;
+        let caret = self.cursor_offset();
+        super::element::range_bounds(
+            lines,
+            bounds,
+            self.last_line_height,
+            self.display_text(),
+            caret..caret,
+            self.text_align(),
+        )
+    }
+
     /// Returns the laid-out hard line containing the display caret.
     fn current_line_layout_and_offset(&self) -> Option<(&WrappedLine, usize)> {
         let lines = self.last_layout.as_ref()?;

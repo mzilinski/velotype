@@ -3817,3 +3817,45 @@ mod help_document_tests {
         }
     }
 }
+
+#[gpui::test]
+async fn typing_a_wiki_link_suggests_and_completes_notes(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-complete-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(root.join(".git")).expect("create vault");
+    fs::create_dir_all(root.join("people")).expect("create people dir");
+    fs::write(root.join("people").join("Anna.md"), "# Anna").expect("write note");
+    let current = root.join("current.md");
+    fs::write(&current, "").expect("write current note");
+
+    let (editor, cx) = cx.add_window_view({
+        let current = current.clone();
+        move |_window, cx| Editor::from_markdown(cx, String::new(), Some(current))
+    });
+    // The first `[[` starts reading the index; the list opens as typing goes on.
+    cx.simulate_input("See [[");
+    redraw(cx);
+    cx.simulate_input("an");
+    redraw(cx);
+    editor.read_with(cx, |editor, _cx| {
+        let state = editor.link_completion.as_ref().expect("suggestions shown");
+        assert_eq!(state.items.len(), 1);
+    });
+
+    cx.simulate_keystrokes("enter");
+    redraw(cx);
+    editor.read_with(cx, |editor, cx| {
+        assert!(editor.link_completion.is_none());
+        assert_eq!(editor.document.markdown_text(cx), "See [[Anna]]");
+    });
+
+    // Escape closes the list.
+    cx.simulate_input(" [[an");
+    redraw(cx);
+    assert!(editor.read_with(cx, |editor, _| editor.link_completion.is_some()));
+    cx.simulate_keystrokes("escape");
+    redraw(cx);
+    assert!(editor.read_with(cx, |editor, _| editor.link_completion.is_none()));
+
+    let _ = fs::remove_dir_all(&root);
+}

@@ -83,6 +83,36 @@ impl LinkTargets {
         targets
     }
 
+    /// Every document of the folder, in no particular order.
+    pub(crate) fn files(&self) -> impl Iterator<Item = &PathBuf> {
+        self.by_key.values()
+    }
+
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
+
+    /// The shortest `[[target]]` naming `file`: its name when no other
+    /// document shares it, else its path from the root; without extension.
+    pub(crate) fn link_name(&self, file: &Path) -> String {
+        let unique = file
+            .file_name()
+            .and_then(|name| self.by_name.get(&name.to_string_lossy().to_lowercase()))
+            .is_none_or(|files| files.len() == 1);
+        let named = if unique {
+            Path::new(file.file_name().unwrap_or_default())
+        } else {
+            file.strip_prefix(&self.root).unwrap_or(file)
+        };
+        let named = named.to_string_lossy().replace('\\', "/");
+        let lower = named.to_lowercase();
+        if lower.ends_with(".md") {
+            named[..named.len() - 3].to_string()
+        } else {
+            named
+        }
+    }
+
     fn get(&self, path: &Path) -> Option<&PathBuf> {
         self.by_key.get(&path_key(&normalize(path)))
     }
@@ -627,6 +657,24 @@ mod tests {
         assert_eq!(
             targets.resolve_wiki(Path::new("/v/people/Anna.md"), "Plan"),
             Some("/v/Plan.md".into())
+        );
+    }
+
+    #[test]
+    fn link_names_are_unique_and_short() {
+        let targets = LinkTargets::new(
+            Path::new("/v"),
+            files(&["people/Anna.md", "a/Plan.md", "b/Plan.md", "Notes.markdown"]),
+        );
+        assert_eq!(targets.link_name(Path::new("/v/people/Anna.md")), "Anna");
+        assert_eq!(targets.link_name(Path::new("/v/b/Plan.md")), "b/Plan");
+        assert_eq!(
+            targets.link_name(Path::new("/v/Notes.markdown")),
+            "Notes.markdown"
+        );
+        assert_eq!(
+            targets.resolve_wiki(Path::new("/v/a/x.md"), "b/Plan"),
+            Some("/v/b/Plan.md".into())
         );
     }
 
