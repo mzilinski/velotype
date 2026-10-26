@@ -503,6 +503,14 @@ pub(crate) fn link_index(root: &Path, revalidate: bool, cx: &mut App) -> Option<
     result
 }
 
+/// The finished index of `root`, if any, without reading anything.
+pub(crate) fn cached_link_index(root: &Path, cx: &App) -> Option<Arc<LinkIndex>> {
+    match cx.try_global::<LinkIndexCache>()?.entries.get(root)? {
+        CachedIndex::Ready { index, .. } => Some(index.clone()),
+        CachedIndex::Building(_) => None,
+    }
+}
+
 /// Marks the indexes of every root containing `path` for a new read, after
 /// that document was saved.
 pub(crate) fn mark_link_index_stale(path: &Path, cx: &mut App) {

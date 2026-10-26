@@ -639,21 +639,42 @@ impl Editor {
     /// Queues the Markdown file named by a wiki link, resolved against the
     /// current file's directory (or the working directory when untitled).
     pub(crate) fn request_open_wiki_link(&mut self, target: &str, cx: &mut Context<Self>) {
-        let Some(path) = self.resolve_wiki_link_path(target) else {
+        let Some(path) = self.resolve_wiki_link_path(target, cx) else {
             return;
         };
         self.pending_open_markdown_path = Some(path);
         cx.notify();
     }
 
-    pub(super) fn resolve_wiki_link_path(&self, target: &str) -> Option<PathBuf> {
+    /// The file a wiki link names: next to the current file, else (like
+    /// Obsidian) the file of that name in the workspace folder. A link to a
+    /// missing file names it next to the current file.
+    pub(super) fn resolve_wiki_link_path(&self, target: &str, cx: &App) -> Option<PathBuf> {
         let (file, _anchor) = crate::components::wiki_link_file_target(target)?;
         let base_dir = self
             .file_path
             .as_ref()
             .and_then(|path| path.parent().map(Path::to_path_buf))
             .or_else(|| std::env::current_dir().ok())?;
-        Some(base_dir.join(file))
+        let beside = base_dir.join(file);
+        if beside.is_file() {
+            return Some(beside);
+        }
+        let (Some(current), Some(root)) = (self.file_path.as_deref(), self.workspace_root()) else {
+            return Some(beside);
+        };
+        let current = current
+            .canonicalize()
+            .unwrap_or_else(|_| current.to_path_buf());
+        let found = match super::link_index::cached_link_index(&root, cx) {
+            Some(index) => index.targets().resolve_wiki(&current, target),
+            None => {
+                let root = root.canonicalize().unwrap_or(root);
+                let files = super::workspace_search::collect_markdown_files(&root);
+                super::link_index::LinkTargets::new(&root, files).resolve_wiki(&current, target)
+            }
+        };
+        Some(found.filter(|path| path.is_file()).unwrap_or(beside))
     }
 
     /// Clears the top-level menu, submenu, hover flags, and pending close task.
