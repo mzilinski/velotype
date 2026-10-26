@@ -522,7 +522,7 @@ impl Editor {
             div()
                 .id(tab_id)
                 .h(px(30.0))
-                .px(px(12.0))
+                .px(px(10.0))
                 .flex()
                 .items_center()
                 .justify_center()
@@ -572,7 +572,8 @@ impl Editor {
                         .pt(px(12.0))
                         .pb(px(8.0))
                         .flex()
-                        .gap(px(8.0))
+                        .flex_wrap()
+                        .gap(px(4.0))
                         .border_b(px(d.dialog_border_width))
                         .border_color(c.dialog_border)
                         .child(tab(

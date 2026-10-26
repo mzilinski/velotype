@@ -1484,7 +1484,7 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         command: ShortcutCommand::ShowLinks,
         id: "show_links",
         category: ShortcutCategory::Navigation,
-        default_keys: &["cmd-shift-4", "ctrl-shift-4"],
+        default_keys: &["cmd-shift-b", "ctrl-shift-b"],
         context: None,
     },
     ShortcutDefinition {

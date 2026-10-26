@@ -660,7 +660,7 @@ impl Editor {
         if beside.is_file() {
             return Some(beside);
         }
-        let (Some(current), Some(root)) = (self.file_path.as_deref(), self.workspace_root()) else {
+        let (Some(current), Some(root)) = (self.file_path.as_deref(), self.link_root()) else {
             return Some(beside);
         };
         let current = current

@@ -15,7 +15,7 @@ impl Editor {
     /// Picks up the folder's link index from the shared cache, which reads it
     /// in the background when needed.
     pub(super) fn sync_workspace_links(&mut self, cx: &mut Context<Self>) {
-        let Some(root) = self.workspace_root() else {
+        let Some(root) = self.link_root() else {
             self.workspace.link_index = None;
             return;
         };
@@ -25,6 +25,21 @@ impl Editor {
             self.workspace.link_index = index;
             self.workspace.link_index_root = Some(root);
         }
+    }
+
+    /// The folder whose links count: the opened folder, else the vault (the
+    /// nearest folder above the document with `.obsidian` or `.git`, below the
+    /// home folder), else the document's folder.
+    pub(super) fn link_root(&self) -> Option<PathBuf> {
+        if let Some(folder) = self.workspace.folder.clone() {
+            return Some(folder);
+        }
+        let parent = self.file_path.as_deref()?.parent()?;
+        Some(
+            vault_root(parent, std::env::home_dir().as_deref())
+                .unwrap_or(parent)
+                .to_path_buf(),
+        )
     }
 
     /// Opens `path` (or stays in the current document) and selects `label`
@@ -200,6 +215,16 @@ impl Editor {
     }
 }
 
+/// The nearest folder from `dir` upwards holding `.obsidian` or `.git`,
+/// never `home` or a folder above it.
+fn vault_root<'a>(dir: &'a Path, home: Option<&Path>) -> Option<&'a Path> {
+    dir.ancestors()
+        .take_while(|ancestor| {
+            ancestor.parent().is_some() && home.is_none_or(|home| !home.starts_with(ancestor))
+        })
+        .find(|ancestor| ancestor.join(".obsidian").is_dir() || ancestor.join(".git").exists())
+}
+
 /// Folder of `path` relative to the workspace root, empty at the root.
 fn folder_label(root: &Path, path: &Path) -> String {
     let parent = path.parent().unwrap_or(path);
@@ -208,4 +233,22 @@ fn folder_label(root: &Path, path: &Path) -> String {
         .unwrap_or(parent)
         .to_string_lossy()
         .replace('\\', "/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::vault_root;
+
+    #[test]
+    fn vault_root_is_the_nearest_marked_folder_below_home() {
+        let home = std::env::temp_dir().join(format!("velotype-home-{}", uuid::Uuid::new_v4()));
+        let vault = home.join("notes");
+        let deep = vault.join("people").join("team");
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::create_dir_all(home.join(".git")).unwrap();
+        assert_eq!(vault_root(&deep, Some(&home)), None);
+        std::fs::create_dir_all(vault.join(".obsidian")).unwrap();
+        assert_eq!(vault_root(&deep, Some(&home)), Some(vault.as_path()));
+        let _ = std::fs::remove_dir_all(home);
+    }
 }
