@@ -26,6 +26,7 @@ use crate::components::{
 };
 mod articles;
 mod autosave;
+mod backlinks;
 mod clipboard_commands;
 mod close;
 mod context_menu;
@@ -44,6 +45,7 @@ mod image_menu;
 mod image_upload;
 mod images;
 mod line_endings;
+mod link_index;
 mod markdown_commands;
 mod pandoc;
 mod paragraph_format;

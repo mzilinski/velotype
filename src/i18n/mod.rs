@@ -149,6 +149,10 @@ pub struct I18nStrings {
     pub menu_toolbar: String,
     pub workspace_tab_articles: String,
     pub workspace_articles_loading: String,
+    pub workspace_tab_links: String,
+    pub workspace_links_loading: String,
+    pub workspace_backlinks_heading: String,
+    pub workspace_backlinks_empty: String,
     pub workspace_menu_open_in_new_window: String,
     pub context_menu_search_web: String,
     pub menu_copy_image: String,
@@ -766,6 +770,10 @@ struct I18nStringsDe {
     menu_toolbar: Option<String>,
     workspace_tab_articles: Option<String>,
     workspace_articles_loading: Option<String>,
+    workspace_tab_links: Option<String>,
+    workspace_links_loading: Option<String>,
+    workspace_backlinks_heading: Option<String>,
+    workspace_backlinks_empty: Option<String>,
     workspace_menu_open_in_new_window: Option<String>,
     context_menu_search_web: Option<String>,
     menu_copy_image: Option<String>,
@@ -1316,6 +1324,10 @@ const I18N_STRING_KEYS: &[&str] = &[
     "menu_toolbar",
     "workspace_tab_articles",
     "workspace_articles_loading",
+    "workspace_tab_links",
+    "workspace_links_loading",
+    "workspace_backlinks_heading",
+    "workspace_backlinks_empty",
     "workspace_menu_open_in_new_window",
     "context_menu_search_web",
     "menu_copy_image",
@@ -1818,6 +1830,18 @@ impl I18nStringsDe {
             workspace_articles_loading: self
                 .workspace_articles_loading
                 .unwrap_or(defaults.workspace_articles_loading),
+            workspace_tab_links: self
+                .workspace_tab_links
+                .unwrap_or(defaults.workspace_tab_links),
+            workspace_links_loading: self
+                .workspace_links_loading
+                .unwrap_or(defaults.workspace_links_loading),
+            workspace_backlinks_heading: self
+                .workspace_backlinks_heading
+                .unwrap_or(defaults.workspace_backlinks_heading),
+            workspace_backlinks_empty: self
+                .workspace_backlinks_empty
+                .unwrap_or(defaults.workspace_backlinks_empty),
             workspace_menu_open_in_new_window: self
                 .workspace_menu_open_in_new_window
                 .unwrap_or(defaults.workspace_menu_open_in_new_window),
@@ -2748,6 +2772,10 @@ impl I18nStrings {
             menu_toolbar: "工具栏".into(),
             workspace_tab_articles: "文章".into(),
             workspace_articles_loading: "正在读取文档…".into(),
+            workspace_tab_links: "链接".into(),
+            workspace_links_loading: "正在读取链接…".into(),
+            workspace_backlinks_heading: "链接到此文档".into(),
+            workspace_backlinks_empty: "没有其他文档链接到此文档。".into(),
             workspace_menu_open_in_new_window: "在新窗口中打开".into(),
             context_menu_search_web: "用 Google 搜索“{text}”".into(),
             menu_copy_image: "复制图片".into(),
@@ -3177,6 +3205,10 @@ impl I18nStrings {
             menu_toolbar: "Toolbar".into(),
             workspace_tab_articles: "Articles".into(),
             workspace_articles_loading: "Reading documents…".into(),
+            workspace_tab_links: "Links".into(),
+            workspace_links_loading: "Reading links…".into(),
+            workspace_backlinks_heading: "Linked from".into(),
+            workspace_backlinks_empty: "No other document links here.".into(),
             workspace_menu_open_in_new_window: "Open in New Window".into(),
             context_menu_search_web: "Search Google for \"{text}\"".into(),
             menu_copy_image: "Copy Image".into(),
@@ -3608,6 +3640,10 @@ impl I18nStrings {
             menu_toolbar: "Werkzeugleiste".into(),
             workspace_tab_articles: "Artikel".into(),
             workspace_articles_loading: "Dokumente werden gelesen …".into(),
+            workspace_tab_links: "Links".into(),
+            workspace_links_loading: "Links werden gelesen …".into(),
+            workspace_backlinks_heading: "Verlinkt von".into(),
+            workspace_backlinks_empty: "Kein anderes Dokument verweist hierher.".into(),
             workspace_menu_open_in_new_window: "In neuem Fenster öffnen".into(),
             context_menu_search_web: "Mit Google nach „{text}“ suchen".into(),
             menu_copy_image: "Bild kopieren".into(),
