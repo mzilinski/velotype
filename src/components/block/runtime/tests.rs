@@ -3513,13 +3513,14 @@ async fn smart_punctuation_types_curly_quotes_and_dashes(cx: &mut TestAppContext
 }
 
 #[gpui::test]
-async fn typing_inside_auto_paired_wiki_brackets_keeps_the_caret_inside(
-    cx: &mut TestAppContext,
-) {
+async fn typing_inside_auto_paired_wiki_brackets_keeps_the_caret_inside(cx: &mut TestAppContext) {
     let block = cx.new(|cx| {
         Block::with_record(
             cx,
-            BlockRecord::new(BlockKind::Paragraph, InlineTextTree::from_markdown("S [[]]")),
+            BlockRecord::new(
+                BlockKind::Paragraph,
+                InlineTextTree::from_markdown("S [[]]"),
+            ),
         )
     });
     block.update(cx, |block, cx| {

@@ -149,7 +149,10 @@ impl Editor {
                 window_handle,
                 move |_view: AnyView, window, cx| match result {
                     Ok(()) => {
-                        let _ = this.update(cx, |editor, cx| editor.document_moved(new, cx));
+                        let _ = this.update(cx, |editor, cx| {
+                            editor.document_moved(new.clone(), cx);
+                            editor.offer_link_rewrites(&old, &new, window, cx);
+                        });
                     }
                     Err(err) => {
                         let strings = cx.global::<I18nManager>().strings().clone();
