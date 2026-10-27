@@ -62,6 +62,7 @@ mod spelling;
 mod status_bar;
 mod table_edit;
 mod tabs;
+mod tags;
 #[cfg(test)]
 mod tests;
 mod toolbar;
