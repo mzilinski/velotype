@@ -538,20 +538,7 @@ impl Editor {
         let reveal = item
             .hit
             .map(|(line, snippet, range)| (line, snippet[range].to_string()));
-        if self.file_path.as_deref() == Some(item.path.as_path()) {
-            if let Some((line, query)) = reveal {
-                self.reveal_search_hit(line, &query, cx);
-            }
-            return;
-        }
-        if self.is_tab_hosted() {
-            cx.emit(super::EditorTabEvent::OpenPathAndReveal {
-                path: item.path,
-                reveal,
-            });
-        } else {
-            self.request_dropped_markdown_replace(item.path, window, cx);
-        }
+        self.open_path_and_reveal(item.path, reveal, window, cx);
     }
 
     fn toggle_search_option(

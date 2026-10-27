@@ -2436,7 +2436,7 @@ mod tests {
             );
             assert_eq!(editor.pending_open_markdown_path, Some(other.clone()));
             assert_eq!(
-                editor.resolve_wiki_link_path("sub/Spec.md#Intro"),
+                editor.resolve_wiki_link_path("sub/Spec.md#Intro", cx),
                 Some(root.join("sub/Spec.md"))
             );
 
@@ -2450,6 +2450,36 @@ mod tests {
             editor.replace_document_from_markdown(markdown, Some(path), cx);
             assert_eq!(editor.file_path.as_deref(), Some(other.as_path()));
             assert_eq!(editor.document.markdown_text(cx), "# Other\n\nBody");
+        });
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[gpui::test]
+    async fn wiki_link_resolves_by_name_in_the_workspace_folder(cx: &mut TestAppContext) {
+        let root = std::env::temp_dir().join(format!("velotype-wiki-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("notes")).expect("create notes dir");
+        std::fs::create_dir_all(root.join("people")).expect("create people dir");
+        let current = root.join("notes").join("current.md");
+        std::fs::write(&current, "See [[anna]]").expect("write current note");
+        std::fs::write(root.join("people").join("Anna.md"), "# Anna").expect("write target");
+
+        let editor = cx.new(|cx| {
+            let mut editor =
+                Editor::from_markdown(cx, "See [[anna]]".to_string(), Some(current.clone()));
+            editor.workspace.folder = Some(root.clone());
+            editor
+        });
+        editor.update(cx, |editor, cx| {
+            let found = editor
+                .resolve_wiki_link_path("anna#Kontakt", cx)
+                .expect("resolved");
+            assert!(found.ends_with("people/Anna.md"), "{}", found.display());
+            // A missing note is named next to the current file.
+            assert_eq!(
+                editor.resolve_wiki_link_path("New Note", cx),
+                Some(root.join("notes").join("New Note.md"))
+            );
         });
 
         let _ = std::fs::remove_dir_all(&root);

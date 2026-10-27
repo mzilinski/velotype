@@ -2219,6 +2219,7 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_show_file_tree))
             .on_action(cx.listener(Self::on_show_outline))
             .on_action(cx.listener(Self::on_show_articles))
+            .on_action(cx.listener(Self::on_show_links))
             .on_action(cx.listener(Self::on_move_document))
             .on_action(cx.listener(Self::on_insert_image))
             .on_action(cx.listener(Self::on_copy_image))

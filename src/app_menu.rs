@@ -1346,6 +1346,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ShowFileTree>()
         || any.is::<crate::components::ShowOutline>()
         || any.is::<crate::components::ShowArticles>()
+        || any.is::<crate::components::ShowLinks>()
         || any.is::<crate::components::ToggleViewMode>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
@@ -1893,6 +1894,10 @@ fn build_menus_with_view(
                     MenuItem::action(
                         strings.workspace_tab_articles.clone(),
                         crate::components::ShowArticles,
+                    ),
+                    MenuItem::action(
+                        strings.workspace_tab_links.clone(),
+                        crate::components::ShowLinks,
                     ),
                     MenuItem::action(
                         strings.workspace_tab_files.clone(),

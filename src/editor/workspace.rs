@@ -46,6 +46,8 @@ pub(super) enum WorkspaceTab {
     /// Headings parsed from the current document.
     Outline,
     Articles,
+    /// Documents linking to the current one.
+    Links,
 }
 
 /// Navigation target represented by a workspace tree node.
@@ -113,6 +115,12 @@ pub(super) struct WorkspaceState {
     /// Articles tab: the folder's documents, newest first (None = not read).
     pub(super) articles: Option<Vec<super::articles::Article>>,
     pub(super) articles_task: Option<Task<()>>,
+    /// Links tab: the index of `link_index_root` (None = not read yet).
+    pub(super) link_index: Option<Arc<super::link_index::LinkIndex>>,
+    pub(super) link_index_root: Option<PathBuf>,
+    /// The cached index was checked for age since the drawer opened, the tab
+    /// was shown or the document was saved.
+    pub(super) links_checked: bool,
 }
 
 impl Editor {
@@ -125,6 +133,7 @@ impl Editor {
             self.dismiss_contextual_overlays(cx);
             self.workspace.is_open = true;
             self.workspace.tree_checked = false;
+            self.workspace.links_checked = false;
             self.sync_workspace_models(cx);
             window.activate_window();
         }
@@ -143,6 +152,10 @@ impl Editor {
 
     /// Invalidates workspace caches after the current document path changes.
     pub(super) fn sync_workspace_after_document_path_change(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = self.file_path.as_deref() {
+            super::link_index::mark_link_index_stale(path, cx);
+        }
+        self.workspace.links_checked = false;
         self.workspace.root = None;
         self.workspace.file_tree = None;
         self.workspace.file_error = None;
@@ -178,8 +191,10 @@ impl Editor {
     fn sync_workspace_models(&mut self, cx: &mut Context<Self>) {
         self.sync_workspace_file_tree(cx);
         self.sync_workspace_outline();
-        if self.workspace.active_tab == WorkspaceTab::Articles {
-            self.sync_workspace_articles(cx);
+        match self.workspace.active_tab {
+            WorkspaceTab::Articles => self.sync_workspace_articles(cx),
+            WorkspaceTab::Links => self.sync_workspace_links(cx),
+            WorkspaceTab::Files | WorkspaceTab::Outline => {}
         }
     }
 
@@ -223,6 +238,15 @@ impl Editor {
         cx: &mut Context<Self>,
     ) {
         self.show_workspace_tab(WorkspaceTab::Articles, window, cx);
+    }
+
+    pub(super) fn on_show_links(
+        &mut self,
+        _: &crate::components::ShowLinks,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_workspace_tab(WorkspaceTab::Links, window, cx);
     }
 
     /// Names in the drawer's file tree below the root, or None while it is
@@ -401,6 +425,7 @@ impl Editor {
     fn set_workspace_tab(&mut self, tab: WorkspaceTab, cx: &mut Context<Self>) {
         if self.workspace.active_tab != tab {
             self.workspace.active_tab = tab;
+            self.workspace.links_checked = false;
             self.sync_workspace_models(cx);
             cx.notify();
         }
@@ -492,11 +517,12 @@ impl Editor {
                 WorkspaceTab::Files => "workspace-tab-files",
                 WorkspaceTab::Outline => "workspace-tab-outline",
                 WorkspaceTab::Articles => "workspace-tab-articles",
+                WorkspaceTab::Links => "workspace-tab-links",
             };
             div()
                 .id(tab_id)
                 .h(px(30.0))
-                .px(px(12.0))
+                .px(px(10.0))
                 .flex()
                 .items_center()
                 .justify_center()
@@ -526,6 +552,7 @@ impl Editor {
             WorkspaceTab::Files => self.render_workspace_files_tree(theme, strings, &editor),
             WorkspaceTab::Outline => self.render_workspace_outline_tree(theme, strings, &editor),
             WorkspaceTab::Articles => self.render_workspace_articles(theme, strings, &editor),
+            WorkspaceTab::Links => self.render_workspace_links(theme, strings, &editor),
         };
 
         Some(
@@ -545,7 +572,8 @@ impl Editor {
                         .pt(px(12.0))
                         .pb(px(8.0))
                         .flex()
-                        .gap(px(8.0))
+                        .flex_wrap()
+                        .gap(px(4.0))
                         .border_b(px(d.dialog_border_width))
                         .border_color(c.dialog_border)
                         .child(tab(
@@ -562,6 +590,11 @@ impl Editor {
                             strings.workspace_tab_articles.clone(),
                             WorkspaceTab::Articles,
                             self.workspace.active_tab == WorkspaceTab::Articles,
+                        ))
+                        .child(tab(
+                            strings.workspace_tab_links.clone(),
+                            WorkspaceTab::Links,
+                            self.workspace.active_tab == WorkspaceTab::Links,
                         )),
                 )
                 .child(
@@ -1016,9 +1049,10 @@ fn workspace_tree(
     result
 }
 
-/// Drops the cached tree of `root` (after files changed), so the next look
-/// reads it again.
+/// Drops the cached tree and link index of `root` (after files changed), so
+/// the next look reads them again.
 pub(super) fn forget_workspace_tree(root: &Path, cx: &mut App) {
+    super::link_index::forget_link_index(root, cx);
     if let Some(cache) = cx.try_global::<WorkspaceTreeCache>()
         && cache.entries.contains_key(root)
     {
