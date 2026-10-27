@@ -299,6 +299,7 @@ impl Editor {
                 file_ops::rename(path, &target).map_err(|err| err.to_string())?;
                 self.follow_renamed_path(path, &target, cx);
                 self.refresh_workspace_trees(cx);
+                self.offer_link_rewrites(path, &target, window, cx);
             }
         }
         Ok(())

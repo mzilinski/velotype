@@ -153,6 +153,9 @@ pub struct I18nStrings {
     pub workspace_links_loading: String,
     pub workspace_backlinks_heading: String,
     pub workspace_backlinks_empty: String,
+    pub link_rewrite_title: String,
+    pub link_rewrite_message: String,
+    pub link_rewrite_button: String,
     pub workspace_menu_open_in_new_window: String,
     pub context_menu_search_web: String,
     pub menu_copy_image: String,
@@ -774,6 +777,9 @@ struct I18nStringsDe {
     workspace_links_loading: Option<String>,
     workspace_backlinks_heading: Option<String>,
     workspace_backlinks_empty: Option<String>,
+    link_rewrite_title: Option<String>,
+    link_rewrite_message: Option<String>,
+    link_rewrite_button: Option<String>,
     workspace_menu_open_in_new_window: Option<String>,
     context_menu_search_web: Option<String>,
     menu_copy_image: Option<String>,
@@ -1328,6 +1334,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "workspace_links_loading",
     "workspace_backlinks_heading",
     "workspace_backlinks_empty",
+    "link_rewrite_title",
+    "link_rewrite_message",
+    "link_rewrite_button",
     "workspace_menu_open_in_new_window",
     "context_menu_search_web",
     "menu_copy_image",
@@ -1842,6 +1851,15 @@ impl I18nStringsDe {
             workspace_backlinks_empty: self
                 .workspace_backlinks_empty
                 .unwrap_or(defaults.workspace_backlinks_empty),
+            link_rewrite_title: self
+                .link_rewrite_title
+                .unwrap_or(defaults.link_rewrite_title),
+            link_rewrite_message: self
+                .link_rewrite_message
+                .unwrap_or(defaults.link_rewrite_message),
+            link_rewrite_button: self
+                .link_rewrite_button
+                .unwrap_or(defaults.link_rewrite_button),
             workspace_menu_open_in_new_window: self
                 .workspace_menu_open_in_new_window
                 .unwrap_or(defaults.workspace_menu_open_in_new_window),
@@ -2776,6 +2794,9 @@ impl I18nStrings {
             workspace_links_loading: "正在读取链接…".into(),
             workspace_backlinks_heading: "链接到此文档".into(),
             workspace_backlinks_empty: "没有其他文档链接到此文档。".into(),
+            link_rewrite_title: "更新链接？".into(),
+            link_rewrite_message: "{files} 个文档中的 {links} 个链接指向“{name}”。要将它们更新到新位置吗？".into(),
+            link_rewrite_button: "更新".into(),
             workspace_menu_open_in_new_window: "在新窗口中打开".into(),
             context_menu_search_web: "用 Google 搜索“{text}”".into(),
             menu_copy_image: "复制图片".into(),
@@ -3209,6 +3230,9 @@ impl I18nStrings {
             workspace_links_loading: "Reading links…".into(),
             workspace_backlinks_heading: "Linked from".into(),
             workspace_backlinks_empty: "No other document links here.".into(),
+            link_rewrite_title: "Update Links?".into(),
+            link_rewrite_message: "{links} links in {files} documents point to “{name}”. Update them to the new location?".into(),
+            link_rewrite_button: "Update".into(),
             workspace_menu_open_in_new_window: "Open in New Window".into(),
             context_menu_search_web: "Search Google for \"{text}\"".into(),
             menu_copy_image: "Copy Image".into(),
@@ -3644,6 +3668,9 @@ impl I18nStrings {
             workspace_links_loading: "Links werden gelesen …".into(),
             workspace_backlinks_heading: "Verlinkt von".into(),
             workspace_backlinks_empty: "Kein anderes Dokument verweist hierher.".into(),
+            link_rewrite_title: "Links anpassen?".into(),
+            link_rewrite_message: "{links} Links in {files} Dokumenten verweisen auf „{name}“. Sollen sie an den neuen Ort angepasst werden?".into(),
+            link_rewrite_button: "Anpassen".into(),
             workspace_menu_open_in_new_window: "In neuem Fenster öffnen".into(),
             context_menu_search_web: "Mit Google nach „{text}“ suchen".into(),
             menu_copy_image: "Bild kopieren".into(),

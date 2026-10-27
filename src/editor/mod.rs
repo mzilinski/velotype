@@ -47,6 +47,7 @@ mod images;
 mod line_endings;
 mod link_completion;
 mod link_index;
+mod link_rewrite;
 mod markdown_commands;
 mod pandoc;
 mod paragraph_format;

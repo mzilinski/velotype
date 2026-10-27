@@ -34,6 +34,10 @@ pub(crate) struct RawLink {
     pub(crate) line: usize,
     /// The link's line, trimmed and shortened around the link.
     pub(crate) context: String,
+    /// Source bytes of the target as written (`Note#Heading` between the
+    /// brackets, the destination in the parentheses), when it can be edited
+    /// in place; None for reference links and autolinks.
+    pub(crate) target_range: Option<Range<usize>>,
 }
 
 /// A link from `source` to the document the index was asked about.
@@ -307,6 +311,7 @@ pub(crate) fn extract_links(markdown: &str) -> Vec<RawLink> {
                         label: String::new(),
                         line,
                         context: String::new(),
+                        target_range: None,
                     },
                     range,
                 ));
@@ -318,6 +323,7 @@ pub(crate) fn extract_links(markdown: &str) -> Vec<RawLink> {
             }
             Event::End(TagEnd::Link) => {
                 if let Some((mut link, range)) = open.take() {
+                    link.target_range = target_range(markdown, &range, &link);
                     link.context = context_around(markdown, &line_starts, link.line, range);
                     if link.label.trim().is_empty() {
                         link.label = link.target.clone();
@@ -329,6 +335,30 @@ pub(crate) fn extract_links(markdown: &str) -> Vec<RawLink> {
         }
     }
     links
+}
+
+/// Where the target of `link` (spanning `range`) is written: after `[[` up to
+/// `|` or `]]`, or the destination at the end of `[label](destination)`.
+fn target_range(markdown: &str, range: &Range<usize>, link: &RawLink) -> Option<Range<usize>> {
+    let source = markdown.get(range.clone())?;
+    if link.wiki {
+        let inner = source.strip_prefix("[[")?;
+        let end = inner.find(['|', ']'])?;
+        return Some(range.start + 2..range.start + 2 + end);
+    }
+    let close = source.strip_suffix(')')?;
+    let open = close.rfind("](")? + 2;
+    let destination = &close[open..];
+    let start = destination.find(link.target.as_str())?;
+    // A destination needing escapes is not written as parsed; leave it.
+    (destination[start + link.target.len()..]
+        .trim_start_matches('>')
+        .trim()
+        .is_empty()
+        || destination[start + link.target.len()..]
+            .trim_start()
+            .starts_with(['"', '\'', '(']))
+    .then(|| range.start + open + start..range.start + open + start + link.target.len())
 }
 
 /// The source line `line` without list, quote and heading markers, cut to
