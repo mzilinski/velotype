@@ -124,6 +124,13 @@ pub(super) struct WorkspaceState {
     /// Links tab: the tag whose documents are listed instead of the
     /// backlinks.
     pub(super) selected_tag: Option<String>,
+    /// Links tab: outgoing links of the source text they were read from.
+    pub(super) outgoing: Option<(
+        String,
+        Arc<super::link_index::LinkIndex>,
+        Vec<super::mentions::OutgoingLink>,
+    )>,
+    pub(super) mentions: Option<super::mentions::MentionsState>,
 }
 
 impl Editor {

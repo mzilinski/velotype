@@ -158,6 +158,9 @@ pub struct I18nStrings {
     pub link_rewrite_button: String,
     pub workspace_tags_document: String,
     pub workspace_tags_all: String,
+    pub workspace_outgoing_heading: String,
+    pub workspace_outgoing_missing: String,
+    pub workspace_mentions_heading: String,
     pub workspace_menu_open_in_new_window: String,
     pub context_menu_search_web: String,
     pub menu_copy_image: String,
@@ -784,6 +787,9 @@ struct I18nStringsDe {
     link_rewrite_button: Option<String>,
     workspace_tags_document: Option<String>,
     workspace_tags_all: Option<String>,
+    workspace_outgoing_heading: Option<String>,
+    workspace_outgoing_missing: Option<String>,
+    workspace_mentions_heading: Option<String>,
     workspace_menu_open_in_new_window: Option<String>,
     context_menu_search_web: Option<String>,
     menu_copy_image: Option<String>,
@@ -1343,6 +1349,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "link_rewrite_button",
     "workspace_tags_document",
     "workspace_tags_all",
+    "workspace_outgoing_heading",
+    "workspace_outgoing_missing",
+    "workspace_mentions_heading",
     "workspace_menu_open_in_new_window",
     "context_menu_search_web",
     "menu_copy_image",
@@ -1872,6 +1881,15 @@ impl I18nStringsDe {
             workspace_tags_all: self
                 .workspace_tags_all
                 .unwrap_or(defaults.workspace_tags_all),
+            workspace_outgoing_heading: self
+                .workspace_outgoing_heading
+                .unwrap_or(defaults.workspace_outgoing_heading),
+            workspace_outgoing_missing: self
+                .workspace_outgoing_missing
+                .unwrap_or(defaults.workspace_outgoing_missing),
+            workspace_mentions_heading: self
+                .workspace_mentions_heading
+                .unwrap_or(defaults.workspace_mentions_heading),
             workspace_menu_open_in_new_window: self
                 .workspace_menu_open_in_new_window
                 .unwrap_or(defaults.workspace_menu_open_in_new_window),
@@ -2811,6 +2829,9 @@ impl I18nStrings {
             link_rewrite_button: "更新".into(),
             workspace_tags_document: "此文档的标签".into(),
             workspace_tags_all: "所有标签".into(),
+            workspace_outgoing_heading: "链接到".into(),
+            workspace_outgoing_missing: "不存在".into(),
+            workspace_mentions_heading: "未链接的提及".into(),
             workspace_menu_open_in_new_window: "在新窗口中打开".into(),
             context_menu_search_web: "用 Google 搜索“{text}”".into(),
             menu_copy_image: "复制图片".into(),
@@ -3249,6 +3270,9 @@ impl I18nStrings {
             link_rewrite_button: "Update".into(),
             workspace_tags_document: "Tags of This Document".into(),
             workspace_tags_all: "All Tags".into(),
+            workspace_outgoing_heading: "Links To".into(),
+            workspace_outgoing_missing: "missing".into(),
+            workspace_mentions_heading: "Unlinked Mentions".into(),
             workspace_menu_open_in_new_window: "Open in New Window".into(),
             context_menu_search_web: "Search Google for \"{text}\"".into(),
             menu_copy_image: "Copy Image".into(),
@@ -3689,6 +3713,9 @@ impl I18nStrings {
             link_rewrite_button: "Anpassen".into(),
             workspace_tags_document: "Tags dieses Dokuments".into(),
             workspace_tags_all: "Alle Tags".into(),
+            workspace_outgoing_heading: "Verweist auf".into(),
+            workspace_outgoing_missing: "fehlt".into(),
+            workspace_mentions_heading: "Unverlinkte Erwähnungen".into(),
             workspace_menu_open_in_new_window: "In neuem Fenster öffnen".into(),
             context_menu_search_web: "Mit Google nach „{text}“ suchen".into(),
             menu_copy_image: "Bild kopieren".into(),
