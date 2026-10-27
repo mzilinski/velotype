@@ -1347,6 +1347,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<crate::components::ShowOutline>()
         || any.is::<crate::components::ShowArticles>()
         || any.is::<crate::components::ShowLinks>()
+        || any.is::<crate::components::OpenDailyNote>()
         || any.is::<crate::components::ToggleViewMode>()
         || any.is::<crate::components::ExportWithPandoc>()
         || any.is::<crate::components::ImportWithPandoc>()
@@ -1687,6 +1688,10 @@ fn build_menus_with_view(
                         name: strings.menu_open_recent_file.clone().into(),
                         items: recent_items,
                     }),
+                    MenuItem::action(
+                        strings.menu_daily_note.clone(),
+                        crate::components::OpenDailyNote,
+                    ),
                     MenuItem::separator(),
                     MenuItem::action(strings.menu_new_tab.clone(), NewTab),
                     MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
@@ -1748,6 +1753,10 @@ fn build_menus_with_view(
                     name: strings.menu_open_recent_file.clone().into(),
                     items: recent_items,
                 }),
+                MenuItem::action(
+                    strings.menu_daily_note.clone(),
+                    crate::components::OpenDailyNote,
+                ),
                 MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_new_tab.clone(), NewTab),

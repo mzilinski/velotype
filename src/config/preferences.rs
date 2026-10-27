@@ -2075,6 +2075,7 @@ impl PreferencesWindow {
             ShortcutCommand::ShowOutline => strings.workspace_tab_outline.clone(),
             ShortcutCommand::ShowArticles => strings.workspace_tab_articles.clone(),
             ShortcutCommand::ShowLinks => strings.workspace_tab_links.clone(),
+            ShortcutCommand::OpenDailyNote => strings.menu_daily_note.clone(),
             ShortcutCommand::PrintDocument => strings.menu_print.clone(),
             ShortcutCommand::ToggleToolbar => strings.menu_toolbar.clone(),
             ShortcutCommand::ExportAgain => strings.menu_export_again.clone(),
