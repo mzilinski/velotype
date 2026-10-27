@@ -1759,11 +1759,11 @@ fn build_menus_with_view(
                     name: strings.menu_open_recent_file.clone().into(),
                     items: recent_items,
                 }),
+                MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
                 MenuItem::action(
                     strings.menu_daily_note.clone(),
                     crate::components::OpenDailyNote,
                 ),
-                MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
                 MenuItem::separator(),
                 MenuItem::action(strings.menu_new_tab.clone(), NewTab),
                 MenuItem::action(strings.menu_close_tab.clone(), CloseTab),
