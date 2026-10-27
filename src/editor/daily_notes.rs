@@ -1,5 +1,6 @@
-//! Daily notes: one note per day in the vault, created from a template on
-//! first open. Reads Obsidian's `.obsidian/daily-notes.json` (folder, date
+//! Daily notes and templates: one note per day in the vault, created from a
+//! template on first open, and notes of the templates folder inserted at the
+//! caret. Reads Obsidian's `.obsidian/daily-notes.json` (folder, date
 //! format, template) so an existing vault keeps its layout.
 
 use std::path::{Path, PathBuf};
@@ -12,6 +13,7 @@ use crate::i18n::I18nManager;
 
 const DEFAULT_FORMAT: &str = "YYYY-MM-DD";
 const DEFAULT_TIME_FORMAT: &str = "HH:mm";
+const DEFAULT_TEMPLATES_FOLDER: &str = "Templates";
 
 /// Where daily notes live and how they start.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -231,7 +233,66 @@ pub(crate) fn ensure_note(
     Ok(true)
 }
 
+/// The templates folder of the vault: Obsidian's `.obsidian/templates.json`
+/// setting, else `Templates`.
+pub(crate) fn templates_folder(root: &Path) -> PathBuf {
+    let folder = std::fs::read_to_string(root.join(".obsidian").join("templates.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|value| {
+            value
+                .get("folder")
+                .and_then(|folder| folder.as_str())
+                .map(|folder| folder.trim().trim_matches('/').to_string())
+        })
+        .filter(|folder| !folder.is_empty())
+        .unwrap_or_else(|| DEFAULT_TEMPLATES_FOLDER.to_string());
+    root.join(folder)
+}
+
 impl Editor {
+    pub(super) fn templates_folder(&self) -> Option<PathBuf> {
+        self.link_root().map(|root| templates_folder(&root))
+    }
+
+    pub(super) fn on_insert_template(
+        &mut self,
+        _: &crate::components::InsertTemplate,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.open_palette(
+            super::workspace_search::PaletteMode::InsertTemplate,
+            window,
+            cx,
+        );
+    }
+
+    /// Inserts the template at `path`, its variables filled, at the caret
+    /// of the block edited last.
+    pub(super) fn insert_template(
+        &mut self,
+        path: &Path,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Ok(template) = std::fs::read_to_string(path) else {
+            return;
+        };
+        let title = self
+            .file_path
+            .as_deref()
+            .and_then(|path| path.file_stem())
+            .map(|stem| stem.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let text = fill_template(&template, &title, Local::now().naive_local());
+        let Some(block) = self.current_edit_target_from_state(cx) else {
+            return;
+        };
+        window.focus(&block.read(cx).focus_handle);
+        block.update(cx, |block, cx| block.paste_text(text, window, cx));
+    }
+
     /// Opens today's note of the vault, creating it on first use.
     pub(super) fn on_open_daily_note(
         &mut self,
@@ -274,7 +335,7 @@ mod tests {
 
     use chrono::NaiveDate;
 
-    use super::{DailyNotesConfig, ensure_note, fill_template, format_moment};
+    use super::{DailyNotesConfig, ensure_note, fill_template, format_moment, templates_folder};
 
     fn now() -> chrono::NaiveDateTime {
         NaiveDate::from_ymd_opt(2026, 3, 5)
@@ -338,6 +399,14 @@ mod tests {
         std::fs::write(&path, "kept").unwrap();
         assert!(!ensure_note(&path, template.as_deref(), now()).unwrap());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "kept");
+
+        assert_eq!(templates_folder(root), root.join("Templates"));
+        std::fs::write(
+            root.join(".obsidian/templates.json"),
+            r#"{"folder":"Meta/Vorlagen/"}"#,
+        )
+        .unwrap();
+        assert_eq!(templates_folder(root), root.join("Meta/Vorlagen"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -2264,6 +2264,7 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_insert_link_reference))
             .on_action(cx.listener(Self::on_insert_footnote))
             .on_action(cx.listener(Self::on_insert_front_matter))
+            .on_action(cx.listener(Self::on_insert_template))
             .on_action(cx.listener(Self::on_insert_callout))
             .on_action(cx.listener(Self::on_inline_math_selection))
             .on_action(cx.listener(Self::on_comment_selection))

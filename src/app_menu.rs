@@ -1195,6 +1195,10 @@ pub(crate) fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                 InsertTableOfContents,
             ),
             MenuItem::action(strings.menu_front_matter.clone(), InsertFrontMatter),
+            MenuItem::action(
+                strings.menu_insert_template.clone(),
+                crate::components::InsertTemplate,
+            ),
         ],
     }
 }
@@ -1417,6 +1421,7 @@ fn is_document_command_action(action: &dyn Action) -> bool {
         || any.is::<InsertHorizontalRule>()
         || any.is::<InsertTableOfContents>()
         || any.is::<InsertFrontMatter>()
+        || any.is::<crate::components::InsertTemplate>()
         || any.is::<BoldSelection>()
         || any.is::<ItalicSelection>()
         || any.is::<UnderlineSelection>()

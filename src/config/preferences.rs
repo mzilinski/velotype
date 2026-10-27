@@ -2122,6 +2122,7 @@ impl PreferencesWindow {
             ShortcutCommand::InsertFootnote => strings.menu_footnote.clone(),
             ShortcutCommand::InsertLinkReference => strings.menu_link_reference.clone(),
             ShortcutCommand::InsertFrontMatter => strings.menu_front_matter.clone(),
+            ShortcutCommand::InsertTemplate => strings.menu_insert_template.clone(),
             ShortcutCommand::StrikethroughSelection => strings.menu_strikethrough.clone(),
             ShortcutCommand::HighlightSelection => strings.menu_highlight.clone(),
             ShortcutCommand::SuperscriptSelection => strings.menu_superscript.clone(),

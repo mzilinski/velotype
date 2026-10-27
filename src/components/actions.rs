@@ -97,6 +97,7 @@ actions!(
         InsertFootnote,
         InsertLinkReference,
         InsertFrontMatter,
+        InsertTemplate,
         StrikethroughSelection,
         HighlightSelection,
         SuperscriptSelection,
@@ -383,6 +384,7 @@ pub(crate) enum ShortcutCommand {
     InsertFootnote,
     InsertLinkReference,
     InsertFrontMatter,
+    InsertTemplate,
     StrikethroughSelection,
     HighlightSelection,
     SuperscriptSelection,
@@ -1096,6 +1098,13 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         category: ShortcutCategory::Block,
         default_keys: &[],
         context: BLOCK_CONTEXT,
+    },
+    ShortcutDefinition {
+        command: ShortcutCommand::InsertTemplate,
+        id: "insert_template",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-shift-t", "ctrl-alt-shift-t"],
+        context: None,
     },
     ShortcutDefinition {
         command: ShortcutCommand::StrikethroughSelection,
@@ -1832,6 +1841,7 @@ fn key_binding_for(
         ShortcutCommand::InsertFootnote => KeyBinding::new(key, InsertFootnote, context),
         ShortcutCommand::InsertLinkReference => KeyBinding::new(key, InsertLinkReference, context),
         ShortcutCommand::InsertFrontMatter => KeyBinding::new(key, InsertFrontMatter, context),
+        ShortcutCommand::InsertTemplate => KeyBinding::new(key, InsertTemplate, context),
         ShortcutCommand::StrikethroughSelection => {
             KeyBinding::new(key, StrikethroughSelection, context)
         }

@@ -39,6 +39,8 @@ const SKIPPED_DIRS: &[&str] = &["node_modules", "target", ".git", ".svn", ".hg"]
 pub(super) enum PaletteMode {
     QuickOpen,
     SearchInFolder,
+    /// Pick a note of the templates folder to insert at the caret.
+    InsertTemplate,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -388,11 +390,17 @@ impl Editor {
         self.open_palette(PaletteMode::SearchInFolder, window, cx);
     }
 
-    fn open_palette(&mut self, mode: PaletteMode, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn open_palette(
+        &mut self,
+        mode: PaletteMode,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let strings = cx.global::<I18nManager>().strings().clone();
         let placeholder = match mode {
             PaletteMode::QuickOpen => strings.quick_open_placeholder.clone(),
             PaletteMode::SearchInFolder => strings.workspace_search_placeholder.clone(),
+            PaletteMode::InsertTemplate => strings.template_placeholder.clone(),
         };
         let input = cx.new(|cx| {
             SingleLineInput::new("", placeholder, cx).with_overflow(SingleLineOverflow::Clip)
@@ -404,9 +412,14 @@ impl Editor {
             SingleLineInput::new("", strings.workspace_replace_placeholder.clone(), cx)
                 .with_overflow(SingleLineOverflow::Clip)
         });
-        let root = self.workspace_root();
+        let root = match mode {
+            PaletteMode::InsertTemplate => self.templates_folder(),
+            _ => self.workspace_root(),
+        };
         let files = match (mode, root.as_ref()) {
-            (PaletteMode::QuickOpen, Some(root)) => collect_markdown_files(root),
+            (PaletteMode::QuickOpen | PaletteMode::InsertTemplate, Some(root)) => {
+                collect_markdown_files(root)
+            }
             _ => Vec::new(),
         };
         window.focus(&input.focus_handle(cx));
@@ -446,13 +459,15 @@ impl Editor {
         palette.selected = 0;
         palette.generation += 1;
         match palette.mode {
-            PaletteMode::QuickOpen => {
+            PaletteMode::QuickOpen | PaletteMode::InsertTemplate => {
                 let root = palette.root.clone();
                 let mut candidates = palette.files.clone();
                 // Recent files outside the folder are offered too.
-                for recent in crate::config::read_recent_files().unwrap_or_default() {
-                    if recent.is_file() && !candidates.contains(&recent) {
-                        candidates.push(recent);
+                if palette.mode == PaletteMode::QuickOpen {
+                    for recent in crate::config::read_recent_files().unwrap_or_default() {
+                        if recent.is_file() && !candidates.contains(&recent) {
+                            candidates.push(recent);
+                        }
                     }
                 }
                 let mut scored = candidates
@@ -534,6 +549,10 @@ impl Editor {
             return;
         };
         cx.notify();
+        if palette.mode == PaletteMode::InsertTemplate {
+            self.insert_template(&item.path, window, cx);
+            return;
+        }
         // Reveal the matched text itself, which also works for regex queries.
         let reveal = item
             .hit
@@ -790,7 +809,7 @@ impl Editor {
         theme: &Theme,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        if palette.mode == PaletteMode::QuickOpen {
+        if palette.mode != PaletteMode::SearchInFolder {
             return palette.input.clone().into_any_element();
         }
         let c = &theme.colors;
@@ -953,6 +972,15 @@ impl Editor {
             PaletteMode::QuickOpen if palette.items.is_empty() => {
                 Some(strings.workspace_empty_files.clone())
             }
+            PaletteMode::InsertTemplate if palette.items.is_empty() => Some(
+                strings.template_empty.replace(
+                    "{folder}",
+                    &self
+                        .templates_folder()
+                        .map(|folder| folder.display().to_string())
+                        .unwrap_or_default(),
+                ),
+            ),
             _ => None,
         };
 
