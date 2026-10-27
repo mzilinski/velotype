@@ -1580,6 +1580,7 @@ impl Render for Editor {
         self.sync_pending_open_link(window, cx);
         self.sync_pending_open_markdown_path(window, cx);
         self.sync_query_blocks(cx);
+        self.sync_graph(cx);
         self.sync_window_edited_state(window);
         if window.is_window_active() {
             self.publish_menu_state(cx);
@@ -2229,6 +2230,7 @@ impl Render for Editor {
             .on_action(cx.listener(Self::on_show_articles))
             .on_action(cx.listener(Self::on_show_links))
             .on_action(cx.listener(Self::on_open_daily_note))
+            .on_action(cx.listener(Self::on_show_graph))
             .on_action(cx.listener(Self::on_move_document))
             .on_action(cx.listener(Self::on_insert_image))
             .on_action(cx.listener(Self::on_copy_image))
@@ -2400,6 +2402,11 @@ impl Render for Editor {
         };
         let base = if let Some(palette) = self.render_palette(&theme, px(titlebar_height), cx) {
             base.child(palette)
+        } else {
+            base
+        };
+        let base = if let Some(graph) = self.render_graph(&theme, px(titlebar_height), cx) {
+            base.child(graph)
         } else {
             base
         };

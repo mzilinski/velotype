@@ -41,6 +41,7 @@ mod file_info;
 mod file_menu;
 mod file_ops;
 mod find;
+mod graph;
 mod history;
 mod image_menu;
 mod image_upload;
@@ -196,6 +197,8 @@ pub struct Editor {
     query_jobs: HashMap<EntityId, query::QueryJob>,
     /// When query blocks last asked for a fresh index.
     query_revalidated_at: Option<Instant>,
+    /// Open graph overlay, if any.
+    graph: Option<graph::GraphState>,
     /// Pending Auto Save (see `autosave.rs`).
     autosave_task: Option<Task<()>>,
     pending_autosave: bool,
@@ -532,6 +535,7 @@ impl Editor {
             link_completion: None,
             query_jobs: HashMap::new(),
             query_revalidated_at: None,
+            graph: None,
             autosave_task: None,
             pending_autosave: false,
             last_export: None,

@@ -174,7 +174,7 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.close_palette(cx) {
+        if self.close_palette(cx) || self.close_graph(cx) {
             return;
         }
         let had_overlay = self.context_menu.is_some() || self.table_insert_dialog.is_some();
