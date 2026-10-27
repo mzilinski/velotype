@@ -295,8 +295,15 @@ impl Editor {
     }
 
     /// Chooses the first root, preferring its first header cell when it is a table.
+    /// Front matter is passed over so it opens as properties, not source.
     pub(super) fn first_focusable_entity_id(&self, cx: &App) -> Option<EntityId> {
-        let first_root = self.document.first_root()?.clone();
+        let roots = self.document.root_blocks();
+        let first_root = match roots {
+            [front_matter, next, ..] if front_matter.read(cx).kind() == BlockKind::FrontMatter => {
+                next.clone()
+            }
+            _ => roots.first()?.clone(),
+        };
         if first_root.read(cx).kind() == BlockKind::Table {
             return first_root
                 .read(cx)

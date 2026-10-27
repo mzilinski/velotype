@@ -13,11 +13,12 @@ use super::element::{BlockTextElement, CodeLanguageInputElement};
 use super::{Block, BlockEvent, BlockKind, ImageResolvedSource, ImageRuntime, InlineLinkHit};
 use crate::components::{
     Editor, HtmlContainerImage, HtmlCssColor, HtmlDocument, HtmlImageSize, HtmlNode, HtmlNodeKind,
-    InlineScript, MermaidPalette, TableAxisHighlight, TableAxisKind, TableAxisMarker,
-    TableCellInlineImageSegment, TableColumnLayout, attr_value, display_math_font_size,
-    inline_math_font_size, parse_display_math_source, parse_html_image_block,
-    parse_mermaid_fence_source, parse_table_cell_inline_images, render_display_math_svg,
-    render_inline_math_svg, render_mermaid_svg_for_display, resolve_image_source, style_for_node,
+    InlineScript, MermaidPalette, PropertyValue, TableAxisHighlight, TableAxisKind,
+    TableAxisMarker, TableCellInlineImageSegment, TableColumnLayout, attr_value,
+    display_math_font_size, inline_math_font_size, parse_display_math_source,
+    parse_html_image_block, parse_mermaid_fence_source, parse_properties,
+    parse_table_cell_inline_images, render_display_math_svg, render_inline_math_svg,
+    render_mermaid_svg_for_display, resolve_image_source, style_for_node,
 };
 use crate::fonts::FontSettings;
 use crate::i18n::{I18nManager, I18nStrings};
@@ -673,6 +674,104 @@ impl Block {
             })
             .collect::<Vec<_>>();
         container.children(rows).into_any_element()
+    }
+
+    /// Renders front matter as a table of properties; YAML beyond plain
+    /// `key: value` pairs stays source text. Clicking focuses the source.
+    fn render_properties(&self, theme: &Theme, cx: &mut Context<Self>) -> AnyElement {
+        let c = &theme.colors;
+        let d = &theme.dimensions;
+        let t = &theme.typography;
+        let raw = self
+            .record
+            .raw_fallback
+            .as_deref()
+            .unwrap_or_else(|| self.display_text());
+        let panel = div()
+            .w_full()
+            .rounded_sm()
+            .bg(c.source_mode_block_bg)
+            .px(px(d.block_padding_x))
+            .py(px(d.block_padding_y.max(4.0)))
+            .text_size(px(t.text_size * 0.9))
+            .line_height(rems(t.text_line_height));
+        let properties = parse_properties(raw).filter(|properties| !properties.is_empty());
+        let Some(properties) = properties else {
+            return panel
+                .font(FontSettings::code_font(cx))
+                .text_color(c.text_default)
+                .child(SharedString::from(raw.to_string()))
+                .into_any_element();
+        };
+
+        let chip = |text: String| {
+            div()
+                .px(px(6.0))
+                .rounded(px(999.0))
+                .bg(c.code_bg)
+                .text_color(c.text_default)
+                .child(SharedString::from(text))
+        };
+        let rows = properties.into_iter().map(|property| {
+            let is_tags = matches!(property.key.to_lowercase().as_str(), "tags" | "tag");
+            let value = match property.value {
+                PropertyValue::Empty => div()
+                    .text_color(c.text_placeholder)
+                    .child("—")
+                    .into_any_element(),
+                PropertyValue::Text(text) if is_tags => div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(4.0))
+                    .children(
+                        text.split([',', ' '])
+                            .map(str::trim)
+                            .filter(|tag| !tag.is_empty())
+                            .map(|tag| chip(format!("#{}", tag.trim_start_matches('#')))),
+                    )
+                    .into_any_element(),
+                PropertyValue::Text(text) => div()
+                    .text_color(c.text_default)
+                    .child(SharedString::from(text))
+                    .into_any_element(),
+                PropertyValue::List(items) => div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(4.0))
+                    .children(items.into_iter().map(|item| {
+                        if is_tags {
+                            chip(format!("#{}", item.trim_start_matches('#')))
+                        } else {
+                            chip(item)
+                        }
+                    }))
+                    .into_any_element(),
+                PropertyValue::Nested(source) => div()
+                    .font(FontSettings::code_font(cx))
+                    .text_color(c.text_default)
+                    .child(SharedString::from(source))
+                    .into_any_element(),
+            };
+            div()
+                .w_full()
+                .flex()
+                .gap(px(12.0))
+                .child(
+                    div()
+                        .w(px(120.0))
+                        .flex_none()
+                        .overflow_hidden()
+                        .text_color(c.text_placeholder)
+                        .child(SharedString::from(property.key)),
+                )
+                .child(div().flex_1().min_w_0().child(value))
+        });
+        panel
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .children(rows)
+            .into_any_element()
     }
 
     /// Renders display math as SVG, retaining source text on parse/render failure.
@@ -2214,6 +2313,7 @@ impl Render for Block {
                         | BlockKind::MathBlock
                         | BlockKind::MermaidBlock
                         | BlockKind::TableOfContents
+                        | BlockKind::FrontMatter
                 ))
         {
             if focused && self.cursor_blink_task.is_none() {
@@ -3384,6 +3484,14 @@ impl Render for Block {
                     self.render_mermaid_content(&theme, window)
                 };
                 focused_base.w_full().child(child).into_any_element()
+            }
+            BlockKind::FrontMatter if !focused => {
+                self.last_layout = None;
+                self.last_bounds = None;
+                focused_base
+                    .w_full()
+                    .child(self.render_properties(&theme, cx))
+                    .into_any_element()
             }
             BlockKind::Paragraph
             | BlockKind::Comment
