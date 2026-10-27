@@ -4203,6 +4203,8 @@ mod tests {
                 "---\ntitle: Doc\n---"
             );
             assert_eq!(visible[1].entity.read(cx).kind(), BlockKind::Paragraph);
+            // Opening focuses the body so front matter shows as properties.
+            assert_eq!(editor.pending_focus, Some(visible[1].entity.entity_id()));
         });
     }
 
