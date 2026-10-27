@@ -55,6 +55,7 @@ mod pandoc;
 mod paragraph_format;
 mod persistence;
 mod print;
+pub(crate) mod query;
 mod render;
 mod runtime_context;
 mod selection;
@@ -191,6 +192,10 @@ pub struct Editor {
     palette: Option<workspace_search::PaletteState>,
     emoji_picker: Option<emoji_picker::EmojiPickerState>,
     link_completion: Option<link_completion::LinkCompletionState>,
+    /// Runs of the ```dataview blocks, by block.
+    query_jobs: HashMap<EntityId, query::QueryJob>,
+    /// When query blocks last asked for a fresh index.
+    query_revalidated_at: Option<Instant>,
     /// Pending Auto Save (see `autosave.rs`).
     autosave_task: Option<Task<()>>,
     pending_autosave: bool,
@@ -525,6 +530,8 @@ impl Editor {
             palette: None,
             emoji_picker: None,
             link_completion: None,
+            query_jobs: HashMap::new(),
+            query_revalidated_at: None,
             autosave_task: None,
             pending_autosave: false,
             last_export: None,

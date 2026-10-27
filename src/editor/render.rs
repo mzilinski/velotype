@@ -1579,6 +1579,7 @@ impl Render for Editor {
         self.sync_pending_save_as(window, cx);
         self.sync_pending_open_link(window, cx);
         self.sync_pending_open_markdown_path(window, cx);
+        self.sync_query_blocks(cx);
         self.sync_window_edited_state(window);
         if window.is_window_active() {
             self.publish_menu_state(cx);

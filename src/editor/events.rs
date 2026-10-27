@@ -1996,6 +1996,10 @@ impl Editor {
             BlockEvent::RequestOpenWikiLink { target } => {
                 self.request_open_wiki_link(target, cx);
             }
+            BlockEvent::RequestOpenNote { path } => {
+                self.pending_open_markdown_path = Some(path.clone());
+                cx.notify();
+            }
             BlockEvent::RequestAppendTableColumn => {
                 if block.read(cx).kind() == BlockKind::Table {
                     self.prepare_undo_capture(

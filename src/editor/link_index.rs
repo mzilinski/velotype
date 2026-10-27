@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 use gpui::*;
 use pulldown_cmark::{Event, LinkType, Options, Parser, Tag, TagEnd};
 
+use crate::components::Property;
+
 /// An index older than this is read again (in the background) when the Links
 /// tab is shown.
 const LINK_INDEX_MAX_AGE: Duration = Duration::from_secs(10);
@@ -179,6 +181,13 @@ impl LinkTargets {
     }
 }
 
+/// The properties of the front matter at the start of `text`.
+fn front_matter_properties(text: &str) -> Option<Vec<Property>> {
+    let lines = text.lines().take(500).collect::<Vec<_>>();
+    let count = crate::components::front_matter_line_count(&lines)?;
+    crate::components::parse_properties(&lines[..count].join("\n"))
+}
+
 /// All links between the documents of one folder.
 #[derive(Debug, Default)]
 pub(crate) struct LinkIndex {
@@ -190,6 +199,10 @@ pub(crate) struct LinkIndex {
     tags: HashMap<String, (String, Vec<PathBuf>)>,
     /// Lookup key of a document to its tag keys.
     document_tags: HashMap<String, Vec<String>>,
+    /// Lookup key of a document to its front matter properties.
+    properties: HashMap<String, Vec<Property>>,
+    /// Lookup key of a document to the documents it links to, in order.
+    outgoing: HashMap<String, Vec<PathBuf>>,
 }
 
 /// A tag with the number of documents carrying it (or a tag below it).
@@ -228,8 +241,13 @@ impl LinkIndex {
         let mut incoming = HashMap::<String, Vec<Backlink>>::new();
         let mut tags = HashMap::<String, (String, Vec<PathBuf>)>::new();
         let mut document_tags = HashMap::<String, Vec<String>>::new();
+        let mut properties = HashMap::<String, Vec<Property>>::new();
+        let mut outgoing = HashMap::<String, Vec<PathBuf>>::new();
         for (source, text) in sources {
             let source = normalize(&source);
+            if let Some(found) = front_matter_properties(&text) {
+                properties.insert(path_key(&source), found);
+            }
             let mut keys = Vec::new();
             for tag in super::tags::extract_tags(&text) {
                 let key = super::tags::tag_key(&tag.name);
@@ -251,6 +269,10 @@ impl LinkIndex {
                 };
                 if target == source {
                     continue;
+                }
+                let targets_of = outgoing.entry(path_key(&source)).or_default();
+                if !targets_of.contains(&target) {
+                    targets_of.push(target.clone());
                 }
                 incoming
                     .entry(path_key(&target))
@@ -279,7 +301,37 @@ impl LinkIndex {
             incoming,
             tags,
             document_tags,
+            properties,
+            outgoing,
         }
+    }
+
+    /// The front matter properties of `document`.
+    pub(crate) fn properties(&self, document: &Path) -> &[Property] {
+        self.properties
+            .get(&path_key(document))
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+    }
+
+    /// The documents `document` links to, in order of first link.
+    pub(crate) fn outgoing(&self, document: &Path) -> &[PathBuf] {
+        self.outgoing
+            .get(&path_key(document))
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+    }
+
+    /// The tags of `document` as first written in the vault.
+    pub(crate) fn tag_names_of(&self, document: &Path) -> Vec<String> {
+        self.document_tags
+            .get(&path_key(document))
+            .map(|keys| {
+                keys.iter()
+                    .filter_map(|key| self.tags.get(key).map(|(name, _)| name.clone()))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Every tag with its document count (nested tags count for their
@@ -834,13 +886,7 @@ mod tests {
         let backlinks = index
             .backlinks(Path::new("/v/Anna.md"))
             .iter()
-            .map(|link| {
-                (
-                    link.source.clone(),
-                    link.line,
-                    link.label.as_str(),
-                )
-            })
+            .map(|link| (link.source.clone(), link.line, link.label.as_str()))
             .collect::<Vec<_>>();
         assert_eq!(
             backlinks,

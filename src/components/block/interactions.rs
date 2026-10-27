@@ -1663,6 +1663,16 @@ impl Block {
         cx.stop_propagation();
     }
 
+    /// Opens the note of a query result row.
+    pub(crate) fn on_query_row_mouse_up(
+        &mut self,
+        path: std::path::PathBuf,
+        cx: &mut Context<Self>,
+    ) {
+        cx.stop_propagation();
+        cx.emit(BlockEvent::RequestOpenNote { path });
+    }
+
     pub(crate) fn on_toc_entry_mouse_up(&mut self, target: EntityId, cx: &mut Context<Self>) {
         cx.stop_propagation();
         cx.emit(BlockEvent::RequestJumpToHeading { target });
