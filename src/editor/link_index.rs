@@ -186,6 +186,17 @@ pub(crate) struct LinkIndex {
     /// Lookup key of a document to the links pointing at it, by source path
     /// and then line.
     incoming: HashMap<String, Vec<Backlink>>,
+    /// Tag key to the tag as first written and the documents carrying it.
+    tags: HashMap<String, (String, Vec<PathBuf>)>,
+    /// Lookup key of a document to its tag keys.
+    document_tags: HashMap<String, Vec<String>>,
+}
+
+/// A tag with the number of documents carrying it (or a tag below it).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TagCount {
+    pub(crate) name: String,
+    pub(crate) documents: usize,
 }
 
 impl LinkIndex {
@@ -215,8 +226,25 @@ impl LinkIndex {
     ) -> Self {
         let targets = LinkTargets::new(root, files);
         let mut incoming = HashMap::<String, Vec<Backlink>>::new();
+        let mut tags = HashMap::<String, (String, Vec<PathBuf>)>::new();
+        let mut document_tags = HashMap::<String, Vec<String>>::new();
         for (source, text) in sources {
             let source = normalize(&source);
+            let mut keys = Vec::new();
+            for tag in super::tags::extract_tags(&text) {
+                let key = super::tags::tag_key(&tag.name);
+                if keys.contains(&key) {
+                    continue;
+                }
+                let entry = tags
+                    .entry(key.clone())
+                    .or_insert_with(|| (tag.name, Vec::new()));
+                entry.1.push(source.clone());
+                keys.push(key);
+            }
+            if !keys.is_empty() {
+                document_tags.insert(path_key(&source), keys);
+            }
             for link in extract_links(&text) {
                 let Some(target) = targets.resolve(&source, &link) else {
                     continue;
@@ -243,7 +271,72 @@ impl LinkIndex {
             });
             links.dedup_by(|right, left| left.source == right.source && left.line == right.line);
         }
-        Self { targets, incoming }
+        for (_, documents) in tags.values_mut() {
+            documents.sort();
+        }
+        Self {
+            targets,
+            incoming,
+            tags,
+            document_tags,
+        }
+    }
+
+    /// Every tag with its document count (nested tags count for their
+    /// parents too), most used first.
+    pub(crate) fn all_tags(&self) -> Vec<TagCount> {
+        let mut counts = self
+            .tags
+            .iter()
+            .map(|(key, (name, _))| TagCount {
+                name: name.clone(),
+                documents: self.documents_with_tag(key).len(),
+            })
+            .collect::<Vec<_>>();
+        counts.sort_by(|left, right| {
+            right
+                .documents
+                .cmp(&left.documents)
+                .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
+        });
+        counts
+    }
+
+    /// The tags of `document`, as first written in the vault, with counts.
+    pub(crate) fn tags_of(&self, document: &Path) -> Vec<TagCount> {
+        let Some(path) = self
+            .targets
+            .get(document)
+            .or_else(|| self.targets.get(&document.canonicalize().ok()?))
+        else {
+            return Vec::new();
+        };
+        self.document_tags
+            .get(&path_key(path))
+            .into_iter()
+            .flatten()
+            .filter_map(|key| {
+                let (name, _) = self.tags.get(key)?;
+                Some(TagCount {
+                    name: name.clone(),
+                    documents: self.documents_with_tag(key).len(),
+                })
+            })
+            .collect()
+    }
+
+    /// The documents tagged `tag` or a tag nested below it, sorted by path.
+    pub(crate) fn documents_with_tag(&self, tag: &str) -> Vec<PathBuf> {
+        let parent = super::tags::tag_key(tag.trim_start_matches('#'));
+        let mut documents = self
+            .tags
+            .iter()
+            .filter(|(key, _)| super::tags::tag_within(key, &parent))
+            .flat_map(|(_, (_, documents))| documents.iter().cloned())
+            .collect::<Vec<_>>();
+        documents.sort();
+        documents.dedup();
+        documents
     }
 
     pub(crate) fn targets(&self) -> &LinkTargets {
@@ -758,6 +851,40 @@ mod tests {
             ]
         );
         assert!(index.backlinks(Path::new("/v/b.md")).is_empty());
+    }
+
+    #[test]
+    fn tags_are_counted_per_document_and_nest() {
+        let index = LinkIndex::from_sources(
+            Path::new("/v"),
+            files(&["a.md", "b.md", "c.md"]),
+            [
+                ("/v/a.md".into(), "#Project/velotype #idea #idea".into()),
+                ("/v/b.md".into(), "---\ntags: [project]\n---\n#IDEA".into()),
+                ("/v/c.md".into(), "no tags".into()),
+            ],
+        );
+        let all = index
+            .all_tags()
+            .into_iter()
+            .map(|tag| (tag.name, tag.documents))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            all,
+            [
+                ("idea".to_string(), 2),
+                ("project".to_string(), 2),
+                ("Project/velotype".to_string(), 1),
+            ]
+        );
+        assert_eq!(index.documents_with_tag("#PROJECT").len(), 2);
+        let of_a = index
+            .tags_of(Path::new("/v/a.md"))
+            .into_iter()
+            .map(|tag| tag.name)
+            .collect::<Vec<_>>();
+        assert_eq!(of_a, ["Project/velotype", "idea"]);
+        assert!(index.tags_of(Path::new("/v/c.md")).is_empty());
     }
 
     #[test]

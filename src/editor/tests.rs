@@ -3859,3 +3859,41 @@ async fn typing_a_wiki_link_suggests_and_completes_notes(cx: &mut TestAppContext
 
     let _ = fs::remove_dir_all(&root);
 }
+
+#[gpui::test]
+async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-links-tab-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(root.join(".git")).expect("create vault");
+    let current = root.join("Anna.md");
+    fs::write(&current, "# Anna\n\n#person").expect("write note");
+    fs::write(root.join("Home.md"), "See [[Anna]] #person #home").expect("write home");
+
+    let (editor, cx) = cx.add_window_view({
+        let current = current.clone();
+        move |_window, cx| Editor::from_markdown(cx, "# Anna\n\n#person".to_string(), Some(current))
+    });
+    editor.update_in(cx, |editor, window, cx| {
+        editor.show_workspace_tab(super::workspace::WorkspaceTab::Links, window, cx);
+    });
+    redraw(cx);
+    redraw(cx);
+    editor.read_with(cx, |editor, _cx| {
+        let index = editor.workspace.link_index.as_ref().expect("index read");
+        let current = current.canonicalize().unwrap();
+        assert_eq!(index.backlinks(&current).len(), 1);
+        let tags = index
+            .tags_of(&current)
+            .into_iter()
+            .map(|tag| (tag.name, tag.documents))
+            .collect::<Vec<_>>();
+        assert_eq!(tags, [("person".to_string(), 2)]);
+    });
+    editor.update(cx, |editor, cx| {
+        editor.workspace.selected_tag = Some("person".to_string());
+        cx.notify();
+    });
+    redraw(cx);
+
+    let _ = fs::remove_dir_all(&root);
+}

@@ -121,6 +121,9 @@ pub(super) struct WorkspaceState {
     /// The cached index was checked for age since the drawer opened, the tab
     /// was shown or the document was saved.
     pub(super) links_checked: bool,
+    /// Links tab: the tag whose documents are listed instead of the
+    /// backlinks.
+    pub(super) selected_tag: Option<String>,
 }
 
 impl Editor {

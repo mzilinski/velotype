@@ -8,6 +8,7 @@ use gpui::prelude::FluentBuilder as _;
 use gpui::*;
 
 use super::Editor;
+use super::link_index::{LinkIndex, TagCount};
 use crate::i18n::I18nStrings;
 use crate::theme::Theme;
 
@@ -70,8 +71,6 @@ impl Editor {
         strings: &I18nStrings,
         editor: &WeakEntity<Editor>,
     ) -> AnyElement {
-        let c = &theme.colors;
-        let t = &theme.typography;
         let Some(current) = self.file_path.as_deref() else {
             return self.render_workspace_empty_state(
                 "",
@@ -82,18 +81,38 @@ impl Editor {
         let Some(index) = self.workspace.link_index.as_ref() else {
             return self.render_workspace_empty_state("", &strings.workspace_links_loading, theme);
         };
+        if let Some(tag) = self.workspace.selected_tag.as_deref() {
+            return self.render_tag_documents(index, tag, theme, editor);
+        }
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(18.0))
+            .child(self.render_backlinks_section(index, current, theme, strings, editor))
+            .child(self.render_tags_section(index, current, theme, strings, editor))
+            .into_any_element()
+    }
+
+    fn render_backlinks_section(
+        &self,
+        index: &LinkIndex,
+        current: &Path,
+        theme: &Theme,
+        strings: &I18nStrings,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let t = &theme.typography;
         let backlinks = index.backlinks(current);
-        let heading = div()
-            .px(px(10.0))
-            .pb(px(6.0))
-            .text_size(px(t.text_size * 0.78))
-            .font_weight(FontWeight::MEDIUM)
-            .text_color(c.dialog_muted)
-            .child(format!(
+        let heading = section_heading(
+            format!(
                 "{} ({})",
                 strings.workspace_backlinks_heading,
                 backlinks.len()
-            ));
+            ),
+            theme,
+        );
         if backlinks.is_empty() {
             return div()
                 .w_full()
@@ -213,6 +232,189 @@ impl Editor {
             .children(rows)
             .into_any_element()
     }
+}
+
+/// Small muted title above a section of the Links tab.
+fn section_heading(text: String, theme: &Theme) -> Div {
+    div()
+        .px(px(10.0))
+        .pb(px(6.0))
+        .text_size(px(theme.typography.text_size * 0.78))
+        .font_weight(FontWeight::MEDIUM)
+        .text_color(theme.colors.dialog_muted)
+        .child(text)
+}
+
+impl Editor {
+    /// The tags of the current document and of the whole vault as chips;
+    /// clicking one lists its documents.
+    fn render_tags_section(
+        &self,
+        index: &LinkIndex,
+        current: &Path,
+        theme: &Theme,
+        strings: &I18nStrings,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let own = index.tags_of(current);
+        let all = index.all_tags();
+        let chips = |id: &'static str, tags: Vec<TagCount>| {
+            div().px(px(8.0)).flex().flex_wrap().gap(px(4.0)).children(
+                tags.into_iter()
+                    .take(MAX_TAG_CHIPS)
+                    .enumerate()
+                    .map(|(position, tag)| tag_chip(id, position, tag, theme, editor)),
+            )
+        };
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(14.0))
+            .when(!own.is_empty(), |section| {
+                section.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .child(section_heading(
+                            strings.workspace_tags_document.clone(),
+                            theme,
+                        ))
+                        .child(chips("workspace-own-tag", own)),
+                )
+            })
+            .when(!all.is_empty(), |section| {
+                section.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .child(section_heading(
+                            format!("{} ({})", strings.workspace_tags_all, all.len()),
+                            theme,
+                        ))
+                        .child(chips("workspace-tag", all)),
+                )
+            })
+            .into_any_element()
+    }
+
+    /// The documents carrying `tag`, below a row leading back.
+    fn render_tag_documents(
+        &self,
+        index: &LinkIndex,
+        tag: &str,
+        theme: &Theme,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let t = &theme.typography;
+        let documents = index.documents_with_tag(tag);
+        let back_editor = editor.clone();
+        let back = div()
+            .id("workspace-tag-back")
+            .px(px(10.0))
+            .py(px(4.0))
+            .rounded(px(6.0))
+            .hover(|row| row.bg(c.dialog_secondary_button_hover))
+            .cursor_pointer()
+            .text_size(px(t.text_size * 0.92))
+            .font_weight(FontWeight::MEDIUM)
+            .text_color(c.text_default)
+            .child(format!("← #{tag} ({})", documents.len()))
+            .on_click(move |_event, _window, cx| {
+                let _ = back_editor.update(cx, |editor, cx| {
+                    editor.workspace.selected_tag = None;
+                    cx.notify();
+                });
+            });
+        let rows = documents.into_iter().enumerate().map(|(position, path)| {
+            let title = path
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let folder = folder_label(index.root(), &path);
+            let open_editor = editor.clone();
+            div()
+                .id(ElementId::named_usize("workspace-tag-document", position))
+                .w_full()
+                .px(px(10.0))
+                .py(px(4.0))
+                .flex()
+                .items_center()
+                .gap(px(6.0))
+                .rounded(px(6.0))
+                .hover(|row| row.bg(c.dialog_secondary_button_hover))
+                .cursor_pointer()
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .text_size(px(t.text_size * 0.92))
+                        .text_color(c.text_default)
+                        .child(title),
+                )
+                .when(!folder.is_empty(), |row| {
+                    row.child(
+                        div()
+                            .min_w(px(0.0))
+                            .text_size(px(t.text_size * 0.74))
+                            .text_color(c.dialog_muted)
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .child(folder),
+                    )
+                })
+                .on_click(move |_event, window, cx| {
+                    let path = path.clone();
+                    let _ = open_editor.update(cx, |editor, cx| {
+                        editor.open_workspace_file(path, window, cx);
+                    });
+                })
+        });
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .child(back)
+            .children(rows)
+            .into_any_element()
+    }
+}
+
+/// Tag chips shown per section at most.
+const MAX_TAG_CHIPS: usize = 80;
+
+fn tag_chip(
+    id: &'static str,
+    position: usize,
+    tag: TagCount,
+    theme: &Theme,
+    editor: &WeakEntity<Editor>,
+) -> Stateful<Div> {
+    let c = &theme.colors;
+    let t = &theme.typography;
+    let editor = editor.clone();
+    let name = tag.name.clone();
+    div()
+        .id(ElementId::named_usize(id, position))
+        .px(px(8.0))
+        .py(px(2.0))
+        .rounded(px(10.0))
+        .border(px(1.0))
+        .border_color(c.dialog_border)
+        .hover(|chip| chip.bg(c.dialog_secondary_button_hover))
+        .cursor_pointer()
+        .text_size(px(t.text_size * 0.78))
+        .text_color(c.text_default)
+        .child(format!("#{} {}", tag.name, tag.documents))
+        .on_click(move |_event, _window, cx| {
+            let name = name.clone();
+            let _ = editor.update(cx, |editor, cx| {
+                editor.workspace.selected_tag = Some(name);
+                cx.notify();
+            });
+        })
 }
 
 /// The nearest folder from `dir` upwards holding `.obsidian` or `.git`,
