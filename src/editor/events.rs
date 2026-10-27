@@ -1440,6 +1440,9 @@ impl Editor {
         if matches!(event, BlockEvent::Changed) && self.find.is_some() {
             self.refresh_find_matches(cx);
         }
+        if matches!(event, BlockEvent::Changed) {
+            self.sync_link_completion(&block, cx);
+        }
 
         if let BlockEvent::RequestReplaceCrossBlockSelection {
             text,

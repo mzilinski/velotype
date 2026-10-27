@@ -2138,6 +2138,13 @@ impl Render for Editor {
                     window.refresh();
                 }
             })
+            // Wiki link suggestions take the arrow, Enter, Tab and Escape keys
+            // while they are shown.
+            .capture_action(cx.listener(Self::capture_link_completion_prev))
+            .capture_action(cx.listener(Self::capture_link_completion_next))
+            .capture_action(cx.listener(Self::capture_link_completion_newline))
+            .capture_action(cx.listener(Self::capture_link_completion_tab))
+            .capture_action(cx.listener(Self::capture_link_completion_escape))
             // Read-only guards run first so no editing action reaches a block.
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<Newline>))
             .capture_action(cx.listener(Self::swallow_edit_when_read_only::<DeleteBack>))
@@ -2371,6 +2378,7 @@ impl Render for Editor {
         } else {
             base
         };
+        let base = base.children(self.render_link_completion(&theme, window, cx));
         let base = if let Some(context_menu) = self.render_context_menu_overlay(&theme, window, cx)
         {
             base.child(context_menu)

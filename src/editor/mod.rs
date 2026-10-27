@@ -45,6 +45,7 @@ mod image_menu;
 mod image_upload;
 mod images;
 mod line_endings;
+mod link_completion;
 mod link_index;
 mod markdown_commands;
 mod pandoc;
@@ -185,6 +186,7 @@ pub struct Editor {
     /// Open Quick Open / Search in Folder palette, if any.
     palette: Option<workspace_search::PaletteState>,
     emoji_picker: Option<emoji_picker::EmojiPickerState>,
+    link_completion: Option<link_completion::LinkCompletionState>,
     /// Pending Auto Save (see `autosave.rs`).
     autosave_task: Option<Task<()>>,
     pending_autosave: bool,
@@ -518,6 +520,7 @@ impl Editor {
             find: None,
             palette: None,
             emoji_picker: None,
+            link_completion: None,
             autosave_task: None,
             pending_autosave: false,
             last_export: None,
