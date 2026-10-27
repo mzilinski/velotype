@@ -97,6 +97,7 @@ actions!(
         InsertFootnote,
         InsertLinkReference,
         InsertFrontMatter,
+        InsertTemplate,
         StrikethroughSelection,
         HighlightSelection,
         SuperscriptSelection,
@@ -169,6 +170,7 @@ actions!(
         ShowOutline,
         ShowArticles,
         ShowLinks,
+        OpenDailyNote,
         FindInDocument,
         FindAndReplace,
         FindNext,
@@ -382,6 +384,7 @@ pub(crate) enum ShortcutCommand {
     InsertFootnote,
     InsertLinkReference,
     InsertFrontMatter,
+    InsertTemplate,
     StrikethroughSelection,
     HighlightSelection,
     SuperscriptSelection,
@@ -450,6 +453,7 @@ pub(crate) enum ShortcutCommand {
     ShowOutline,
     ShowArticles,
     ShowLinks,
+    OpenDailyNote,
     FindInDocument,
     FindAndReplace,
     FindNext,
@@ -1096,6 +1100,13 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         context: BLOCK_CONTEXT,
     },
     ShortcutDefinition {
+        command: ShortcutCommand::InsertTemplate,
+        id: "insert_template",
+        category: ShortcutCategory::Block,
+        default_keys: &["cmd-alt-shift-t", "ctrl-alt-shift-t"],
+        context: None,
+    },
+    ShortcutDefinition {
         command: ShortcutCommand::StrikethroughSelection,
         id: "strikethrough_selection",
         category: ShortcutCategory::Formatting,
@@ -1488,6 +1499,13 @@ const SHORTCUT_DEFINITIONS: &[ShortcutDefinition] = &[
         context: None,
     },
     ShortcutDefinition {
+        command: ShortcutCommand::OpenDailyNote,
+        id: "open_daily_note",
+        category: ShortcutCategory::Navigation,
+        default_keys: &["cmd-alt-j", "ctrl-alt-j"],
+        context: None,
+    },
+    ShortcutDefinition {
         command: ShortcutCommand::ToggleToolbar,
         id: "toggle_toolbar",
         category: ShortcutCategory::Navigation,
@@ -1823,6 +1841,7 @@ fn key_binding_for(
         ShortcutCommand::InsertFootnote => KeyBinding::new(key, InsertFootnote, context),
         ShortcutCommand::InsertLinkReference => KeyBinding::new(key, InsertLinkReference, context),
         ShortcutCommand::InsertFrontMatter => KeyBinding::new(key, InsertFrontMatter, context),
+        ShortcutCommand::InsertTemplate => KeyBinding::new(key, InsertTemplate, context),
         ShortcutCommand::StrikethroughSelection => {
             KeyBinding::new(key, StrikethroughSelection, context)
         }
@@ -1883,6 +1902,7 @@ fn key_binding_for(
         ShortcutCommand::ShowOutline => KeyBinding::new(key, ShowOutline, context),
         ShortcutCommand::ShowArticles => KeyBinding::new(key, ShowArticles, context),
         ShortcutCommand::ShowLinks => KeyBinding::new(key, ShowLinks, context),
+        ShortcutCommand::OpenDailyNote => KeyBinding::new(key, OpenDailyNote, context),
         ShortcutCommand::ToggleToolbar => KeyBinding::new(key, ToggleToolbar, context),
         ShortcutCommand::ToggleWorkspace => KeyBinding::new(key, ToggleWorkspace, context),
         ShortcutCommand::FindInDocument => KeyBinding::new(key, FindInDocument, context),

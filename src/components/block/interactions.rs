@@ -1039,61 +1039,66 @@ impl Block {
             let Some(text) = rich.or(plain) else {
                 return;
             };
+            self.paste_text(text, window, cx);
+        }
+    }
 
-            // Only rendered rich-text blocks apply paste correction. Raw/code
-            // contexts preserve bytes, and table cells flatten newlines so the
-            // surrounding table structure is not accidentally split.
-            if self.editor_selection_range.is_some() {
-                cx.emit(BlockEvent::RequestReplaceCrossBlockSelection {
-                    text,
-                    selected_range_relative: None,
-                    mark_inserted_text: false,
-                    undo_kind: UndoCaptureKind::NonCoalescible,
-                });
-                return;
-            }
+    /// Inserts `text` at the caret the way a paste does: replacing the
+    /// selection, and splitting multiline Markdown into blocks.
+    pub(crate) fn paste_text(&mut self, text: String, window: &mut Window, cx: &mut Context<Self>) {
+        // Only rendered rich-text blocks apply paste correction. Raw/code
+        // contexts preserve bytes, and table cells flatten newlines so the
+        // surrounding table structure is not accidentally split.
+        if self.editor_selection_range.is_some() {
+            cx.emit(BlockEvent::RequestReplaceCrossBlockSelection {
+                text,
+                selected_range_relative: None,
+                mark_inserted_text: false,
+                undo_kind: UndoCaptureKind::NonCoalescible,
+            });
+            return;
+        }
 
-            if self.is_table_cell() {
-                let flattened = text.replace("\r\n", " ").replace(['\r', '\n'], " ");
-                self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
-                self.replace_text_in_range(None, &flattened, window, cx);
-                return;
-            }
+        if self.is_table_cell() {
+            let flattened = text.replace("\r\n", " ").replace(['\r', '\n'], " ");
+            self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+            self.replace_text_in_range(None, &flattened, window, cx);
+            return;
+        }
 
-            if self.uses_raw_text_editing() {
-                self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
-                self.replace_text_in_range(None, &text, window, cx);
-                return;
-            }
-
-            if text.contains('\n') || text.contains('\r') {
-                let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
-                if self.quote_depth > 0 {
-                    self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
-                    self.replace_text_in_range(None, &normalized, window, cx);
-                    return;
-                }
-                let clean_selected = self.selection_clean_range();
-                let (leading, tail) = self.record.title.split_at(clean_selected.start);
-                let (_, trailing) =
-                    tail.split_at(clean_selected.end.saturating_sub(clean_selected.start));
-                let lines = normalized
-                    .split('\n')
-                    .map(ToOwned::to_owned)
-                    .collect::<Vec<_>>();
-                let split_physical_lines = should_split_plain_multiline_paste(&lines);
-                cx.emit(BlockEvent::RequestPasteMultiline {
-                    leading,
-                    lines,
-                    trailing,
-                    split_physical_lines,
-                });
-                return;
-            }
-
+        if self.uses_raw_text_editing() {
             self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
             self.replace_text_in_range(None, &text, window, cx);
+            return;
         }
+
+        if text.contains('\n') || text.contains('\r') {
+            let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+            if self.quote_depth > 0 {
+                self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+                self.replace_text_in_range(None, &normalized, window, cx);
+                return;
+            }
+            let clean_selected = self.selection_clean_range();
+            let (leading, tail) = self.record.title.split_at(clean_selected.start);
+            let (_, trailing) =
+                tail.split_at(clean_selected.end.saturating_sub(clean_selected.start));
+            let lines = normalized
+                .split('\n')
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>();
+            let split_physical_lines = should_split_plain_multiline_paste(&lines);
+            cx.emit(BlockEvent::RequestPasteMultiline {
+                leading,
+                lines,
+                trailing,
+                split_physical_lines,
+            });
+            return;
+        }
+
+        self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+        self.replace_text_in_range(None, &text, window, cx);
     }
 
     /// Returns focus from the code-language field to code content on Enter.

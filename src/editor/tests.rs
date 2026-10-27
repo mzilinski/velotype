@@ -3861,6 +3861,54 @@ async fn typing_a_wiki_link_suggests_and_completes_notes(cx: &mut TestAppContext
 }
 
 #[gpui::test]
+async fn insert_template_fills_and_pastes_at_the_caret(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-template-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(root.join(".git")).expect("create vault");
+    fs::create_dir_all(root.join("Templates")).expect("create templates dir");
+    fs::write(
+        root.join("Templates").join("Meeting.md"),
+        "## {{title}}\n\n- [ ] Agenda",
+    )
+    .expect("write template");
+    fs::write(root.join("Templates").join("Other.md"), "x").expect("write template");
+    let current = root.join("Standup.md");
+    fs::write(&current, "").expect("write current note");
+
+    let (editor, cx) = cx.add_window_view({
+        let current = current.clone();
+        move |_window, cx| Editor::from_markdown(cx, String::new(), Some(current))
+    });
+    cx.simulate_input("Intro");
+    redraw(cx);
+    editor.update_in(cx, |editor, window, cx| {
+        editor.open_palette(
+            super::workspace_search::PaletteMode::InsertTemplate,
+            window,
+            cx,
+        );
+    });
+    redraw(cx);
+    cx.simulate_input("meet");
+    redraw(cx);
+    editor.read_with(cx, |editor, _cx| {
+        let palette = editor.palette.as_ref().expect("template list shown");
+        assert_eq!(palette.items.len(), 1);
+    });
+    cx.simulate_keystrokes("enter");
+    redraw(cx);
+    editor.read_with(cx, |editor, cx| {
+        assert!(editor.palette.is_none());
+        assert_eq!(
+            editor.document.markdown_text(cx),
+            "Intro\n\n## Standup\n\n- [ ] Agenda"
+        );
+    });
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[gpui::test]
 async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
     let root = std::env::temp_dir().join(format!("velotype-links-tab-{}", uuid::Uuid::new_v4()));

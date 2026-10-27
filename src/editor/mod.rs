@@ -31,6 +31,7 @@ mod clipboard_commands;
 mod close;
 mod context_menu;
 mod context_menu_general;
+mod daily_notes;
 mod document;
 mod emoji_picker;
 mod events;
