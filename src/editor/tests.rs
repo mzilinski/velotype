@@ -3866,12 +3866,17 @@ async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
     let root = std::env::temp_dir().join(format!("velotype-links-tab-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join(".git")).expect("create vault");
     let current = root.join("Anna.md");
-    fs::write(&current, "# Anna\n\n#person").expect("write note");
-    fs::write(root.join("Home.md"), "See [[Anna]] #person #home").expect("write home");
+    let text = "# Anna\n\n#person [[Home]] [[Nope]]";
+    fs::write(&current, text).expect("write note");
+    fs::write(
+        root.join("Home.md"),
+        "See [[Anna]] #person #home\n\nAnna said hi.",
+    )
+    .expect("write home");
 
     let (editor, cx) = cx.add_window_view({
         let current = current.clone();
-        move |_window, cx| Editor::from_markdown(cx, "# Anna\n\n#person".to_string(), Some(current))
+        move |_window, cx| Editor::from_markdown(cx, text.to_string(), Some(current))
     });
     editor.update_in(cx, |editor, window, cx| {
         editor.show_workspace_tab(super::workspace::WorkspaceTab::Links, window, cx);
@@ -3888,6 +3893,20 @@ async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
             .map(|tag| (tag.name, tag.documents))
             .collect::<Vec<_>>();
         assert_eq!(tags, [("person".to_string(), 2)]);
+        let (_, _, outgoing) = editor.workspace.outgoing.as_ref().expect("outgoing read");
+        let outgoing = outgoing
+            .iter()
+            .map(|link| (link.written.as_str(), link.target.is_some()))
+            .collect::<Vec<_>>();
+        assert_eq!(outgoing, [("Home", true), ("Nope", false)]);
+        let mentions = editor
+            .workspace
+            .mentions
+            .as_ref()
+            .and_then(|state| state.mentions.as_ref())
+            .expect("mentions searched");
+        assert_eq!(mentions.len(), 1);
+        assert_eq!(mentions[0].line, 2);
     });
     editor.update(cx, |editor, cx| {
         editor.workspace.selected_tag = Some("person".to_string());

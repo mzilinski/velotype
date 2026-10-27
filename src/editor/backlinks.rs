@@ -3,6 +3,7 @@
 //! that document at the link.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::*;
@@ -26,6 +27,32 @@ impl Editor {
             self.workspace.link_index = index;
             self.workspace.link_index_root = Some(root);
         }
+        self.sync_workspace_outgoing();
+        self.sync_workspace_mentions(cx);
+    }
+
+    /// Reads the outgoing links again when the text or the index changed.
+    fn sync_workspace_outgoing(&mut self) {
+        let (Some(index), Some(path)) =
+            (self.workspace.link_index.as_ref(), self.file_path.as_ref())
+        else {
+            self.workspace.outgoing = None;
+            return;
+        };
+        if self
+            .workspace
+            .outgoing
+            .as_ref()
+            .is_some_and(|(source, known, _)| {
+                Arc::ptr_eq(known, index) && *source == self.last_stable_source_text
+            })
+        {
+            return;
+        }
+        let source = path.canonicalize().unwrap_or_else(|_| path.clone());
+        let links = super::mentions::outgoing_links(index, &source, &self.last_stable_source_text);
+        self.workspace.outgoing =
+            Some((self.last_stable_source_text.clone(), index.clone(), links));
     }
 
     /// The folder whose links count: the opened folder, else the vault (the
@@ -90,6 +117,8 @@ impl Editor {
             .flex_col()
             .gap(px(18.0))
             .child(self.render_backlinks_section(index, current, theme, strings, editor))
+            .child(self.render_outgoing_section(index, theme, strings, editor))
+            .child(self.render_mentions_section(index, theme, strings, editor))
             .child(self.render_tags_section(index, current, theme, strings, editor))
             .into_any_element()
     }
@@ -295,6 +324,179 @@ impl Editor {
                         .child(chips("workspace-tag", all)),
                 )
             })
+            .into_any_element()
+    }
+
+    /// The notes the current document links to; missing ones are muted.
+    fn render_outgoing_section(
+        &self,
+        index: &LinkIndex,
+        theme: &Theme,
+        strings: &I18nStrings,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let t = &theme.typography;
+        let links = self
+            .workspace
+            .outgoing
+            .as_ref()
+            .map(|(_, _, links)| links.as_slice())
+            .unwrap_or_default();
+        let rows = links.iter().enumerate().map(|(position, link)| {
+            let (title, folder) = match &link.target {
+                Some(path) => (
+                    path.file_stem()
+                        .map(|stem| stem.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    folder_label(index.root(), path),
+                ),
+                None => (
+                    link.written.clone(),
+                    strings.workspace_outgoing_missing.clone(),
+                ),
+            };
+            let row = div()
+                .id(ElementId::named_usize("workspace-outgoing", position))
+                .w_full()
+                .px(px(10.0))
+                .py(px(4.0))
+                .flex()
+                .items_center()
+                .gap(px(6.0))
+                .rounded(px(6.0))
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .text_size(px(t.text_size * 0.92))
+                        .text_color(if link.target.is_some() {
+                            c.text_default
+                        } else {
+                            c.dialog_muted
+                        })
+                        .child(title),
+                )
+                .when(!folder.is_empty(), |row| {
+                    row.child(
+                        div()
+                            .min_w(px(0.0))
+                            .text_size(px(t.text_size * 0.74))
+                            .text_color(c.dialog_muted)
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .child(folder),
+                    )
+                });
+            match link.target.clone() {
+                Some(path) => {
+                    let open_editor = editor.clone();
+                    row.hover(|row| row.bg(c.dialog_secondary_button_hover))
+                        .cursor_pointer()
+                        .on_click(move |_event, window, cx| {
+                            let path = path.clone();
+                            let _ = open_editor.update(cx, |editor, cx| {
+                                editor.open_workspace_file(path, window, cx);
+                            });
+                        })
+                }
+                None => row,
+            }
+        });
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .child(section_heading(
+                format!("{} ({})", strings.workspace_outgoing_heading, links.len()),
+                theme,
+            ))
+            .children(rows)
+            .into_any_element()
+    }
+
+    /// Other documents naming the current one in plain text, each line
+    /// opening that document at the mention.
+    fn render_mentions_section(
+        &self,
+        index: &LinkIndex,
+        theme: &Theme,
+        strings: &I18nStrings,
+        editor: &WeakEntity<Editor>,
+    ) -> AnyElement {
+        let c = &theme.colors;
+        let t = &theme.typography;
+        let mentions = self
+            .workspace
+            .mentions
+            .as_ref()
+            .and_then(|state| state.mentions.as_deref());
+        let heading = match mentions {
+            Some(mentions) => format!(
+                "{} ({})",
+                strings.workspace_mentions_heading,
+                mentions.len()
+            ),
+            None => format!("{} …", strings.workspace_mentions_heading),
+        };
+        let rows = mentions
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .map(|(position, mention)| {
+                let reveal_editor = editor.clone();
+                let path = mention.source.clone();
+                let reveal = (mention.line, mention.text.clone());
+                let mut title = mention
+                    .source
+                    .file_stem()
+                    .map(|stem| stem.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                let folder = folder_label(index.root(), &mention.source);
+                if !folder.is_empty() {
+                    title = format!("{title} · {folder}");
+                }
+                div()
+                    .id(ElementId::named_usize("workspace-mention", position))
+                    .w_full()
+                    .px(px(10.0))
+                    .py(px(4.0))
+                    .flex()
+                    .flex_col()
+                    .rounded(px(6.0))
+                    .hover(|row| row.bg(c.dialog_secondary_button_hover))
+                    .cursor_pointer()
+                    .child(
+                        div()
+                            .text_size(px(t.text_size * 0.86))
+                            .text_color(c.text_default)
+                            .child(title),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(t.text_size * 0.8))
+                            .line_height(px(t.text_size * 0.8 * 1.4))
+                            .text_color(c.dialog_muted)
+                            .max_h(px(t.text_size * 0.8 * 1.4 * 2.0))
+                            .overflow_hidden()
+                            .child(mention.context.clone()),
+                    )
+                    .on_click(move |_event, window, cx| {
+                        let path = path.clone();
+                        let reveal = Some(reveal.clone());
+                        let _ = reveal_editor.update(cx, |editor, cx| {
+                            editor.open_path_and_reveal(path, reveal, window, cx);
+                        });
+                    })
+            });
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .child(section_heading(heading, theme))
+            .children(rows)
             .into_any_element()
     }
 
