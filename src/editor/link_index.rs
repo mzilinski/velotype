@@ -836,7 +836,7 @@ mod tests {
             .iter()
             .map(|link| {
                 (
-                    link.source.to_string_lossy().into_owned(),
+                    link.source.clone(),
                     link.line,
                     link.label.as_str(),
                 )
@@ -845,9 +845,9 @@ mod tests {
         assert_eq!(
             backlinks,
             [
-                ("/v/a.md".to_string(), 0, "Anna"),
-                ("/v/b.md".to_string(), 0, "Anna"),
-                ("/v/b.md".to_string(), 2, "x"),
+                (PathBuf::from("/v/a.md"), 0, "Anna"),
+                (PathBuf::from("/v/b.md"), 0, "Anna"),
+                (PathBuf::from("/v/b.md"), 2, "x"),
             ]
         );
         assert!(index.backlinks(Path::new("/v/b.md")).is_empty());
