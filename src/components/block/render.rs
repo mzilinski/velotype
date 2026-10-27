@@ -676,6 +676,152 @@ impl Block {
         container.children(rows).into_any_element()
     }
 
+    /// Renders the result of a ```dataview block: a table, or a list of
+    /// notes. Clicking a note opens it; clicking elsewhere edits the query.
+    fn render_query_view(
+        &self,
+        theme: &Theme,
+        strings: &I18nStrings,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        use crate::editor::query::QueryView;
+        let c = &theme.colors;
+        let d = &theme.dimensions;
+        let t = &theme.typography;
+        let container = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .py(px(d.block_padding_y.max(4.0)))
+            .text_size(px(t.text_size))
+            .line_height(rems(t.text_line_height));
+        let note = |container: Div, text: String| {
+            container
+                .text_color(c.text_placeholder)
+                .child(SharedString::from(text))
+                .into_any_element()
+        };
+        let result = match self.query_view() {
+            Some(QueryView::Ready(result)) => result.clone(),
+            Some(QueryView::Error(error)) => {
+                return note(container, format!("{}: {error}", strings.query_error));
+            }
+            _ => return note(container, strings.query_loading.clone()),
+        };
+        if result.rows.is_empty() {
+            return note(container, strings.query_no_results.clone());
+        }
+
+        let link = |index: usize, row: &crate::editor::query::QueryRow| {
+            let path = row.path.clone();
+            div()
+                .id(("query-note", index))
+                .text_color(c.text_link)
+                .cursor_pointer()
+                .hover(|this| this.underline())
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|_, _: &MouseDownEvent, _, cx| cx.stop_propagation()),
+                )
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(move |this, _: &MouseUpEvent, _window, cx| {
+                        this.on_query_row_mouse_up(path.clone(), cx);
+                    }),
+                )
+                .child(SharedString::from(row.name.clone()))
+        };
+        let footer = (result.truncated > 0).then(|| {
+            div()
+                .pt(px(4.0))
+                .text_size(px(t.text_size * 0.85))
+                .text_color(c.text_placeholder)
+                .child(SharedString::from(
+                    strings
+                        .query_truncated
+                        .replace("{count}", &result.truncated.to_string()),
+                ))
+        });
+
+        if !result.table {
+            let items = result.rows.iter().enumerate().map(|(index, row)| {
+                let value = row.cells.first().filter(|value| !value.is_empty());
+                div()
+                    .flex()
+                    .gap(px(6.0))
+                    .child(div().text_color(c.text_placeholder).child("•"))
+                    .when(result.show_id, |item| item.child(link(index, row)))
+                    .when_some(value, |item, value| {
+                        item.child(div().text_color(c.text_default).child(SharedString::from(
+                            if result.show_id {
+                                format!(": {value}")
+                            } else {
+                                value.clone()
+                            },
+                        )))
+                    })
+            });
+            return container
+                .children(items)
+                .children(footer)
+                .into_any_element();
+        }
+
+        let mut headers = Vec::new();
+        if result.show_id {
+            headers.push(strings.query_file_column.clone());
+        }
+        headers.extend(result.headers.iter().cloned());
+        let cell = || {
+            div()
+                .flex_1()
+                .min_w(px(60.0))
+                .px(px(8.0))
+                .py(px(2.0))
+                .overflow_hidden()
+        };
+        let header_row = div()
+            .flex()
+            .bg(c.table_header_bg)
+            .border_b_1()
+            .border_color(c.table_border)
+            .children(headers.into_iter().map(|header| {
+                cell()
+                    .text_color(c.text_default)
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(SharedString::from(header))
+            }));
+        let rows = result.rows.iter().enumerate().map(|(index, row)| {
+            div()
+                .flex()
+                .border_b_1()
+                .border_color(c.table_border)
+                .when(result.show_id, |line| {
+                    line.child(cell().child(link(index, row)))
+                })
+                .children(row.cells.iter().map(|value| {
+                    cell()
+                        .text_color(c.text_default)
+                        .child(SharedString::from(value.clone()))
+                }))
+        });
+        container
+            .child(
+                div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .border_1()
+                    .border_color(c.table_border)
+                    .rounded_sm()
+                    .overflow_hidden()
+                    .child(header_row)
+                    .children(rows),
+            )
+            .children(footer)
+            .into_any_element()
+    }
+
     /// Renders front matter as a table of properties; YAML beyond plain
     /// `key: value` pairs stays source text. Clicking focuses the source.
     fn render_properties(&self, theme: &Theme, cx: &mut Context<Self>) -> AnyElement {
@@ -2848,6 +2994,14 @@ impl Render for Block {
                 } else {
                     header.into_any_element()
                 }
+            }
+            BlockKind::CodeBlock { .. } if !focused && self.query_view().is_some() => {
+                self.last_layout = None;
+                self.last_bounds = None;
+                focused_base
+                    .w_full()
+                    .child(self.render_query_view(&theme, &strings, cx))
+                    .into_any_element()
             }
             BlockKind::CodeBlock { .. } => {
                 let show_language_input = focused || code_language_focused;

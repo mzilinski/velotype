@@ -252,6 +252,8 @@ pub struct Block {
     /// Resolved footnote occurrences and numbering.
     footnote_registry: Arc<FootnoteRegistry>,
     toc_entries: Arc<Vec<TableOfContentsEntry>>,
+    /// Result of a ```dataview query block, shown while it is not edited.
+    query_view: Option<crate::editor::query::QueryView>,
     /// Whether an empty paragraph separates numbered-list groups.
     pub(crate) list_group_separator_candidate: bool,
     /// Pending editor request to restart numbered-list numbering.
@@ -367,6 +369,7 @@ impl Block {
             link_reference_definitions: Arc::default(),
             footnote_registry: Arc::default(),
             toc_entries: Arc::default(),
+            query_view: None,
             list_group_separator_candidate: false,
             numbered_list_restart_requested: false,
             quote_reparse_requested: false,
@@ -445,6 +448,30 @@ impl Block {
 
     pub(crate) fn toc_entries(&self) -> &[TableOfContentsEntry] {
         &self.toc_entries
+    }
+
+    /// Replaces the result shown by a query block. Returns true when it
+    /// changed and the block needs a repaint.
+    pub(crate) fn set_query_view(&mut self, view: Option<crate::editor::query::QueryView>) -> bool {
+        if self.query_view == view {
+            return false;
+        }
+        self.query_view = view;
+        true
+    }
+
+    pub(crate) fn query_view(&self) -> Option<&crate::editor::query::QueryView> {
+        self.query_view.as_ref()
+    }
+
+    /// The query of a ```dataview (or ```query) code block.
+    pub(crate) fn query_source(&self) -> Option<&str> {
+        match self.kind() {
+            BlockKind::CodeBlock {
+                language: Some(language),
+            } if crate::editor::query::is_query_language(&language) => Some(self.display_text()),
+            _ => None,
+        }
     }
 
     /// Whether text edits bypass rich inline parsing in the current mode.

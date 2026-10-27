@@ -932,6 +932,8 @@ pub enum BlockEvent {
     },
     /// Jump from a table-of-contents entry to its heading block.
     RequestJumpToHeading { target: EntityId },
+    /// Open a note listed by a query block.
+    RequestOpenNote { path: std::path::PathBuf },
     /// Open the Markdown file named by a `[[wiki]]` link in this window.
     RequestOpenWikiLink { target: String },
     /// Move focus horizontally across native table cells.

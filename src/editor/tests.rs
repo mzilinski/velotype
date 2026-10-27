@@ -3909,6 +3909,52 @@ async fn insert_template_fills_and_pastes_at_the_caret(cx: &mut TestAppContext) 
 }
 
 #[gpui::test]
+async fn dataview_block_lists_matching_notes(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-query-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(root.join(".git")).expect("create vault");
+    fs::write(root.join("Alpha.md"), "---\nstatus: open\n---\n#project").expect("write note");
+    fs::write(root.join("Beta.md"), "---\nstatus: done\n---\n#project").expect("write note");
+    fs::write(root.join("Other.md"), "nothing").expect("write note");
+    let current = root.join("Dashboard.md");
+    let text =
+        "# Dashboard\n\n```dataview\nTABLE status FROM #project SORT file.name DESC\n```\n\nEnd";
+    fs::write(&current, text).expect("write dashboard");
+
+    let (editor, cx) = cx.add_window_view({
+        let current = current.clone();
+        move |_window, cx| Editor::from_markdown(cx, text.to_string(), Some(current))
+    });
+    redraw(cx);
+    redraw(cx);
+    let view = editor.read_with(cx, |editor, cx| {
+        editor
+            .document
+            .visible_blocks()
+            .iter()
+            .find_map(|visible| visible.entity.read(cx).query_view().cloned())
+            .expect("query block found")
+    });
+    let crate::editor::query::QueryView::Ready(result) = view else {
+        panic!("query not run: {view:?}");
+    };
+    let rows = result
+        .rows
+        .iter()
+        .map(|row| (row.name.as_str(), row.cells.clone()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        rows,
+        [
+            ("Beta", vec!["done".to_string()]),
+            ("Alpha", vec!["open".to_string()])
+        ]
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[gpui::test]
 async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
     let root = std::env::temp_dir().join(format!("velotype-links-tab-{}", uuid::Uuid::new_v4()));
