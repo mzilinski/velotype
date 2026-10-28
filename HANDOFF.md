@@ -1,4 +1,4 @@
-# Velotype – Handoff (Stand 2026-10-13)
+# Velotype – Handoff (Stand 2026-10-28)
 
 Ziel: Velotype (Rust/GPUI-Markdown-Editor) an Typora heranführen. Gearbeitet wird im Fork
 `origin = github.com/mzilinski/velotype`. `upstream = manyougz/velotype` bleibt unberührt,
@@ -8,15 +8,33 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 
 - Jedes Feature kommt auf einen eigenen Branch, abgezweigt von `dev`. Der Branch `integration` führt alle zusammen und ist der Stand zum Testen.
 - **Push nur nach expliziter Freigabe** durch Malte.
-- Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
+- Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
 - Linux-Rechner (CachyOS): Klon in `~/Developer/velotype`, Rust per `pacman -S rustup` (stable 1.99). Test-Build ist einfach
   `target/release/velotype`; die GPUI-Systembibliotheken waren schon installiert.
-- Tests mit `cargo test`. Zuletzt liefen 1013 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Tests mit `cargo test`. Zuletzt liefen 1092 grün, 2 ignoriert (Mac, 2026-10-28); ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
 - `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
 
 ## Offener Punkt
+
+**Stand 2026-10-28 (Mac, vor Neustart wegen Systemupdate):** `main` = `integration` = `chore/sync-upstream` = e3dbd8c, alles gepusht,
+CI grün (Läufe 40675401657 `main`, 40675401479 `integration`). App 0.7.8 aus diesem Stand in `/Applications` installiert
+(`scripts/create_macos_app_dist.sh`, dann `ditto` nach `/Applications/Velotype.app`). Nichts offen, kein ungesicherter Arbeitsstand.
+- **Vault-Funktionen (Obsidian-ähnlich)** fertig, je eigener Branch, siehe Tabelle „Erledigt“: Backlinks + Link-Index, `[[`-Vervollständigung,
+  Links beim Umbenennen/Verschieben umschreiben, Tags, ausgehende Links + unverlinkte Erwähnungen, Front Matter als Eigenschaften-Tabelle,
+  Tagesnotizen + Vorlagen, Dataview-Abfragen (Teilmenge), Graph-Ansicht.
+- **Demo-Vault:** `~/Documents/Velotype-Demo` (17 Notizen, `Start.md` = Tour mit Kürzeln, `Übersicht.md` = Abfragen, `.obsidian/daily-notes.json`
+  und `templates.json`). Monats-/Wochentagsnamen in Vorlagen sind englisch (Moment-Format), deshalb `{{date:DD.MM.YYYY}}`.
+- **Upstream 0.7.8 gemergt** (e3dbd8c, inkl. Umstieg gpui 0.2.2 → `gpui-pre` 0.3.9, PicGo-Server, Updater). Updater-URLs zeigen auf
+  `mzilinski/velotype` (`src/net/update.rs`, `src/updater/download.rs`), damit nie ein Upstream-Build installiert wird.
+  Bild-Einfügen kennt beides: `Upload` (Fork, Upload-Befehl) und `UsePicGo` (upstream, PicGo-Server). PicGo-Upload ungeprüft (kein Server).
+- **Upstream-Issue** zu den Fork-Funktionen: https://github.com/manyougz/velotype/issues/134 (2026-10-28). Antwort abwarten; je nach
+  Antwort kleine PRs schneiden oder Fork eigenständig weiterführen (ggf. umbenennen). Upstream regelmäßig nachziehen
+  (`git fetch upstream && git merge upstream/main` auf einem `chore/sync-upstream`-Branch).
+- Bekannt: Clippy-Fehler `text_offsets.rs:116` und einige Warnungen sind vorbestehend/upstream.
+
+**Älterer Stand (bis 2026-10-13):**
 
 Alles ist gepusht (Stand 2026-10-12): `integration` enthält alle Feature-Branches. Test-Exe unter Windows: `velotype-integration-8.exe`.
 Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
@@ -138,6 +156,18 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | fix/open-non-utf8 | Ursache des „Hängers“ beim Öffnen: Word-Datei gewählt → UTF-8-Fehler. Jetzt `src/text_file.rs`: `read_text_file` (UTF-8 ±BOM, UTF-16 BOM, sonst Windows-1252, Binär → `NotText` mit Meldung `open_not_text_message`); .docx/.odt/.rtf/.epub öffnen über `app_menu::import_document_in_tab` (Pandoc im Hintergrund) aus Dialog, CLI, Dateibaum, Zuletzt geöffnet. CLI: vorhandene unlesbare Datei wird nicht mehr als leeres Dokument mit Pfad geöffnet (Überschreibgefahr) |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | merge/upstream-0.7.5 | Upstream v0.7.5: einstellbare Schriften für Text/Code/Oberfläche (#121), Doppelklick-Wortauswahl (#119, war schon in `dev`), Gliederungs-Navigation (#116), Markdown in `<div>`-Blöcken, IME-Unicode-Absturz behoben (`src/ime.rs`, `src/text_offsets.rs`). 36 Konfliktdateien, fast nur upstream-Doku-Kommentare an Fork-Code. Gliederung: Fork-Variante `jump_to_source_line` bleibt, upstreams `reveal_outline_heading` entfällt, sein Test bleibt. Upstream-Test `source_selection_snapshot_clips_partial_unicode_offsets` erwartet jetzt unescapten Quelltext (`*测试`, wegen `fix/source-fidelity`) |
+| feat/backlinks | Link-Index über den ganzen Ordner (`src/editor/link_index.rs`), Reiter „Links“ in der Seitenleiste mit Backlinks (Cmd+Shift+B), Tab-Leiste bricht um |
+| feat/link-autocomplete | Vorschläge beim Tippen von `[[` (Notizen des Ordners) |
+| feat/rename-links | Umbenennen/Verschieben im Dateibaum schreibt `[[Links]]` und Markdown-Links in anderen Notizen um |
+| feat/tags | Tags (`#tag`, verschachtelt `#a/b`, Front-Matter `tags:`) im Reiter „Links“ |
+| feat/outgoing-mentions | Ausgehende Links und unverlinkte Erwähnungen im Reiter „Links“ |
+| feat/properties | Front Matter als Eigenschaften-Tabelle |
+| feat/daily-notes | Tagesnotizen und Vorlagen (liest `.obsidian/daily-notes.json`/`templates.json`), Vorlage am Cursor einfügen |
+| feat/queries | ```` ```dataview ````-Blöcke: `TABLE`/`LIST … FROM #tag AND "Ordner" WHERE … SORT …` (`src/editor/query.rs`) |
+| feat/graph | Graph-Ansicht der Notizen (Ansicht-Menü, Shift+Alt+G; `src/editor/graph.rs`) |
+| fix/menu-daily-note-order | Einstellungen bleiben unter Linux/Windows an ihrem Platz im Datei-Menü |
+| fix/toggle-workspace-tabs | Kürzel für Seitenleisten-Reiter, Palette (Quick Open/Suche) und Emoji-Auswahl schließen beim zweiten Drücken wieder (`show_workspace_tab`, `open_palette`, `on_open_emoji_picker`) |
+| chore/sync-upstream | Upstream 0.7.8 gemergt (gpui-pre 0.3.9, PicGo-Server, Updater auf Fork umgestellt, 23 deutsche Strings ergänzt); Export läuft auf `cx.background_executor()` statt eigenem Thread (Test-Scheduler) |
 | feat/menu-cleanup | Menü „Arbeitsbereich“ entfernt (Seitenleiste ein/aus jetzt unter Ansicht über Gliederung/Artikel/Dateien), Sprache rechts vor Hilfe; Reihenfolge Export, Theme, Ansicht, Sprache, Hilfe. Deutsch „Theme“ statt „Design“ (Menü, Einstellungen, Dialoge). Wunsch von Malte: Sprache evtl. nur noch in den Einstellungen – dort gibt es noch keine Sprachauswahl |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
@@ -211,6 +241,14 @@ Reihenfolge (mit Malte abgestimmt): ~~1. Absatz- und Format-Menü mit Typora-Kü
 Nach Punkt 1 noch offen bzw. abweichend: Strg+T bleibt „Neuer Tab“ (Typora: Tabelle; Tabelle auf macOS Cmd+Alt+T, unter Windows ohne Standardkürzel). Absatz davor/danach einfügen fehlt. Kein Häkchen-Status im Menü für den aktuellen Blocktyp. Strg+Shift+[ / ] und Alt+Shift+5 sind unter Windows nicht von Hand geprüft (Tastenlayout).
 
 ## Hinweise zu Fallstricken
+
+- **gpui-pre 0.3.9:** `window.focus(&handle, cx)` braucht `cx` (Borrow-Probleme mit `.focus_handle.clone()` lösen); `Menu { disabled: false, … }`;
+  `AsyncApp::update`/`Entity::update` geben den Wert zurück (kein `let _ =`, sonst Clippy); `ScrollHandle::max_offset()` ist ein Point (`.y`).
+  Der Test-Scheduler bricht bei Wakern aus fremden Threads ab → Hintergrundarbeit über `cx.background_executor().spawn`.
+- **Sichtprüfung auf dem Mac ohne Tastatur:** Fenster-ID per Swift-Snippet (CGWindowListCopyWindowInfo, Owner „velotype“, Layer 0),
+  dann `screencapture -x -o -l <id>`; Menüs per `osascript` (System Events → `click menu item "…" of menu "Ansicht" of menu bar 1`).
+  Nie Tastendrücke senden und App mit `open -g` starten – sonst landet Maltes Tippen in Velotype. Verdeckte Fenster zeichnen auf macOS
+  nicht neu (Screenshot zeigt alten Frame), für Prüfungen muss das Fenster sichtbar sein.
 
 - `sed` mit `\u{...}` oder mit leeren Variablen hat schon Dateien zerschossen. Mehrzeilige Änderungen besser mit dem Edit-Tool machen.
 - Merge-Konflikte entstehen oft bei Tests, die am Dateiende angehängt wurden. Danach prüfen, ob noch alle Tests vorhanden sind.
