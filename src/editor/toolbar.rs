@@ -317,7 +317,7 @@ mod editor_tests {
         cx.update(|window, cx| {
             editor.update(cx, |editor, cx| {
                 let block = editor.document.first_root().unwrap().clone();
-                window.focus(&block.read(cx).focus_handle);
+                window.focus(&block.read(cx).focus_handle.clone(), cx);
                 block.update(cx, |block, cx| {
                     block.move_to(0, cx);
                     block.select_to(5, cx);

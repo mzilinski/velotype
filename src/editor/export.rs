@@ -1,10 +1,8 @@
 //! Editor-facing export flow and file writing.
 
 use std::path::{Path, PathBuf};
-use std::thread;
 
 use anyhow::Context as _;
-use futures::channel::oneshot;
 use gpui::*;
 
 use super::Editor;
@@ -225,12 +223,11 @@ impl Editor {
         self.last_export = Some(LastExport::Builtin(format, path.clone()));
 
         cx.spawn(async move |_this: WeakEntity<Self>, cx: &mut AsyncApp| {
-            let (sender, receiver) = oneshot::channel();
             let output_path = path.clone();
-            let spawn_result = thread::Builder::new()
-                .name("velotype-export".to_string())
-                .spawn(move || {
-                    let result = Self::write_export_bytes(
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    Self::write_export_bytes(
                         format,
                         &markdown,
                         &theme,
@@ -240,24 +237,9 @@ impl Editor {
                         &fonts,
                         &pdf_options,
                     )
-                    .map_err(|err| err.to_string());
-                    let _ = sender.send(result);
-                });
-
-            if let Err(err) = spawn_result {
-                let detail = format!("failed to start export task: {err}");
-                let _ = cx.update_window(
-                    window_handle,
-                    move |_view: AnyView, window: &mut Window, cx: &mut App| {
-                        show_export_error(window, cx, &detail);
-                    },
-                );
-                return;
-            }
-
-            let result = receiver
-                .await
-                .unwrap_or_else(|_| Err("export task stopped before reporting a result".into()));
+                    .map_err(|err| err.to_string())
+                })
+                .await;
             let _ = cx.update_window(
                 window_handle,
                 move |_view: AnyView, window: &mut Window, cx: &mut App| match result {

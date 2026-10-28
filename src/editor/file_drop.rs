@@ -102,7 +102,7 @@ impl Editor {
             if !self.show_drop_replace_dialog {
                 self.drop_replace_restore_focus = self.document.focused_block_entity_id(window, cx);
                 self.show_drop_replace_dialog = true;
-                window.blur();
+                window.blur(cx);
             }
             cx.notify();
             return;
@@ -141,6 +141,8 @@ impl Editor {
 
         self.line_ending = super::line_endings::LineEnding::detect(&markdown);
         self.file_path = file_path;
+        self.pending_picgo_uploads.clear();
+        self.pending_image_paste_prompts.clear();
         self.view_mode = ViewMode::Rendered;
         self.document.replace_roots(roots, cx);
         self.table_cells.clear();

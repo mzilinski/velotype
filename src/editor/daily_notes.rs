@@ -289,7 +289,7 @@ impl Editor {
         let Some(block) = self.current_edit_target_from_state(cx) else {
             return;
         };
-        window.focus(&block.read(cx).focus_handle);
+        window.focus(&block.read(cx).focus_handle.clone(), cx);
         block.update(cx, |block, cx| block.paste_text(text, window, cx));
     }
 

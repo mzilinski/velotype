@@ -47,6 +47,8 @@ fn clipboard_image_extension(format: ImageFormat) -> &'static str {
         ImageFormat::Svg => "svg",
         ImageFormat::Bmp => "bmp",
         ImageFormat::Tiff => "tiff",
+        ImageFormat::Ico => "ico",
+        ImageFormat::Pnm => "pnm",
     }
 }
 
@@ -54,7 +56,7 @@ fn clipboard_image_extension(format: ImageFormat) -> &'static str {
 fn saved_document_image_dir(behavior: ImagePasteBehavior, document_path: &Path) -> PathBuf {
     let document_dir = document_path.parent().unwrap_or_else(|| Path::new("."));
     match behavior {
-        ImagePasteBehavior::Upload => untitled_image_dir(),
+        ImagePasteBehavior::Upload | ImagePasteBehavior::UsePicGo => untitled_image_dir(),
         ImagePasteBehavior::None | ImagePasteBehavior::CopyToDocumentFolder => {
             document_dir.to_path_buf()
         }
@@ -246,7 +248,7 @@ pub(super) fn markdown_link_destination(path: &str) -> String {
     destination
 }
 
-fn markdown_image_alt(path: &Path) -> String {
+pub(super) fn markdown_image_alt(path: &Path) -> String {
     let alt = path
         .file_stem()
         .and_then(|stem| stem.to_str())

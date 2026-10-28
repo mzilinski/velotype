@@ -85,7 +85,7 @@ impl Editor {
                 cx.notify();
             }
         });
-        window.focus(&input.focus_handle(cx));
+        window.focus(&input.focus_handle(cx), cx);
         self.emoji_picker = Some(EmojiPickerState {
             input,
             target,
@@ -102,7 +102,7 @@ impl Editor {
             return;
         };
         if let Some(target) = picker.target {
-            window.focus(&target.read(cx).focus_handle);
+            window.focus(&target.read(cx).focus_handle.clone(), cx);
         }
         cx.notify();
     }

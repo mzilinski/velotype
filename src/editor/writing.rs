@@ -68,7 +68,7 @@ impl Editor {
             return true;
         }
         let mut offset = self.scroll_handle.offset();
-        let max_offset_y = self.scroll_handle.max_offset().height.max(px(0.0));
+        let max_offset_y = self.scroll_handle.max_offset().y.max(px(0.0));
         offset.y = (offset.y + delta).min(px(0.0)).max(-max_offset_y);
         self.scroll_handle.set_offset(offset);
         true

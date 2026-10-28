@@ -146,7 +146,7 @@ impl Editor {
             query.update(cx, |input, cx| input.set_value(seed, cx));
         }
         query.update(cx, |input, cx| input.select_all(cx));
-        window.focus(&query.focus_handle(cx));
+        window.focus(&query.focus_handle(cx), cx);
         self.refresh_find_matches(cx);
         cx.notify();
     }

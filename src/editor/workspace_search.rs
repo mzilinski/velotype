@@ -430,7 +430,7 @@ impl Editor {
             }
             _ => Vec::new(),
         };
-        window.focus(&input.focus_handle(cx));
+        window.focus(&input.focus_handle(cx), cx);
         self.palette = Some(PaletteState {
             mode,
             input,
@@ -588,7 +588,7 @@ impl Editor {
             } else {
                 palette.input.focus_handle(cx)
             };
-            window.focus(&target);
+            window.focus(&target, cx);
             cx.notify();
         }
     }

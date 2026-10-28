@@ -105,7 +105,7 @@ impl SpellChecker {
             .spawn(async move { hunspell::download(&download_tag) });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = download.await;
-            let _ = cx.update(move |cx| match result {
+            cx.update(move |cx| match result {
                 Ok(()) => {
                     let mut languages = Self::languages(cx);
                     if !languages.contains(&tag) {

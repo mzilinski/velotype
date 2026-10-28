@@ -292,7 +292,7 @@ impl Editor {
                     && focused != Some(block)
                     && let Some(entity) = self.focusable_entity_by_id(block)
                 {
-                    window.focus(&entity.read(cx).focus_handle);
+                    window.focus(&entity.read(cx).focus_handle.clone(), cx);
                     self.active_entity_id = Some(block);
                 }
                 window.defer(cx, move |window, cx| window.dispatch_action(action, cx));

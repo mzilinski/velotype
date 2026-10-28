@@ -135,7 +135,7 @@ impl Editor {
                 .await;
             match result {
                 Ok(markdown) => {
-                    let _ = cx.update(|cx| {
+                    cx.update(|cx| {
                         crate::app_menu::open_markdown_in_current_window(cx, markdown, None)
                     });
                 }
@@ -168,7 +168,7 @@ fn show_pandoc_missing_prompt(window: &mut Window, cx: &mut App) {
     );
     cx.spawn(async move |cx| {
         if prompt.await == Ok(0) {
-            let _ = cx.update(|cx| cx.open_url(pandoc::INSTALL_URL));
+            cx.update(|cx| cx.open_url(pandoc::INSTALL_URL));
         }
     })
     .detach();

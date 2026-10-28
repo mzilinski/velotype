@@ -229,7 +229,7 @@ pub(crate) fn import_document_in_tab(cx: &mut App, path: PathBuf) {
     });
     cx.spawn(async move |cx| {
         let result = import.await;
-        let _ = cx.update(|cx| match result {
+        cx.update(|cx| match result {
             Ok(markdown) => {
                 crate::perf_log::note("  importiert");
                 open_markdown_in_current_window(cx, markdown, None);
@@ -738,11 +738,6 @@ fn request_close_current_editor_window(cx: &mut App) {
 /// Stops at the first declined or failed guard; non-editor windows are skipped.
 pub(crate) fn request_quit_application(cx: &mut App) {
     let candidates = current_window_candidates(cx);
-    if candidates.is_empty() {
-        cx.quit();
-        return;
-    }
-
     // Ask for unsaved-changes decisions before any window keeps its drafts,
     // so an aborted quit never leaves drafts stored for windows still open.
     for window in &candidates {
@@ -760,28 +755,57 @@ pub(crate) fn request_quit_application(cx: &mut App) {
             return;
         }
     }
+    if editors_allow_exit_except(None, cx) {
+        cx.quit();
+    }
+}
 
+/// Checks close guards without quitting; callers check their already-borrowed window separately.
+pub(crate) fn editors_allow_exit_except(except: Option<AnyWindowHandle>, cx: &mut App) -> bool {
+    editors_allow_operation_except(
+        except,
+        EditorWindow::on_window_should_close,
+        Editor::on_window_should_close,
+        cx,
+    )
+}
+
+/// Update guards save without closing windows, so the prepared update remains reachable.
+pub(crate) fn editors_allow_update_except(except: Option<AnyWindowHandle>, cx: &mut App) -> bool {
+    editors_allow_operation_except(
+        except,
+        EditorWindow::allow_update_restart,
+        Editor::allow_update_restart,
+        cx,
+    )
+}
+
+fn editors_allow_operation_except(
+    except: Option<AnyWindowHandle>,
+    host_guard: fn(&mut EditorWindow, &mut Window, &mut Context<EditorWindow>) -> bool,
+    guard: fn(&mut Editor, &mut Window, &mut Context<Editor>) -> bool,
+    cx: &mut App,
+) -> bool {
+    let candidates = current_window_candidates(cx);
     for window in candidates {
+        if except.is_some_and(|except| except.window_id() == window.window_id()) {
+            continue;
+        }
         let should_close = if let Some(host) = window.downcast::<EditorWindow>() {
-            host.update(cx, |host, window, cx| {
-                host.on_window_should_close(window, cx)
-            })
-            .unwrap_or(false)
+            host.update(cx, host_guard)
+                .unwrap_or(false)
         } else if let Some(window) = window.downcast::<Editor>() {
             window
-                .update(cx, |editor, window, cx| {
-                    editor.on_window_should_close(window, cx)
-                })
+                .update(cx, guard)
                 .unwrap_or(false)
         } else {
             continue;
         };
         if !should_close {
-            return;
+            return false;
         }
     }
-
-    cx.quit();
+    true
 }
 
 /// Executes one of the app-menu actions against the current application state.
@@ -1034,6 +1058,7 @@ fn edit_menu(
     };
     Menu {
         name: strings.menu_edit.clone().into(),
+        disabled: false,
         items: vec![
             MenuItem::action(strings.preferences_shortcut_undo.clone(), Undo),
             MenuItem::action(strings.preferences_shortcut_redo.clone(), Redo),
@@ -1049,6 +1074,7 @@ fn edit_menu(
             MenuItem::action(strings.preferences_shortcut_select_all.clone(), SelectAll),
             MenuItem::submenu(Menu {
                 name: strings.menu_selection.clone().into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(strings.menu_select_block.clone(), SelectBlock),
                     MenuItem::action(strings.menu_select_line.clone(), SelectLine),
@@ -1065,6 +1091,7 @@ fn edit_menu(
             }),
             MenuItem::submenu(Menu {
                 name: strings.menu_delete.clone().into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(strings.menu_delete_block.clone(), DeleteBlock),
                     MenuItem::action(strings.menu_delete_line.clone(), DeleteLine),
@@ -1075,6 +1102,7 @@ fn edit_menu(
             MenuItem::separator(),
             MenuItem::submenu(Menu {
                 name: strings.menu_smart_punctuation.clone().into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(
                         checked(&strings.menu_smart_quotes, writing.smart_quotes),
@@ -1088,6 +1116,7 @@ fn edit_menu(
             }),
             MenuItem::submenu(Menu {
                 name: strings.menu_line_endings.clone().into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(
                         checked(&strings.menu_line_ending_crlf, view.crlf),
@@ -1146,6 +1175,7 @@ pub(crate) fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
     ];
     Menu {
         name: strings.menu_paragraph.clone().into(),
+        disabled: false,
         items: vec![
             MenuItem::action(heading(1), SetHeading1),
             MenuItem::action(heading(2), SetHeading2),
@@ -1173,6 +1203,7 @@ pub(crate) fn paragraph_menu(strings: &crate::i18n::I18nStrings) -> Menu {
             MenuItem::action(strings.menu_task_status.clone(), ToggleTaskStatus),
             MenuItem::submenu(Menu {
                 name: strings.menu_callout.clone().into(),
+                disabled: false,
                 items: callouts
                     .into_iter()
                     .map(|(kind, label)| {
@@ -1212,6 +1243,7 @@ pub(crate) fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
     };
     Menu {
         name: strings.menu_format.clone().into(),
+        disabled: false,
         items: vec![
             MenuItem::action(
                 strings.preferences_shortcut_bold_selection.clone(),
@@ -1243,6 +1275,7 @@ pub(crate) fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
             MenuItem::separator(),
             MenuItem::submenu(Menu {
                 name: strings.menu_image.clone().into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(
                         strings.menu_insert_image.clone(),
@@ -1255,6 +1288,7 @@ pub(crate) fn format_menu(strings: &crate::i18n::I18nStrings) -> Menu {
                     ),
                     MenuItem::submenu(Menu {
                         name: strings.menu_zoom_image.clone().into(),
+                        disabled: false,
                         items: crate::editor::IMAGE_ZOOM_LEVELS
                             .iter()
                             .map(|percent| {
@@ -1676,6 +1710,7 @@ fn build_menus_with_view(
         vec![
             Menu {
                 name: "Velotype".into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
                     MenuItem::separator(),
@@ -1684,6 +1719,7 @@ fn build_menus_with_view(
             },
             Menu {
                 name: strings.menu_file.into(),
+                disabled: false,
                 items: vec![
                     MenuItem::action(strings.menu_new_window.clone(), NewWindow),
                     MenuItem::action(strings.menu_close_window.clone(), CloseWindow),
@@ -1692,6 +1728,7 @@ fn build_menus_with_view(
                     MenuItem::action(strings.menu_close_folder.clone(), CloseFolder),
                     MenuItem::submenu(Menu {
                         name: strings.menu_open_recent_file.clone().into(),
+                        disabled: false,
                         items: recent_items,
                     }),
                     MenuItem::action(
@@ -1749,6 +1786,7 @@ fn build_menus_with_view(
     let initial_menus = {
         vec![Menu {
             name: strings.menu_file.into(),
+            disabled: false,
             items: vec![
                 MenuItem::action(strings.menu_new_window.clone(), NewWindow),
                 MenuItem::action(strings.menu_close_window.clone(), CloseWindow),
@@ -1757,6 +1795,7 @@ fn build_menus_with_view(
                 MenuItem::action(strings.menu_close_folder.clone(), CloseFolder),
                 MenuItem::submenu(Menu {
                     name: strings.menu_open_recent_file.clone().into(),
+                    disabled: false,
                     items: recent_items,
                 }),
                 MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
@@ -1854,6 +1893,7 @@ fn build_menus_with_view(
     menus.extend([
         Menu {
             name: strings.menu_export.into(),
+            disabled: false,
             items: vec![
                 MenuItem::action(strings.menu_export_html.clone(), ExportHtml),
                 MenuItem::action(strings.menu_export_pdf.clone(), ExportPdf),
@@ -1883,10 +1923,12 @@ fn build_menus_with_view(
         },
         Menu {
             name: strings.menu_theme.into(),
+            disabled: false,
             items: theme_items,
         },
         Menu {
             name: strings.menu_view.clone().into(),
+            disabled: false,
             items: {
                 let checked = |label: &str, on: bool| {
                     if on {
@@ -1968,6 +2010,7 @@ fn build_menus_with_view(
                     ),
                     MenuItem::submenu(Menu {
                         name: strings.menu_spellcheck_language.clone().into(),
+                        disabled: false,
                         // Every downloadable dictionary; ✓ marks active ones and ⤓
                         // ones that are downloaded when first picked.
                         items: crate::spellcheck::hunspell::KNOWN_DICTIONARIES
@@ -1998,10 +2041,12 @@ fn build_menus_with_view(
         },
         Menu {
             name: strings.menu_language.into(),
+            disabled: false,
             items: language_items,
         },
         Menu {
             name: strings.menu_help.into(),
+            disabled: false,
             items: help_items,
         },
     ]);
@@ -2056,7 +2101,7 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
                 "Öffnen-Dialog geschlossen: {} Datei(en)",
                 paths.len()
             ));
-            let updated = cx.update(move |cx| {
+            cx.update(move |cx| {
                 for path in paths {
                     crate::perf_log::step(format!("Datei öffnen: {}", path.display()));
                     if let Err(err) = open_file_in_tab(cx, &path) {
@@ -2073,13 +2118,10 @@ fn prompt_and_open_files_with_error_window(cx: &mut App, error_window: Option<An
                     }
                 }
             });
-            if let Err(err) = updated {
-                crate::perf_log::note(format!("  App-Update fehlgeschlagen: {err:#}"));
-            }
         }
         Ok(Err(err)) => {
             let detail = err.to_string();
-            let _ = cx.update(move |cx| {
+            cx.update(move |cx| {
                 let title = cx
                     .global::<I18nManager>()
                     .strings()
@@ -2122,7 +2164,7 @@ fn prompt_and_import_language_config_with_error_window(
             let Some(path) = paths.into_iter().next() else {
                 return;
             };
-            let _ = cx.update(move |cx| {
+            cx.update(move |cx| {
                 let result = import_language_config_and_select(cx, &path);
                 match result {
                     Ok(_) => {
@@ -2142,7 +2184,7 @@ fn prompt_and_import_language_config_with_error_window(
         }
         Ok(Err(err)) => {
             let detail = err.to_string();
-            let _ = cx.update(move |cx| {
+            cx.update(move |cx| {
                 let title = cx
                     .global::<I18nManager>()
                     .strings()
@@ -2184,7 +2226,7 @@ fn prompt_and_import_theme_config_with_error_window(
             let Some(path) = paths.into_iter().next() else {
                 return;
             };
-            let _ = cx.update(move |cx| {
+            cx.update(move |cx| {
                 let result = import_theme_config_and_select(cx, &path);
                 match result {
                     Ok(_) => {
@@ -2204,7 +2246,7 @@ fn prompt_and_import_theme_config_with_error_window(
         }
         Ok(Err(err)) => {
             let detail = err.to_string();
-            let _ = cx.update(move |cx| {
+            cx.update(move |cx| {
                 let title = cx
                     .global::<I18nManager>()
                     .strings()
@@ -2219,7 +2261,7 @@ fn prompt_and_import_theme_config_with_error_window(
 }
 
 /// Quits after the final window closes, including on macOS.
-fn handle_window_closed(cx: &mut App) {
+fn handle_window_closed(cx: &mut App, _window_id: WindowId) {
     if cx.windows().is_empty() {
         cx.quit();
     }

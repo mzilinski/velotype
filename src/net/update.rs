@@ -12,12 +12,10 @@ use semver::Version;
 
 /// Primary update manifest on the project's main branch.
 pub(crate) const GITHUB_CARGO_TOML_URL: &str =
-    "https://raw.githubusercontent.com/manyougz/velotype/refs/heads/main/Cargo.toml";
+    "https://raw.githubusercontent.com/mzilinski/velotype/refs/heads/main/Cargo.toml";
 /// Mirror manifest queried only after the primary request times out.
 pub(crate) const GITEE_CARGO_TOML_URL: &str =
-    "https://raw.giteeusercontent.com/manyougz/velotype/raw/main/Cargo.toml";
-/// Releases page opened by the editor when an update is available.
-pub(crate) const RELEASES_URL: &str = "https://github.com/manyougz/velotype/releases";
+    "https://raw.giteeusercontent.com/mzilinski/velotype/raw/main/Cargo.toml";
 
 /// Maximum time to establish the manifest request's connection.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
@@ -29,7 +27,7 @@ const UPDATE_ACCEPT: &str = "text/plain,application/toml,*/*;q=0.8";
 const UPDATE_USER_AGENT: &str = concat!(
     "Velotype/",
     env!("CARGO_PKG_VERSION"),
-    " (+https://github.com/manyougz/velotype)"
+    " (+https://github.com/mzilinski/velotype)"
 );
 
 /// Remote endpoint used to retrieve the published Velotype manifest.

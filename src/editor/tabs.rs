@@ -446,6 +446,23 @@ impl EditorWindow {
         })
     }
 
+    /// Lets every tab offer to save before an update restarts the app; shows
+    /// the first tab that still has unsaved changes.
+    pub(crate) fn allow_update_restart(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        for index in 0..self.tabs.len() {
+            let editor = self.tabs[index].editor.clone();
+            if !editor.update(cx, |editor, cx| editor.allow_update_restart(window, cx)) {
+                self.set_active(index, window, cx);
+                return false;
+            }
+        }
+        true
+    }
+
     /// True when closing this window would show an unsaved-changes dialog.
     pub(crate) fn needs_close_prompt(&self, cx: &App) -> bool {
         self.first_tab_needing_prompt(cx).is_some()

@@ -682,7 +682,7 @@ pub(crate) fn link_index(root: &Path, revalidate: bool, cx: &mut App) -> Option<
     });
     cx.spawn(async move |cx| {
         let index = read.await;
-        let _ = cx.update(|cx| {
+        cx.update(|cx| {
             let cache = cx.default_global::<LinkIndexCache>();
             let current = match cache.entries.get(&root) {
                 Some(CachedIndex::Building(id)) => *id == build,

@@ -2,6 +2,10 @@
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
+
+use futures::channel::oneshot;
 
 use anyhow::Context as _;
 use gpui::prelude::FluentBuilder;
@@ -110,6 +114,8 @@ pub(crate) enum ImagePasteBehavior {
     CopyToNamedAssetsFolder,
     /// Keep the image local first, then upload it with the upload command.
     Upload,
+    /// Upload through the configured local PicGo server.
+    UsePicGo,
 }
 
 impl ImagePasteBehavior {
@@ -121,6 +127,7 @@ impl ImagePasteBehavior {
             Self::CopyToAssetsFolder => "copy_to_assets_folder",
             Self::CopyToNamedAssetsFolder => "copy_to_named_assets_folder",
             Self::Upload => "upload",
+            Self::UsePicGo => "use_picgo",
         }
     }
 
@@ -131,7 +138,17 @@ impl ImagePasteBehavior {
             "copy_to_assets_folder" => Self::CopyToAssetsFolder,
             "copy_to_named_assets_folder" => Self::CopyToNamedAssetsFolder,
             "upload" => Self::Upload,
+            "use_picgo" => Self::UsePicGo,
             _ => Self::None,
+        }
+    }
+
+    /// A failed upload must fall back to a local policy, never retry PicGo.
+    fn local_only(self) -> Self {
+        if matches!(self, Self::UsePicGo | Self::Upload) {
+            Self::None
+        } else {
+            self
         }
     }
 }
@@ -206,6 +223,8 @@ impl Default for WritingPreferences {
         }
     }
 }
+/// The default loopback endpoint of PicGo's built-in server.
+pub(crate) const DEFAULT_PICGO_SERVER_URL: &str = "http://127.0.0.1:36677";
 
 /// User preferences persisted under the app config directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -226,6 +245,12 @@ pub(crate) struct AppPreferences {
     /// Command that uploads images given as arguments and prints their URLs
     /// (Format > Image > Upload Image), e.g. `picgo upload`.
     pub(crate) image_upload_command: String,
+    /// Last chosen local policy used when a PicGo upload fails.
+    pub(crate) image_paste_fallback: ImagePasteBehavior,
+    /// User-supplied loopback PicGo Server address.
+    pub(crate) picgo_server_url: String,
+    /// Whether new stable releases may be downloaded automatically after startup checks.
+    pub(crate) auto_download_updates: bool,
     /// Command identifiers mapped to user-supplied shortcut lists.
     pub(crate) keybindings: BTreeMap<String, Vec<String>>,
     /// Status bar visibility, built-in items, and stored custom buttons.
@@ -248,6 +273,9 @@ impl Default for AppPreferences {
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
             image_upload_command: String::new(),
+            image_paste_fallback: ImagePasteBehavior::None,
+            picgo_server_url: DEFAULT_PICGO_SERVER_URL.into(),
+            auto_download_updates: false,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),
@@ -437,6 +465,8 @@ struct PreferencesFile {
     theme: ThemePreferencesFile,
     /// Editor behavior table.
     editor: EditorPreferencesFile,
+    /// Optional background update download policy.
+    updates: UpdatePreferencesFile,
     /// Status bar configuration table.
     status_bar: StatusBarPreferencesFile,
     /// Normalized user shortcut overrides.
@@ -463,6 +493,12 @@ impl From<&PdfExportOptions> for PdfExportPreferencesFile {
             page_numbers: value.page_numbers,
         }
     }
+}
+
+/// Persisted update policy; installation always requires an explicit click.
+#[derive(Serialize)]
+struct UpdatePreferencesFile {
+    auto_download: bool,
 }
 
 /// Persisted font family lists, kept as user-editable strings.
@@ -513,6 +549,10 @@ struct EditorPreferencesFile {
     smart_dashes: bool,
     autosave: bool,
     toolbar: bool,
+    /// Persisted local fallback policy for PicGo failures.
+    image_paste_fallback: String,
+    /// PicGo's local HTTP server URL.
+    picgo_server_url: String,
 }
 
 /// Persisted default UI language selection.
@@ -595,8 +635,13 @@ impl From<&AppPreferences> for PreferencesFile {
                 smart_dashes: value.writing.smart_dashes,
                 autosave: value.writing.autosave,
                 toolbar: value.writing.toolbar,
+                image_paste_fallback: value.image_paste_fallback.local_only().as_str().into(),
+                picgo_server_url: value.picgo_server_url.clone(),
             },
             status_bar: StatusBarPreferencesFile::from(&value.status_bar),
+            updates: UpdatePreferencesFile {
+                auto_download: value.auto_download_updates,
+            },
             keybindings: normalize_shortcut_config(&value.keybindings),
             fonts: FontPreferencesFile::from(&value.fonts),
             pdf_export: PdfExportPreferencesFile::from(&value.pdf_export),
@@ -726,6 +771,20 @@ fn app_preferences_from_toml_value(
         autosave: editor_flag("autosave", default_writing.autosave),
         toolbar: editor_flag("toolbar", default_writing.toolbar),
     };
+    let image_paste_fallback = value
+        .get("editor")
+        .and_then(|editor| editor.get("image_paste_fallback"))
+        .and_then(|value| value.as_str())
+        .map(ImagePasteBehavior::from_str)
+        .unwrap_or(image_paste_behavior)
+        .local_only();
+    let picgo_server_url = value
+        .get("editor")
+        .and_then(|editor| editor.get("picgo_server_url"))
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(DEFAULT_PICGO_SERVER_URL)
+        .to_string();
 
     let status_bar = value
         .get("status_bar")
@@ -814,6 +873,13 @@ fn app_preferences_from_toml_value(
         writing,
         image_paste_behavior,
         image_upload_command,
+        image_paste_fallback,
+        picgo_server_url,
+        auto_download_updates: value
+            .get("updates")
+            .and_then(|updates| updates.get("auto_download"))
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false),
         keybindings,
         status_bar,
         fonts,
@@ -1055,6 +1121,9 @@ pub(crate) fn save_preferences_from_window(
     startup_open: StartupOpenPreference,
     default_theme_id: &str,
     image_paste_behavior: ImagePasteBehavior,
+    image_paste_fallback: ImagePasteBehavior,
+    picgo_server_url: &str,
+    auto_download_updates: bool,
     keybindings: BTreeMap<String, Vec<String>>,
     status_bar: &StatusBarPreferences,
     fonts: &FontPreferences,
@@ -1064,6 +1133,9 @@ pub(crate) fn save_preferences_from_window(
         startup_open,
         default_theme_id,
         image_paste_behavior,
+        image_paste_fallback,
+        picgo_server_url,
+        auto_download_updates,
         keybindings,
         status_bar,
         fonts,
@@ -1076,6 +1148,9 @@ fn save_preferences_from_window_with_dirs(
     startup_open: StartupOpenPreference,
     default_theme_id: &str,
     image_paste_behavior: ImagePasteBehavior,
+    image_paste_fallback: ImagePasteBehavior,
+    picgo_server_url: &str,
+    auto_download_updates: bool,
     keybindings: BTreeMap<String, Vec<String>>,
     status_bar: &StatusBarPreferences,
     fonts: &FontPreferences,
@@ -1086,6 +1161,9 @@ fn save_preferences_from_window_with_dirs(
     preferences.startup_open = startup_open;
     preferences.default_theme_id = default_theme_id.into();
     preferences.image_paste_behavior = image_paste_behavior;
+    preferences.image_paste_fallback = image_paste_fallback.local_only();
+    preferences.picgo_server_url = picgo_server_url.to_string();
+    preferences.auto_download_updates = auto_download_updates;
     preferences.keybindings = normalize_shortcut_config(&keybindings);
     preferences.status_bar = status_bar.clone();
     preferences.fonts = fonts.clone();
@@ -1106,6 +1184,8 @@ fn update_app_preferences(
 /// Preferences page currently displayed in the navigation pane.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PreferencesNav {
+    /// Application update download policy.
+    Settings,
     /// Startup document selection.
     File,
     /// Theme selection and font family lists.
@@ -1117,6 +1197,15 @@ enum PreferencesNav {
     /// Status bar visibility controls.
     StatusBar,
     Export,
+}
+
+/// Non-uploading connectivity check for the configured local PicGo Server.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PicGoStatus {
+    Checking,
+    Available,
+    Legacy,
+    Unavailable,
 }
 
 /// Checks body, code, and UI availability; syntax errors are handled separately.
@@ -1141,6 +1230,17 @@ pub(crate) struct PreferencesWindow {
     selected_theme_id: String,
     /// Draft clipboard image storage policy.
     image_paste_behavior: ImagePasteBehavior,
+    /// Local policy to use if PicGo cannot upload a batch.
+    image_paste_fallback: ImagePasteBehavior,
+    /// Draft PicGo Server URL, edited in a separate input.
+    picgo_server_url: String,
+    /// Draft automatic download policy and its last saved value.
+    auto_download_updates: bool,
+    saved_auto_download_updates: bool,
+    /// Effective OS association state, independent of the unsaved preference draft.
+    file_associations: FileAssociationStatus,
+    /// Keeps the current check alive without doing OS work during rendering.
+    file_association_task: Option<Task<()>>,
     /// Draft shortcut overrides.
     keybindings: BTreeMap<String, Vec<String>>,
     /// Startup policy at the last successful save.
@@ -1149,6 +1249,15 @@ pub(crate) struct PreferencesWindow {
     saved_theme_id: String,
     /// Image policy at the last successful save.
     saved_image_paste_behavior: ImagePasteBehavior,
+    /// Saved fallback and server address for dirty-state comparison.
+    saved_image_paste_fallback: ImagePasteBehavior,
+    saved_picgo_server_url: String,
+    /// Result of the latest local PicGo Server probe.
+    picgo_status: PicGoStatus,
+    /// Discards results from checks started before the latest URL change.
+    picgo_check_generation: u64,
+    /// Cancels superseded checks while the address field is being edited.
+    picgo_check_task: Option<Task<()>>,
     /// Shortcut overrides used as the dirty-state baseline.
     saved_keybindings: BTreeMap<String, Vec<String>>,
     /// Theme catalog snapshot captured when this window opens.
@@ -1204,6 +1313,31 @@ pub(crate) struct PreferencesWindow {
     upload_command: String,
     saved_upload_command: String,
     upload_command_input: Entity<SingleLineInput>,
+    /// Editable PicGo Server URL.
+    picgo_server_input: Entity<SingleLineInput>,
+}
+
+/// File association is an immediate OS action, not a persisted application preference.
+#[derive(Debug, PartialEq, Eq)]
+enum FileAssociationStatus {
+    Checking,
+    Associating,
+    Associated,
+    NotAssociated,
+    NeedsConfirmation,
+    Failed(String),
+}
+
+impl FileAssociationStatus {
+    fn can_associate(&self) -> bool {
+        matches!(
+            self,
+            Self::NotAssociated | Self::NeedsConfirmation | Self::Failed(_)
+        )
+    }
+    fn is_busy(&self) -> bool {
+        matches!(self, Self::Checking | Self::Associating)
+    }
 }
 
 impl PreferencesWindow {
@@ -1223,6 +1357,12 @@ impl PreferencesWindow {
         };
         let startup_open = preferences.startup_open;
         let image_paste_behavior = preferences.image_paste_behavior;
+        let image_paste_fallback = if image_paste_behavior == ImagePasteBehavior::UsePicGo {
+            preferences.image_paste_fallback.local_only()
+        } else {
+            image_paste_behavior
+        };
+        let picgo_server_url = preferences.picgo_server_url.clone();
         let keybindings = preferences.keybindings;
         let fonts = preferences.fonts.clone();
         let font_catalog = FontCatalog::current(cx);
@@ -1239,6 +1379,18 @@ impl PreferencesWindow {
             SingleLineInput::new(fonts.ui_stack.clone(), "e.g. .SystemUIFont", cx)
                 .with_overflow(SingleLineOverflow::Ellipsis)
         });
+        let picgo_server_input = cx.new(|cx| {
+            SingleLineInput::new(picgo_server_url.clone(), DEFAULT_PICGO_SERVER_URL, cx)
+                .with_overflow(SingleLineOverflow::Ellipsis)
+        });
+        cx.subscribe(&picgo_server_input, |this, input, _: &InputChanged, cx| {
+            this.picgo_server_url = input.read(cx).value().to_string();
+            if this.image_paste_behavior == ImagePasteBehavior::UsePicGo {
+                this.check_picgo_server(cx);
+            }
+            cx.notify();
+        })
+        .detach();
         cx.subscribe(&body_font_input, |this, input, _: &InputChanged, cx| {
             this.fonts.body_stack = input.read(cx).value().to_string();
             this.refresh_font_availability(0);
@@ -1271,14 +1423,25 @@ impl PreferencesWindow {
         })
         .detach();
         Self {
-            nav: PreferencesNav::File,
+            nav: PreferencesNav::Settings,
             startup_open,
             selected_theme_id: selected_theme_id.clone(),
             image_paste_behavior,
+            image_paste_fallback,
+            picgo_server_url: picgo_server_url.clone(),
             keybindings: keybindings.clone(),
             saved_startup_open: startup_open,
             saved_theme_id: selected_theme_id,
             saved_image_paste_behavior: image_paste_behavior,
+            saved_image_paste_fallback: image_paste_fallback,
+            saved_picgo_server_url: picgo_server_url,
+            auto_download_updates: preferences.auto_download_updates,
+            saved_auto_download_updates: preferences.auto_download_updates,
+            file_associations: FileAssociationStatus::Checking,
+            file_association_task: None,
+            picgo_status: PicGoStatus::Checking,
+            picgo_check_generation: 0,
+            picgo_check_task: None,
             saved_keybindings: keybindings,
             theme_options,
             focus_handle: cx.focus_handle(),
@@ -1309,6 +1472,7 @@ impl PreferencesWindow {
             saved_upload_command: upload_command.clone(),
             upload_command,
             upload_command_input,
+            picgo_server_input,
         }
     }
 
@@ -1363,6 +1527,9 @@ impl PreferencesWindow {
         self.startup_open != self.saved_startup_open
             || self.selected_theme_id != self.saved_theme_id
             || self.image_paste_behavior != self.saved_image_paste_behavior
+            || self.image_paste_fallback != self.saved_image_paste_fallback
+            || self.picgo_server_url != self.saved_picgo_server_url
+            || self.auto_download_updates != self.saved_auto_download_updates
             || normalize_shortcut_config(&self.keybindings)
                 != normalize_shortcut_config(&self.saved_keybindings)
             || self.status_bar_enabled != self.saved_status_bar_enabled
@@ -1373,6 +1540,98 @@ impl PreferencesWindow {
             || self.fonts != self.saved_fonts
             || self.pdf_export != self.saved_pdf_export
             || self.upload_command.trim() != self.saved_upload_command.trim()
+    }
+
+    /// Shows general settings while dismissing page-local editing controls.
+    fn set_nav_settings(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.nav = PreferencesNav::Settings;
+        self.startup_dropdown_open = false;
+        self.theme_dropdown_open = false;
+        self.image_dropdown_open = false;
+        self.recording_shortcut = None;
+        cx.notify();
+    }
+
+    /// Serializes background checks/actions and refreshes after the system default-app UI returns.
+    fn update_file_associations(
+        &mut self,
+        associate: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.file_associations.is_busy() && self.file_association_task.is_some() {
+            return;
+        }
+        self.file_associations = if associate {
+            FileAssociationStatus::Associating
+        } else {
+            FileAssociationStatus::Checking
+        };
+        let handle = window.window_handle();
+        let task = cx.background_executor().spawn(async move {
+            let settings = if associate {
+                crate::file_associations::associate()?
+            } else {
+                None
+            };
+            // User confirmation comes before rechecking; a failed query must not block Settings.
+            if settings.is_some() {
+                return anyhow::Ok((false, settings));
+            }
+            let associated = crate::file_associations::is_associated()?;
+            anyhow::ensure!(
+                !associate || associated,
+                "the system did not apply the Markdown file associations"
+            );
+            anyhow::Ok((associated, settings))
+        });
+        self.file_association_task = Some(cx.spawn(
+            async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+                let result = task.await;
+                let _ = cx.update_window(handle, |_, window, cx| {
+                    let _ = this.update(cx, |this, cx| {
+                        this.file_associations = match result {
+                            Ok((true, _)) => FileAssociationStatus::Associated,
+                            Ok((false, Some(url))) => {
+                                cx.open_url(url);
+                                FileAssociationStatus::NeedsConfirmation
+                            }
+                            Ok((false, None)) => FileAssociationStatus::NotAssociated,
+                            Err(error) => {
+                                let strings = cx.global::<I18nManager>().strings_arc();
+                                let message = strings
+                                    .preferences_file_associations_failed
+                                    .replace("{error}", &format!("{error:#}"));
+                                if associate {
+                                    let _ = window.prompt(
+                                        PromptLevel::Critical,
+                                        &strings.preferences_file_associations,
+                                        Some(&message),
+                                        &[strings.info_dialog_ok.as_str()],
+                                        cx,
+                                    );
+                                }
+                                FileAssociationStatus::Failed(message)
+                            }
+                        };
+                        cx.notify();
+                    });
+                });
+            },
+        ));
+        cx.notify();
+    }
+
+    /// Leaves already-associated and in-flight states inert even if invoked outside the button.
+    fn associate_file_formats(
+        &mut self,
+        _: &ClickEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.file_associations.can_associate() {
+            self.update_file_associations(true, window, cx);
+        }
     }
 
     /// Shows startup settings and closes dropdowns and shortcut recording.
@@ -1402,7 +1661,42 @@ impl PreferencesWindow {
         self.theme_dropdown_open = false;
         self.image_dropdown_open = false;
         self.recording_shortcut = None;
+        if self.image_paste_behavior == ImagePasteBehavior::UsePicGo {
+            self.check_picgo_server(cx);
+        }
         cx.notify();
+    }
+
+    /// Probes the configured loopback server without uploading clipboard data.
+    fn check_picgo_server(&mut self, cx: &mut Context<Self>) {
+        self.picgo_check_generation = self.picgo_check_generation.wrapping_add(1);
+        let generation = self.picgo_check_generation;
+        let url = self.picgo_server_url.clone();
+        self.picgo_status = PicGoStatus::Checking;
+        self.picgo_check_task = Some(cx.spawn(
+            async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(300))
+                    .await;
+                let (sender, receiver) = oneshot::channel();
+                thread::spawn(move || {
+                    let result = crate::editor::picgo::probe_server(&url);
+                    let _ = sender.send(result);
+                });
+                let result = receiver.await.unwrap_or(Ok(false));
+                let _ = this.update(cx, |this, cx| {
+                    if this.picgo_check_generation != generation {
+                        return;
+                    }
+                    this.picgo_status = match result {
+                        Ok(true) => PicGoStatus::Available,
+                        Ok(false) => PicGoStatus::Legacy,
+                        Err(_) => PicGoStatus::Unavailable,
+                    };
+                    cx.notify();
+                });
+            },
+        ));
     }
 
     /// Shows shortcut settings, closes dropdowns, and clears the recording error.
@@ -1491,6 +1785,9 @@ impl PreferencesWindow {
             self.startup_open,
             &self.selected_theme_id,
             self.image_paste_behavior,
+            self.image_paste_fallback,
+            &self.picgo_server_url,
+            self.auto_download_updates,
             self.keybindings.clone(),
             &StatusBarPreferences {
                 enabled: self.status_bar_enabled,
@@ -1576,10 +1873,14 @@ impl PreferencesWindow {
             .expect("saved font stacks were validated");
         cx.refresh_windows();
         window.activate_window();
-        self.focus_handle.focus(window);
+        self.focus_handle.focus(window, cx);
         self.saved_startup_open = self.startup_open;
         self.saved_theme_id = self.selected_theme_id.clone();
         self.saved_image_paste_behavior = self.image_paste_behavior;
+        self.saved_image_paste_fallback = self.image_paste_fallback;
+        self.saved_picgo_server_url = self.picgo_server_url.clone();
+        self.saved_auto_download_updates = self.auto_download_updates;
+        crate::updater::set_auto_download(cx, preferences.auto_download_updates);
         self.saved_keybindings = normalize_shortcut_config(&self.keybindings);
         self.saved_status_bar_enabled = self.status_bar_enabled;
         self.saved_status_bar_show_word_count = self.status_bar_show_word_count;
@@ -1928,6 +2229,7 @@ impl PreferencesWindow {
                 .preferences_image_paste_copy_to_named_assets_folder
                 .clone(),
             ImagePasteBehavior::Upload => strings.preferences_image_paste_upload.clone(),
+            ImagePasteBehavior::UsePicGo => strings.preferences_image_paste_picgo.clone(),
         }
     }
 
@@ -1944,6 +2246,7 @@ impl PreferencesWindow {
             ImagePasteBehavior::CopyToAssetsFolder,
             ImagePasteBehavior::CopyToNamedAssetsFolder,
             ImagePasteBehavior::Upload,
+            ImagePasteBehavior::UsePicGo,
         ];
         let mut dropdown = div()
             .w_full()
@@ -1968,8 +2271,14 @@ impl PreferencesWindow {
                     selected,
                     theme,
                     move |this, _, _, cx| {
+                        if behavior != ImagePasteBehavior::UsePicGo {
+                            this.image_paste_fallback = behavior;
+                        }
                         this.image_paste_behavior = behavior;
                         this.image_dropdown_open = false;
+                        if behavior == ImagePasteBehavior::UsePicGo {
+                            this.check_picgo_server(cx);
+                        }
                         cx.notify();
                     },
                     cx,
@@ -1978,13 +2287,34 @@ impl PreferencesWindow {
         }
         let c = &theme.colors;
         let t = &theme.typography;
-        div()
+        let mut content = div()
             .w_full()
             .min_w(px(0.0))
             .flex()
             .flex_col()
             .gap(px(18.))
-            .child(self.labeled_row(&strings.preferences_image_insert_behavior, dropdown, theme))
+            .child(self.labeled_row(&strings.preferences_image_insert_behavior, dropdown, theme));
+        if self.image_paste_behavior == ImagePasteBehavior::UsePicGo {
+            let status = match self.picgo_status {
+                PicGoStatus::Checking => &strings.preferences_picgo_checking,
+                PicGoStatus::Available => &strings.preferences_picgo_available,
+                PicGoStatus::Legacy => &strings.preferences_picgo_legacy,
+                PicGoStatus::Unavailable => &strings.preferences_picgo_unavailable,
+            };
+            content = content
+                .child(self.labeled_row(
+                    &strings.preferences_picgo_server_url,
+                    self.picgo_server_input.clone(),
+                    theme,
+                ))
+                .child(
+                    div()
+                        .text_size(px(theme.typography.dialog_body_size))
+                        .text_color(theme.colors.dialog_muted)
+                        .child(status.clone()),
+                );
+        }
+        content
             .child(self.labeled_row(
                 &strings.preferences_image_upload_command,
                 self.upload_command_input.clone(),
@@ -2221,7 +2551,7 @@ impl PreferencesWindow {
     ) {
         self.recording_shortcut = Some(command);
         self.shortcut_error = None;
-        window.focus(&self.focus_handle);
+        window.focus(&self.focus_handle, cx);
         cx.notify();
     }
 
@@ -2519,6 +2849,116 @@ impl PreferencesWindow {
         page.child(content)
     }
 
+    /// Uses the existing controlled switch for the opt-in download setting.
+    fn render_settings_page(
+        &self,
+        theme: &Theme,
+        strings: &crate::i18n::I18nStrings,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .child(
+                div()
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .gap(px(16.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(0.0))
+                            .text_size(px(theme.typography.dialog_body_size))
+                            .text_color(theme.colors.dialog_body)
+                            .child(strings.preferences_updates_auto_download.clone()),
+                    )
+                    .child(
+                        Switch::new("preferences-auto-download-updates")
+                            .checked(self.auto_download_updates)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.auto_download_updates = !this.auto_download_updates;
+                                cx.notify();
+                            })),
+                    ),
+            )
+            .child(
+                div()
+                    .text_size(px(theme.typography.dialog_body_size))
+                    .text_color(theme.colors.dialog_muted)
+                    .child(strings.preferences_updates_auto_download_hint.clone()),
+            )
+            .child({
+                let enabled = self.file_associations.can_associate();
+                div()
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .gap(px(16.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(0.0))
+                            .text_size(px(theme.typography.dialog_body_size))
+                            .text_color(theme.colors.dialog_body)
+                            .child(strings.preferences_file_associations.clone()),
+                    )
+                    .child(
+                        div()
+                            .id("preferences-associate-formats")
+                            .h(px(theme.dimensions.dialog_button_height))
+                            .px(px(theme.dimensions.dialog_button_padding_x))
+                            .flex_shrink_0()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .rounded(px((theme.dimensions.dialog_radius - 4.0).max(0.0)))
+                            .border(px(theme.dimensions.dialog_border_width))
+                            .border_color(theme.colors.dialog_border)
+                            .bg(theme.colors.dialog_secondary_button_bg)
+                            .text_size(px(theme.typography.dialog_button_size))
+                            .font_weight(theme.typography.dialog_button_weight.to_font_weight())
+                            .text_color(if enabled {
+                                theme.colors.dialog_secondary_button_text
+                            } else {
+                                theme.colors.dialog_muted
+                            })
+                            .when(enabled, |button| {
+                                button
+                                    .cursor_pointer()
+                                    .hover(|style| {
+                                        style.bg(theme.colors.dialog_secondary_button_hover)
+                                    })
+                                    .on_click(cx.listener(Self::associate_file_formats))
+                            })
+                            .child(strings.preferences_associate_formats.clone()),
+                    )
+            })
+            .children(
+                match &self.file_associations {
+                    FileAssociationStatus::Checking | FileAssociationStatus::Associating => {
+                        Some(strings.preferences_file_associations_checking.clone())
+                    }
+                    FileAssociationStatus::Associated => {
+                        Some(strings.preferences_file_associations_associated.clone())
+                    }
+                    FileAssociationStatus::NeedsConfirmation => {
+                        Some(strings.preferences_file_associations_pending.clone())
+                    }
+                    FileAssociationStatus::Failed(error) => Some(error.clone()),
+                    FileAssociationStatus::NotAssociated => None,
+                }
+                .map(|message| {
+                    div()
+                        .text_size(px(theme.typography.dialog_body_size))
+                        .text_color(theme.colors.dialog_muted)
+                        .child(message)
+                }),
+            )
+    }
+
     /// Renders the draft status bar and built-in item visibility switches.
     fn render_status_bar_page(
         &self,
@@ -2805,6 +3245,14 @@ impl Render for PreferencesWindow {
                             .flex_col()
                             .gap(px(8.0))
                             .child(self.nav_button(
+                                "preferences-nav-settings",
+                                strings.preferences_nav_settings.clone(),
+                                self.nav == PreferencesNav::Settings,
+                                &theme,
+                                Self::set_nav_settings,
+                                cx,
+                            ))
+                            .child(self.nav_button(
                                 "preferences-nav-file",
                                 strings.preferences_nav_file.clone(),
                                 self.nav == PreferencesNav::File,
@@ -2878,6 +3326,9 @@ impl Render for PreferencesWindow {
                                     .font_weight(t.dialog_title_weight.to_font_weight())
                                     .text_color(c.dialog_title)
                                     .child(match self.nav {
+                                        PreferencesNav::Settings => {
+                                            strings.preferences_nav_settings.clone()
+                                        }
                                         PreferencesNav::File => {
                                             strings.preferences_nav_file.clone()
                                         }
@@ -2899,6 +3350,14 @@ impl Render for PreferencesWindow {
                                     }),
                             )
                             .child(match self.nav {
+                                PreferencesNav::Settings => div()
+                                    .id("preferences-settings-scroll")
+                                    .w_full()
+                                    .flex_1()
+                                    .min_h(px(0.0))
+                                    .overflow_y_scroll()
+                                    .child(self.render_settings_page(&theme, &strings, cx))
+                                    .into_any_element(),
                                 PreferencesNav::File => div()
                                     .id("preferences-file-scroll")
                                     .w_full()
@@ -3061,10 +3520,17 @@ fn open_preferences_window_with_state(
         .expect("preferences window should open");
 
     handle
-        .update(cx, |preferences, window, _cx| {
+        .update(cx, |preferences, window, cx| {
             crate::ime::install_window_input_filter(window);
             window.activate_window();
-            preferences.focus_handle.focus(window);
+            preferences.focus_handle.focus(window, cx);
+            cx.observe_window_activation(window, |preferences, window, cx| {
+                if window.is_window_active() {
+                    preferences.update_file_associations(false, window, cx);
+                }
+            })
+            .detach();
+            preferences.update_file_associations(false, window, cx);
         })
         .expect("newly opened preferences window should be updateable");
 
@@ -3105,8 +3571,8 @@ mod tests {
     }
 
     use super::{
-        AppPreferences, EditorSettings, ImagePasteBehavior, StartupOpenPreference,
-        StatusBarPreferences, WritingPreferences,
+        AppPreferences, DEFAULT_PICGO_SERVER_URL, EditorSettings, ImagePasteBehavior,
+        StartupOpenPreference, StatusBarPreferences, WritingPreferences,
         load_or_create_app_preferences_with_dirs_and_locales, open_preferences_window_with_state,
         read_app_preferences_with_dirs, save_app_preferences_with_dirs,
         save_preferences_from_window_with_dirs,
@@ -3141,6 +3607,25 @@ mod tests {
     }
 
     #[test]
+    fn file_association_button_is_disabled_when_associated_or_busy() {
+        use super::FileAssociationStatus::*;
+        for state in [Checking, Associating, Associated] {
+            assert!(!state.can_associate());
+        }
+        for state in [
+            NotAssociated,
+            NeedsConfirmation,
+            Failed("unavailable".into()),
+        ] {
+            assert!(state.can_associate());
+            assert!(!state.is_busy());
+        }
+        assert!(!Associated.is_busy());
+        assert!(Checking.is_busy());
+        assert!(Associating.is_busy());
+    }
+
+    #[test]
     fn missing_preferences_file_returns_defaults() {
         let root = std::env::temp_dir().join(format!(
             "velotype-preferences-missing-{}",
@@ -3151,6 +3636,23 @@ mod tests {
             read_app_preferences_with_dirs(&dirs).expect("missing preferences should load");
         assert_eq!(preferences, AppPreferences::default());
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn updater_preferences_are_opt_in_and_invalid_values_remain_disabled() {
+        for text in [
+            "",
+            "[updates]\nauto_download = 'yes'",
+            "[updates]\nauto_download = false",
+        ] {
+            let value: toml::Value = toml::from_str(text).unwrap();
+            assert!(!super::app_preferences_from_toml_value(&value, "en-US").auto_download_updates);
+        }
+        let value: toml::Value = toml::from_str("[updates]\nauto_download = true").unwrap();
+        let preferences = super::app_preferences_from_toml_value(&value, "en-US");
+        assert!(preferences.auto_download_updates);
+        let text = toml::to_string(&super::PreferencesFile::from(&preferences)).unwrap();
+        assert!(text.contains("[updates]\nauto_download = true"));
     }
 
     #[test]
@@ -3234,6 +3736,35 @@ mod tests {
     }
 
     #[test]
+    fn picgo_settings_round_trip_and_never_use_picgo_as_fallback() {
+        let root = std::env::temp_dir().join(format!(
+            "velotype-preferences-picgo-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let dirs = VelotypeConfigDirs::from_root(&root);
+        let preferences = AppPreferences {
+            image_paste_behavior: ImagePasteBehavior::UsePicGo,
+            image_paste_fallback: ImagePasteBehavior::CopyToAssetsFolder,
+            picgo_server_url: "http://localhost:4444".into(),
+            ..AppPreferences::default()
+        };
+        save_app_preferences_with_dirs(&preferences, &dirs).unwrap();
+        assert_eq!(read_app_preferences_with_dirs(&dirs).unwrap(), preferences);
+        let text = std::fs::read_to_string(dirs.app_config_file()).unwrap();
+        assert!(text.contains("image_paste_behavior = \"use_picgo\""));
+        assert!(text.contains("image_paste_fallback = \"copy_to_assets_folder\""));
+        assert!(text.contains("picgo_server_url = \"http://localhost:4444\""));
+        std::fs::write(dirs.app_config_file(), "[editor]\nimage_paste_behavior = \"use_picgo\"\nimage_paste_fallback = \"use_picgo\"\n").unwrap();
+        assert_eq!(
+            read_app_preferences_with_dirs(&dirs)
+                .unwrap()
+                .image_paste_fallback,
+            ImagePasteBehavior::None
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn damaged_preferences_file_returns_defaults() {
         let root = std::env::temp_dir().join(format!(
             "velotype-preferences-damaged-{}",
@@ -3311,6 +3842,9 @@ mod tests {
             },
             image_paste_behavior: ImagePasteBehavior::CopyToAssetsFolder,
             image_upload_command: "picgo upload".into(),
+            image_paste_fallback: ImagePasteBehavior::CopyToAssetsFolder,
+            picgo_server_url: DEFAULT_PICGO_SERVER_URL.into(),
+            auto_download_updates: true,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences {
@@ -3430,6 +3964,9 @@ mod tests {
             writing: WritingPreferences::default(),
             image_paste_behavior: ImagePasteBehavior::None,
             image_upload_command: String::new(),
+            image_paste_fallback: ImagePasteBehavior::None,
+            picgo_server_url: DEFAULT_PICGO_SERVER_URL.into(),
+            auto_download_updates: false,
             keybindings: BTreeMap::new(),
             status_bar: StatusBarPreferences::default(),
             fonts: FontPreferences::default(),
@@ -3442,6 +3979,9 @@ mod tests {
             StartupOpenPreference::LastOpenedFile,
             "velotype-light",
             ImagePasteBehavior::CopyToNamedAssetsFolder,
+            ImagePasteBehavior::CopyToNamedAssetsFolder,
+            DEFAULT_PICGO_SERVER_URL,
+            true,
             BTreeMap::from([("save_document".to_string(), vec!["ctrl-alt-s".to_string()])]),
             &StatusBarPreferences::default(),
             &FontPreferences::default(),
@@ -3478,6 +4018,11 @@ mod tests {
 
         let active_window = cx.update(|cx| cx.active_window().expect("window should be active"));
         assert_eq!(active_window.window_id(), handle.window_id());
+        handle
+            .update(cx, |preferences, _window, _cx| {
+                assert_eq!(preferences.nav, super::PreferencesNav::Settings);
+            })
+            .expect("preferences window should be updateable");
         assert!(
             handle
                 .update(cx, |preferences, window, _cx| preferences
@@ -3491,6 +4036,35 @@ mod tests {
                     .has_unsaved_changes())
                 .expect("preferences window should be updateable")
         );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[gpui::test]
+    async fn preferences_file_association_check_completes_in_background(cx: &mut TestAppContext) {
+        init_preferences_test_app(cx);
+        let handle = cx.update(|cx| {
+            open_preferences_window_with_state(
+                cx,
+                AppPreferences::default(),
+                default_theme_options(),
+                "Preferences".into(),
+            )
+        });
+        cx.run_until_parked();
+        handle
+            .update(cx, |preferences, _window, _cx| {
+                assert!(
+                    matches!(
+                        preferences.file_associations,
+                        super::FileAssociationStatus::Associated
+                            | super::FileAssociationStatus::NotAssociated
+                    ),
+                    "unexpected association check result: {:?}",
+                    preferences.file_associations
+                );
+                assert!(!preferences.has_unsaved_changes());
+            })
+            .unwrap();
     }
 
     #[gpui::test]
@@ -3510,6 +4084,10 @@ mod tests {
         handle
             .update(cx, |preferences, _window, _cx| {
                 assert!(!preferences.has_unsaved_changes());
+                preferences.file_associations = super::FileAssociationStatus::Associated;
+                assert!(!preferences.has_unsaved_changes());
+                preferences.file_associations = super::FileAssociationStatus::NotAssociated;
+                assert!(!preferences.has_unsaved_changes());
                 preferences.startup_open = StartupOpenPreference::LastOpenedFile;
                 assert!(preferences.has_unsaved_changes());
                 preferences.startup_open = StartupOpenPreference::NewFile;
@@ -3518,6 +4096,19 @@ mod tests {
                 preferences.image_paste_behavior = ImagePasteBehavior::CopyToAssetsFolder;
                 assert!(preferences.has_unsaved_changes());
                 preferences.image_paste_behavior = ImagePasteBehavior::None;
+                assert!(!preferences.has_unsaved_changes());
+
+                preferences.image_paste_behavior = ImagePasteBehavior::UsePicGo;
+                assert!(preferences.has_unsaved_changes());
+                preferences.image_paste_behavior = ImagePasteBehavior::None;
+                preferences.picgo_server_url = "http://localhost:40000".into();
+                assert!(preferences.has_unsaved_changes());
+                preferences.picgo_server_url = DEFAULT_PICGO_SERVER_URL.into();
+                assert!(!preferences.has_unsaved_changes());
+
+                preferences.auto_download_updates = true;
+                assert!(preferences.has_unsaved_changes());
+                preferences.auto_download_updates = false;
                 assert!(!preferences.has_unsaved_changes());
 
                 preferences

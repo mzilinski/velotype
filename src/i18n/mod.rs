@@ -65,6 +65,29 @@ pub struct I18nStrings {
     pub update_open_release: String,
     /// Button label for dismissing an available-update prompt.
     pub update_later: String,
+    /// Download progress, with a `{version}` placeholder.
+    pub update_downloading: String,
+    /// Prepared-update explanation, with a `{version}` placeholder.
+    pub update_ready_message: String,
+    /// Explicit installation confirmation button.
+    pub update_restart: String,
+    /// Status-bar installation button, with a `{version}` placeholder.
+    pub update_status_ready: String,
+    /// Explains why installation is paused until documents have been saved.
+    pub update_save_first_message: String,
+    /// General application settings page.
+    pub preferences_nav_settings: String,
+    /// Opt-in automatic download switch label and explanation.
+    pub preferences_updates_auto_download: String,
+    pub preferences_updates_auto_download_hint: String,
+    /// System Markdown association controls and read-only status messages.
+    pub preferences_file_associations: String,
+    pub preferences_associate_formats: String,
+    pub preferences_file_associations_checking: String,
+    pub preferences_file_associations_associated: String,
+    pub preferences_file_associations_pending: String,
+    /// Supports `{error}` for native diagnostics.
+    pub preferences_file_associations_failed: String,
     /// Title of the About dialog.
     pub help_about_title: String,
     /// Supplemental About dialog text shown below the app name and version.
@@ -360,6 +383,12 @@ pub struct I18nStrings {
     pub export_failed_title: String,
     /// Title of the image-paste failure prompt.
     pub image_paste_failed_title: String,
+    /// Title for one PicGo failure notice per paste batch.
+    pub image_paste_picgo_failed_title: String,
+    /// Message shown after the entire batch uses the saved local policy.
+    pub image_paste_picgo_fallback_message: String,
+    /// Temporary status while an image batch is uploading to PicGo.
+    pub image_paste_picgo_waiting: String,
     /// Title of the custom configuration import failure prompt.
     pub config_import_failed_title: String,
     /// Preferences window title.
@@ -404,6 +433,15 @@ pub struct I18nStrings {
     pub preferences_image_paste_copy_to_assets_folder: String,
     /// Image policy label for a document-named assets directory.
     pub preferences_image_paste_copy_to_named_assets_folder: String,
+    /// Upload images with the local PicGo Server.
+    pub preferences_image_paste_picgo: String,
+    /// PicGo Server URL field label.
+    pub preferences_picgo_server_url: String,
+    /// Non-uploading local server check states.
+    pub preferences_picgo_checking: String,
+    pub preferences_picgo_available: String,
+    pub preferences_picgo_legacy: String,
+    pub preferences_picgo_unavailable: String,
     /// Save button label in the preferences window.
     pub preferences_save: String,
     /// Cancel button label in the preferences window.
@@ -711,6 +749,20 @@ struct I18nStringsDe {
     update_open_release: Option<String>,
     /// Optional update postponement label.
     update_later: Option<String>,
+    update_downloading: Option<String>,
+    update_ready_message: Option<String>,
+    update_restart: Option<String>,
+    update_status_ready: Option<String>,
+    update_save_first_message: Option<String>,
+    preferences_nav_settings: Option<String>,
+    preferences_updates_auto_download: Option<String>,
+    preferences_updates_auto_download_hint: Option<String>,
+    preferences_file_associations: Option<String>,
+    preferences_associate_formats: Option<String>,
+    preferences_file_associations_checking: Option<String>,
+    preferences_file_associations_associated: Option<String>,
+    preferences_file_associations_pending: Option<String>,
+    preferences_file_associations_failed: Option<String>,
     /// Optional About dialog title.
     help_about_title: Option<String>,
     /// Optional supplemental About text.
@@ -1002,6 +1054,9 @@ struct I18nStringsDe {
     export_failed_title: Option<String>,
     /// Optional image-paste failure title.
     image_paste_failed_title: Option<String>,
+    image_paste_picgo_failed_title: Option<String>,
+    image_paste_picgo_fallback_message: Option<String>,
+    image_paste_picgo_waiting: Option<String>,
     /// Optional pack-import failure title.
     config_import_failed_title: Option<String>,
     /// Optional preferences window title.
@@ -1046,6 +1101,12 @@ struct I18nStringsDe {
     preferences_image_paste_copy_to_assets_folder: Option<String>,
     /// Optional copy-to-named-assets policy label.
     preferences_image_paste_copy_to_named_assets_folder: Option<String>,
+    preferences_image_paste_picgo: Option<String>,
+    preferences_picgo_server_url: Option<String>,
+    preferences_picgo_checking: Option<String>,
+    preferences_picgo_available: Option<String>,
+    preferences_picgo_legacy: Option<String>,
+    preferences_picgo_unavailable: Option<String>,
     /// Optional preferences save label.
     preferences_save: Option<String>,
     /// Optional preferences cancel label.
@@ -1314,6 +1375,20 @@ const I18N_STRING_KEYS: &[&str] = &[
     "update_failed_message_template",
     "update_open_release",
     "update_later",
+    "update_downloading",
+    "update_ready_message",
+    "update_restart",
+    "update_status_ready",
+    "update_save_first_message",
+    "preferences_nav_settings",
+    "preferences_updates_auto_download",
+    "preferences_updates_auto_download_hint",
+    "preferences_file_associations",
+    "preferences_associate_formats",
+    "preferences_file_associations_checking",
+    "preferences_file_associations_associated",
+    "preferences_file_associations_pending",
+    "preferences_file_associations_failed",
     "help_about_title",
     "help_about_message",
     "help_about_github_label",
@@ -1568,6 +1643,9 @@ const I18N_STRING_KEYS: &[&str] = &[
     "save_failed_title",
     "export_failed_title",
     "image_paste_failed_title",
+    "image_paste_picgo_failed_title",
+    "image_paste_picgo_fallback_message",
+    "image_paste_picgo_waiting",
     "config_import_failed_title",
     "preferences_window_title",
     "preferences_nav_file",
@@ -1590,6 +1668,12 @@ const I18N_STRING_KEYS: &[&str] = &[
     "preferences_image_paste_copy_to_document_folder",
     "preferences_image_paste_copy_to_assets_folder",
     "preferences_image_paste_copy_to_named_assets_folder",
+    "preferences_image_paste_picgo",
+    "preferences_picgo_server_url",
+    "preferences_picgo_checking",
+    "preferences_picgo_available",
+    "preferences_picgo_legacy",
+    "preferences_picgo_unavailable",
     "preferences_save",
     "preferences_cancel",
     "preferences_save_failed_title",
@@ -1795,6 +1879,46 @@ impl I18nStringsDe {
                 .update_open_release
                 .unwrap_or(defaults.update_open_release),
             update_later: self.update_later.unwrap_or(defaults.update_later),
+            update_downloading: self
+                .update_downloading
+                .unwrap_or(defaults.update_downloading),
+            update_ready_message: self
+                .update_ready_message
+                .unwrap_or(defaults.update_ready_message),
+            update_restart: self.update_restart.unwrap_or(defaults.update_restart),
+            update_status_ready: self
+                .update_status_ready
+                .unwrap_or(defaults.update_status_ready),
+            update_save_first_message: self
+                .update_save_first_message
+                .unwrap_or(defaults.update_save_first_message),
+            preferences_nav_settings: self
+                .preferences_nav_settings
+                .unwrap_or(defaults.preferences_nav_settings),
+            preferences_updates_auto_download: self
+                .preferences_updates_auto_download
+                .unwrap_or(defaults.preferences_updates_auto_download),
+            preferences_updates_auto_download_hint: self
+                .preferences_updates_auto_download_hint
+                .unwrap_or(defaults.preferences_updates_auto_download_hint),
+            preferences_file_associations: self
+                .preferences_file_associations
+                .unwrap_or(defaults.preferences_file_associations),
+            preferences_associate_formats: self
+                .preferences_associate_formats
+                .unwrap_or(defaults.preferences_associate_formats),
+            preferences_file_associations_checking: self
+                .preferences_file_associations_checking
+                .unwrap_or(defaults.preferences_file_associations_checking),
+            preferences_file_associations_associated: self
+                .preferences_file_associations_associated
+                .unwrap_or(defaults.preferences_file_associations_associated),
+            preferences_file_associations_pending: self
+                .preferences_file_associations_pending
+                .unwrap_or(defaults.preferences_file_associations_pending),
+            preferences_file_associations_failed: self
+                .preferences_file_associations_failed
+                .unwrap_or(defaults.preferences_file_associations_failed),
             help_about_title: self.help_about_title.unwrap_or(defaults.help_about_title),
             help_about_message: self
                 .help_about_message
@@ -2339,6 +2463,15 @@ impl I18nStringsDe {
             image_paste_failed_title: self
                 .image_paste_failed_title
                 .unwrap_or(defaults.image_paste_failed_title),
+            image_paste_picgo_failed_title: self
+                .image_paste_picgo_failed_title
+                .unwrap_or(defaults.image_paste_picgo_failed_title),
+            image_paste_picgo_fallback_message: self
+                .image_paste_picgo_fallback_message
+                .unwrap_or(defaults.image_paste_picgo_fallback_message),
+            image_paste_picgo_waiting: self
+                .image_paste_picgo_waiting
+                .unwrap_or(defaults.image_paste_picgo_waiting),
             config_import_failed_title: self
                 .config_import_failed_title
                 .unwrap_or(defaults.config_import_failed_title),
@@ -2405,6 +2538,24 @@ impl I18nStringsDe {
             preferences_image_paste_copy_to_named_assets_folder: self
                 .preferences_image_paste_copy_to_named_assets_folder
                 .unwrap_or(defaults.preferences_image_paste_copy_to_named_assets_folder),
+            preferences_image_paste_picgo: self
+                .preferences_image_paste_picgo
+                .unwrap_or(defaults.preferences_image_paste_picgo),
+            preferences_picgo_server_url: self
+                .preferences_picgo_server_url
+                .unwrap_or(defaults.preferences_picgo_server_url),
+            preferences_picgo_checking: self
+                .preferences_picgo_checking
+                .unwrap_or(defaults.preferences_picgo_checking),
+            preferences_picgo_available: self
+                .preferences_picgo_available
+                .unwrap_or(defaults.preferences_picgo_available),
+            preferences_picgo_legacy: self
+                .preferences_picgo_legacy
+                .unwrap_or(defaults.preferences_picgo_legacy),
+            preferences_picgo_unavailable: self
+                .preferences_picgo_unavailable
+                .unwrap_or(defaults.preferences_picgo_unavailable),
             preferences_save: self.preferences_save.unwrap_or(defaults.preferences_save),
             preferences_cancel: self
                 .preferences_cancel
@@ -2819,8 +2970,8 @@ impl I18nStrings {
                 "当前版本：{current}\n最新版本：{latest}\n是否前往 GitHub Releases 下载？".into(),
             update_up_to_date_title: "已是最新版本".into(),
             update_up_to_date_message_template: "当前版本：{current}\n远程版本：{latest}".into(),
-            update_failed_title: "检查更新失败".into(),
-            update_failed_message_template: "无法完成在线更新检查：{error}".into(),
+            update_failed_title: "更新失败".into(),
+            update_failed_message_template: "无法完成更新：{error}".into(),
             update_open_release: "前往下载".into(),
             update_later: "稍后".into(),
             help_about_title: "关于 Velotype".into(),
@@ -3226,6 +3377,25 @@ impl I18nStrings {
             ..Self::en_us()
         };
         strings.image_paste_failed_title = "图片粘贴失败".into();
+        strings.update_downloading = "正在下载并验证 Velotype {version}...".into();
+        strings.update_ready_message = "Velotype {version} 已下载并验证，可以安装并重启。".into();
+        strings.update_restart = "更新并重启".into();
+        strings.update_status_ready = "更新至 {version} 并重启".into();
+        strings.update_save_first_message =
+            "请先保存此窗口的修改，再次点击“更新并重启”。保存后窗口会保持打开。".into();
+        strings.preferences_nav_settings = "设置".into();
+        strings.preferences_file_associations = "Markdown 文件关联（.md）".into();
+        strings.preferences_associate_formats = "关联格式".into();
+        strings.preferences_file_associations_checking = "正在检查文件关联...".into();
+        strings.preferences_file_associations_associated = "已关联到 Velotype。".into();
+        strings.preferences_file_associations_pending =
+            "请在系统默认应用设置中确认选择 Velotype。".into();
+        strings.preferences_file_associations_failed = "无法检查或更新文件关联：{error}".into();
+        strings.preferences_updates_auto_download = "自动下载更新".into();
+        strings.preferences_updates_auto_download_hint = "启动时自动检查并下载最新正式版".into();
+        strings.image_paste_picgo_failed_title = "PicGo 上传失败".into();
+        strings.image_paste_picgo_fallback_message = "已按上次的本地图片策略插入本批图片。".into();
+        strings.image_paste_picgo_waiting = "等待图床链接返回...".into();
         strings.preferences_nav_image = "图像".into();
         strings.preferences_nav_status_bar = "状态栏".into();
         strings.preferences_status_bar_enabled = "显示状态栏".into();
@@ -3239,6 +3409,13 @@ impl I18nStrings {
         strings.preferences_image_paste_copy_to_assets_folder = "复制图片到 ./assets 文件夹".into();
         strings.preferences_image_paste_copy_to_named_assets_folder =
             "复制图片到 ./${filename}.assets 文件夹".into();
+        strings.preferences_image_paste_picgo = "使用 PicGo".into();
+        strings.preferences_picgo_server_url = "PicGo Server 地址".into();
+        strings.preferences_picgo_checking = "正在检查 PicGo Server...".into();
+        strings.preferences_picgo_available = "PicGo Server 可用".into();
+        strings.preferences_picgo_legacy = "本地服务可连接；粘贴时将验证上传接口".into();
+        strings.preferences_picgo_unavailable =
+            "PicGo Server 不可用；粘贴时将使用上次的本地策略".into();
         strings
     }
 
@@ -3272,11 +3449,25 @@ impl I18nStrings {
             update_up_to_date_title: "You're Up to Date".into(),
             update_up_to_date_message_template:
                 "Current version: {current}\nRemote version: {latest}".into(),
-            update_failed_title: "Update Check Failed".into(),
-            update_failed_message_template: "Unable to complete the online update check: {error}"
+            update_failed_title: "Update Failed".into(),
+            update_failed_message_template: "Unable to complete the update: {error}"
                 .into(),
             update_open_release: "Open Releases".into(),
             update_later: "Later".into(),
+            update_downloading: "Downloading and verifying Velotype {version}...".into(),
+            update_ready_message: "Velotype {version} has been downloaded and verified. Install it and restart now?".into(),
+            update_restart: "Update and Restart".into(),
+            update_status_ready: "Update to {version} and Restart".into(),
+            update_save_first_message: "Save this window's changes, then click Update and Restart again. Saving will keep the window open.".into(),
+            preferences_nav_settings: "Settings".into(),
+            preferences_file_associations: "Markdown File Association (.md)".into(),
+            preferences_associate_formats: "Associate Formats".into(),
+            preferences_file_associations_checking: "Checking file associations...".into(),
+            preferences_file_associations_associated: "Associated with Velotype.".into(),
+            preferences_file_associations_pending: "Confirm Velotype in your system's default-app settings.".into(),
+            preferences_file_associations_failed: "Could not check or update file associations: {error}".into(),
+            preferences_updates_auto_download: "Automatically Download Updates".into(),
+            preferences_updates_auto_download_hint: "Automatically check for and download the latest stable version on startup.".into(),
             help_about_title: "About Velotype".into(),
             help_about_message: "Developed by Malte Zilinski".into(),
             help_about_github_label: "GitHub".into(),
@@ -3533,6 +3724,9 @@ impl I18nStrings {
             save_failed_title: "Save Failed".into(),
             export_failed_title: "Export Failed".into(),
             image_paste_failed_title: "Image Paste Failed".into(),
+            image_paste_picgo_failed_title: "PicGo Upload Failed".into(),
+            image_paste_picgo_fallback_message: "This paste batch was inserted using the previous local image policy.".into(),
+            image_paste_picgo_waiting: "Waiting for image links...".into(),
             config_import_failed_title: "Config Import Failed".into(),
             preferences_window_title: "Preferences".into(),
             preferences_nav_file: "File".into(),
@@ -3558,6 +3752,12 @@ impl I18nStrings {
                 "Copy image to ./assets folder".into(),
             preferences_image_paste_copy_to_named_assets_folder:
                 "Copy image to ./${filename}.assets folder".into(),
+            preferences_image_paste_picgo: "Use PicGo".into(),
+            preferences_picgo_server_url: "PicGo Server address".into(),
+            preferences_picgo_checking: "Checking PicGo Server...".into(),
+            preferences_picgo_available: "PicGo Server is available".into(),
+            preferences_picgo_legacy: "Local server reachable; upload support will be checked on paste".into(),
+            preferences_picgo_unavailable: "PicGo Server unavailable; pastes will use the previous local policy".into(),
             preferences_save: "Save".into(),
             preferences_cancel: "Cancel".into(),
             preferences_save_failed_title: "Save Preferences Failed".into(),
@@ -4154,6 +4354,29 @@ impl I18nStrings {
             preferences_status_bar_show_cursor_position: "Cursorposition".into(),
             preferences_status_bar_show_sidebar_toggle: "Seitenleisten-Schalter".into(),
             preferences_status_bar_show_mode_switch: "Ansichtsumschalter".into(),
+            update_downloading: "Velotype {version} wird heruntergeladen und geprüft …".into(),
+            update_ready_message: "Velotype {version} wurde heruntergeladen und geprüft. Jetzt installieren und neu starten?".into(),
+            update_restart: "Aktualisieren und neu starten".into(),
+            update_status_ready: "Auf {version} aktualisieren und neu starten".into(),
+            update_save_first_message: "Speichere die Änderungen dieses Fensters und klicke dann erneut auf „Aktualisieren und neu starten“. Das Fenster bleibt beim Speichern offen.".into(),
+            preferences_nav_settings: "Einstellungen".into(),
+            preferences_updates_auto_download: "Updates automatisch herunterladen".into(),
+            preferences_updates_auto_download_hint: "Beim Start automatisch nach der neuesten stabilen Version suchen und sie herunterladen.".into(),
+            preferences_file_associations: "Markdown-Dateizuordnung (.md)".into(),
+            preferences_associate_formats: "Formate zuordnen".into(),
+            preferences_file_associations_checking: "Dateizuordnungen werden geprüft …".into(),
+            preferences_file_associations_associated: "Mit Velotype verknüpft.".into(),
+            preferences_file_associations_pending: "Bestätige Velotype in den Standard-App-Einstellungen deines Systems.".into(),
+            preferences_file_associations_failed: "Dateizuordnungen konnten nicht geprüft oder geändert werden: {error}".into(),
+            image_paste_picgo_failed_title: "PicGo-Upload fehlgeschlagen".into(),
+            image_paste_picgo_fallback_message: "Die Bilder wurden mit der bisherigen lokalen Ablage eingefügt.".into(),
+            image_paste_picgo_waiting: "Warte auf Bild-Links …".into(),
+            preferences_image_paste_picgo: "PicGo verwenden".into(),
+            preferences_picgo_server_url: "PicGo-Server-Adresse".into(),
+            preferences_picgo_checking: "PicGo-Server wird geprüft …".into(),
+            preferences_picgo_available: "PicGo-Server ist erreichbar".into(),
+            preferences_picgo_legacy: "Lokaler Server erreichbar; der Upload wird beim Einfügen geprüft".into(),
+            preferences_picgo_unavailable: "PicGo-Server nicht erreichbar; Bilder werden mit der bisherigen lokalen Ablage eingefügt".into(),
         }
     }
 
@@ -4620,6 +4843,18 @@ mod tests {
         assert_eq!(strings.context_menu_insert, "插入");
         assert_eq!(strings.table_insert_title, "插入表格");
         assert_eq!(strings.image_loading_without_alt, "正在加载图片...");
+        assert_eq!(strings.preferences_image_paste_picgo, "使用 PicGo");
+        assert_eq!(strings.image_paste_picgo_waiting, "等待图床链接返回...");
+        assert_eq!(strings.preferences_picgo_available, "PicGo Server 可用");
+        assert_eq!(strings.preferences_associate_formats, "关联格式");
+        assert_eq!(
+            strings.preferences_file_associations,
+            "Markdown 文件关联（.md）"
+        );
+        assert_eq!(
+            strings.preferences_file_associations_associated,
+            "已关联到 Velotype。"
+        );
         assert_eq!(
             strings.help_check_updates_message,
             "正在检查 Velotype 的最新版本..."
@@ -4638,6 +4873,19 @@ mod tests {
         assert_eq!(manager.current_language_id(), "en-US");
         assert_eq!(manager.strings().menu_file, "File");
         assert_eq!(manager.strings().menu_export, "Export");
+        assert_eq!(manager.strings().preferences_nav_settings, "Settings");
+        assert_eq!(
+            manager.strings().preferences_associate_formats,
+            "Associate Formats"
+        );
+        assert_eq!(
+            manager.strings().preferences_file_associations,
+            "Markdown File Association (.md)"
+        );
+        assert_eq!(
+            manager.strings().update_status_ready,
+            "Update to {version} and Restart"
+        );
 
         assert!(manager.set_language_by_id("zh-CN"));
         assert_eq!(manager.current_language_id(), "zh-CN");
@@ -4799,10 +5047,18 @@ mod tests {
         .expect("language pack should load");
 
         assert_eq!(pack.id, "zh-CN");
+        assert_eq!(pack.strings.preferences_image_paste_picgo, "使用 PicGo");
+        assert_eq!(
+            pack.strings.image_paste_picgo_waiting,
+            "等待图床链接返回..."
+        );
         assert_eq!(pack.name, "简体中文");
         assert_eq!(pack.strings.menu_file, "文件菜单");
         assert_eq!(pack.strings.menu_export, "导出");
         assert_eq!(pack.strings.info_dialog_ok, "确定");
+        assert_eq!(pack.strings.preferences_nav_settings, "设置");
+        assert_eq!(pack.strings.preferences_associate_formats, "关联格式");
+        assert_eq!(pack.strings.update_status_ready, "更新至 {version} 并重启");
         assert_eq!(pack.strings.update_open_release, "前往下载");
         assert_eq!(pack.strings.help_about_github_label, "GitHub");
         assert_eq!(
@@ -4826,6 +5082,10 @@ mod tests {
         assert_eq!(pack.id, "fr-FR");
         assert_eq!(pack.name, "fr-FR");
         assert_eq!(pack.strings.menu_file, "Fichier");
+        assert_eq!(
+            pack.strings.preferences_associate_formats,
+            "Associate Formats"
+        );
         assert_eq!(pack.strings.menu_export, "Export");
         assert_eq!(pack.strings.info_dialog_ok, "OK");
         assert_eq!(pack.strings.update_open_release, "Open Releases");
@@ -4840,5 +5100,53 @@ mod tests {
             pack.strings.help_about_star_message,
             "If this project helps you, consider giving it a Star⭐. Thank you!"
         );
+    }
+
+    #[test]
+    fn file_association_strings_support_custom_overrides_and_fallbacks() {
+        let pack = I18nLanguagePack::from_json(
+            r#"{
+                "id": "custom",
+                "strings": {
+                    "preferences_associate_formats": "Connect Markdown",
+                    "preferences_file_associations_pending": ""
+                }
+            }"#,
+        )
+        .unwrap();
+        let defaults = I18nStrings::en_us();
+        assert_eq!(
+            pack.strings.preferences_associate_formats,
+            "Connect Markdown"
+        );
+        assert_eq!(
+            pack.strings.preferences_file_associations,
+            defaults.preferences_file_associations
+        );
+        assert_eq!(
+            pack.strings.preferences_file_associations_checking,
+            defaults.preferences_file_associations_checking
+        );
+        assert_eq!(
+            pack.strings.preferences_file_associations_associated,
+            defaults.preferences_file_associations_associated
+        );
+        assert_eq!(
+            pack.strings.preferences_file_associations_pending,
+            defaults.preferences_file_associations_pending
+        );
+        assert_eq!(
+            pack.strings.preferences_file_associations_failed,
+            defaults.preferences_file_associations_failed
+        );
+        for key in super::I18N_STRING_KEYS.iter().filter(|key| {
+            key.starts_with("preferences_file_associations")
+                || **key == "preferences_associate_formats"
+        }) {
+            assert!(
+                include_str!("../../assets/custom-language.example.jsonc")
+                    .contains(&format!("\"{key}\""))
+            );
+        }
     }
 }

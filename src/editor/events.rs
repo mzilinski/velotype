@@ -5,11 +5,15 @@
 //! tree mutations are delegated to [`DocumentTree`](super::tree::DocumentTree)
 //! so visible-order metadata stays in sync with every edit.
 
+use std::thread;
 use std::time::{Duration, Instant};
 
+use anyhow::anyhow;
+use futures::channel::oneshot;
 use gpui::*;
 
-use super::Editor;
+use super::{Editor, ImagePastePrompt};
+use crate::config::{ImagePasteBehavior, read_app_preferences};
 use crate::components::{
     BlockEvent, BlockKind, BlockRecord, CollapsedCaretAffinity, IndentBlock, InlineTextTree,
     OutdentBlock, PastedImageSource, TableCellPosition, is_table_row_candidate,
@@ -238,24 +242,19 @@ impl Editor {
         self.focus_block(block.entity_id());
     }
 
-    fn pasted_image_markdown(&self, source: &PastedImageSource) -> anyhow::Result<String> {
-        self.image_markdown_for_source(source, Self::current_image_paste_behavior())
+    fn pasted_image_markdown(
+        &mut self,
+        source: &PastedImageSource,
+        behavior: ImagePasteBehavior,
+    ) -> anyhow::Result<String> {
+        self.image_markdown_for_source(source, behavior)
     }
 
-    /// Reports image paste failure in a prompt or stderr when no window is active.
-    pub(super) fn show_image_paste_error(&self, err: anyhow::Error, cx: &mut Context<Self>) {
-        let strings = cx.global::<crate::i18n::I18nManager>().strings().clone();
-        if let Some(window) = cx.active_window() {
-            let ok = strings.info_dialog_ok.clone();
-            let title = strings.image_paste_failed_title.clone();
-            let detail = err.to_string();
-            let _ = window.update(cx, |_view, window, cx| {
-                let buttons = [ok.as_str()];
-                let _ = window.prompt(PromptLevel::Critical, &title, Some(&detail), &buttons, cx);
-            });
-        } else {
-            eprintln!("{}: {err}", strings.image_paste_failed_title);
-        }
+    /// Defers the failure prompt to this editor's own window.
+    pub(super) fn show_image_paste_error(&mut self, err: anyhow::Error, cx: &mut Context<Self>) {
+        self.pending_image_paste_prompts
+            .push_back(ImagePastePrompt::Storage(err.to_string()));
+        cx.notify();
     }
 
     /// Parses inserted image Markdown unless the block edits raw/code text.
@@ -351,30 +350,82 @@ impl Editor {
         self.rebuild_image_runtimes(cx);
     }
 
-    /// Pastes an image as a standalone block or inline text, with undo capture.
-    fn handle_paste_image_request(
+    /// Inserts one batch as consecutive image blocks without repeating undo capture.
+    fn insert_image_blocks_after_paragraph(
         &mut self,
-        block: Entity<super::Block>,
+        block: &Entity<super::Block>,
         leading: &InlineTextTree,
-        source: &PastedImageSource,
+        markdown: &[String],
         trailing: &InlineTextTree,
         cx: &mut Context<Self>,
     ) {
-        let markdown = match self.pasted_image_markdown(source) {
-            Ok(markdown) => markdown,
-            Err(err) => {
-                self.show_image_paste_error(err, cx);
-                return;
-            }
+        if markdown.len() == 1 {
+            self.insert_image_block_after_paragraph(block, leading, &markdown[0], trailing, cx);
+            return;
+        }
+        let Some(location) = self.document.find_block_location(block.entity_id()) else {
+            return;
         };
+        let leading_empty = leading.visible_len() == 0;
+        let mut new_blocks = Vec::new();
+        let first_image = if leading_empty {
+            Self::set_block_title_and_kind(
+                block,
+                BlockKind::Paragraph,
+                InlineTextTree::plain(markdown[0].clone()),
+                markdown[0].len(),
+                cx,
+            );
+            block.clone()
+        } else {
+            Self::set_block_title_and_kind(
+                block,
+                BlockKind::Paragraph,
+                leading.clone(),
+                leading.visible_len(),
+                cx,
+            );
+            let first = Self::new_block(cx, BlockRecord::paragraph(markdown[0].clone()));
+            new_blocks.push(first.clone());
+            first
+        };
+        for image in &markdown[1..] {
+            new_blocks.push(Self::new_block(cx, BlockRecord::paragraph(image.clone())));
+        }
+        if trailing.visible_len() > 0 {
+            new_blocks.push(Self::new_block(
+                cx,
+                BlockRecord::new(BlockKind::Paragraph, trailing.clone()),
+            ));
+        }
+        self.document
+            .insert_blocks_at(location.parent, location.index + 1, new_blocks, cx);
+        self.focus_block(first_image.entity_id());
+        self.rebuild_image_runtimes(cx);
+    }
 
-        if self.replace_cross_block_selection_with_text(
-            &markdown,
-            None,
-            false,
-            crate::components::UndoCaptureKind::NonCoalescible,
-            cx,
-        ) {
+    /// Applies one resolved batch with one undo capture and one structural edit.
+    fn insert_pasted_image_batch(
+        &mut self,
+        block: Entity<super::Block>,
+        leading: &InlineTextTree,
+        markdown: &[String],
+        trailing: &InlineTextTree,
+        replace_cross_selection: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let text = markdown.join("\n");
+        let cross_block_text = markdown.join("\n\n");
+
+        if replace_cross_selection
+            && self.replace_cross_block_selection_with_text(
+                &cross_block_text,
+                None,
+                false,
+                crate::components::UndoCaptureKind::NonCoalescible,
+                cx,
+            )
+        {
             return;
         }
 
@@ -385,16 +436,16 @@ impl Editor {
             && !block.read(cx).uses_raw_text_editing();
 
         if can_insert_image_block {
-            self.insert_image_block_after_paragraph(&block, leading, &markdown, trailing, cx);
+            self.insert_image_blocks_after_paragraph(&block, leading, markdown, trailing, cx);
         } else {
             self.replace_current_block_selection_with_image_text(
-                &block, leading, &markdown, trailing, cx,
+                &block, leading, &text, trailing, cx,
             );
         }
 
         self.mark_dirty(cx);
         self.finalize_pending_undo_capture(cx);
-        self.upload_inserted_images(std::slice::from_ref(&markdown), cx);
+        self.upload_inserted_images(markdown, cx);
         cx.notify();
     }
 
@@ -407,6 +458,142 @@ impl Editor {
         }
         self.focus_block_range(&block, 0..0, cx);
         true
+    }
+
+    /// Routes one paste batch to PicGo or the saved local image policy.
+    fn handle_paste_image_request(
+        &mut self,
+        block: Entity<super::Block>,
+        leading: &InlineTextTree,
+        sources: &[PastedImageSource],
+        trailing: &InlineTextTree,
+        cx: &mut Context<Self>,
+    ) {
+        let preferences = read_app_preferences().unwrap_or_default();
+        if preferences.image_paste_behavior != ImagePasteBehavior::UsePicGo {
+            let markdown = sources
+                .iter()
+                .map(|source| self.pasted_image_markdown(source, preferences.image_paste_behavior))
+                .collect::<anyhow::Result<Vec<_>>>();
+            match markdown {
+                Ok(markdown) => {
+                    self.insert_pasted_image_batch(block, leading, &markdown, trailing, true, cx)
+                }
+                Err(err) => self.show_image_paste_error(err, cx),
+            }
+            return;
+        }
+
+        let sources = sources.to_vec();
+        let leading = leading.clone();
+        let trailing = trailing.clone();
+        let server_url = preferences.picgo_server_url;
+        let fallback = preferences.image_paste_fallback;
+        let original_text = block.read(cx).record.title.serialize_markdown();
+        let original_selection = self.cross_block_selection;
+        *self
+            .pending_picgo_uploads
+            .entry(block.entity_id())
+            .or_default() += 1;
+        cx.notify();
+        let (sender, receiver) = oneshot::channel();
+        let upload_sources = sources.clone();
+        thread::spawn(move || {
+            let result = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(anyhow::Error::from)
+                .and_then(|runtime| {
+                    runtime.block_on(super::picgo::upload_batch(&server_url, &upload_sources))
+                });
+            let _ = sender.send(result);
+        });
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = receiver
+                .await
+                .unwrap_or_else(|_| Err(anyhow!("PicGo upload task ended unexpectedly")));
+            let _ = this.update(cx, |editor, cx| {
+                let block_id = block.entity_id();
+                if let Some(count) = editor.pending_picgo_uploads.get_mut(&block_id) {
+                    *count -= 1;
+                    if *count == 0 {
+                        editor.pending_picgo_uploads.remove(&block_id);
+                    }
+                }
+                cx.notify();
+                if editor.document.find_block_location(block_id).is_none()
+                    && editor.table_cell_binding(block_id).is_none()
+                {
+                    return;
+                }
+                let current_split = block.read(cx).paste_image_split();
+                let (leading, trailing) = if block.read(cx).record.title.serialize_markdown()
+                    == original_text
+                    && current_split == (leading.clone(), trailing.clone())
+                {
+                    (leading, trailing)
+                } else {
+                    current_split
+                };
+                let (markdown, error) = match result {
+                    Ok(urls) => (
+                        urls.iter()
+                            .zip(&sources)
+                            .map(|(url, source)| {
+                                let alt = match source {
+                                    PastedImageSource::LocalPath(path) => {
+                                        super::images::markdown_image_alt(path)
+                                    }
+                                    PastedImageSource::ClipboardImage(_) => {
+                                        "pasted-image".to_string()
+                                    }
+                                };
+                                format!("![{alt}]({})", super::images::markdown_link_destination(url))
+                            })
+                            .collect::<Vec<_>>(),
+                        None,
+                    ),
+                    Err(err) => {
+                        let local = sources
+                            .iter()
+                            .map(|source| editor.pasted_image_markdown(source, fallback))
+                            .collect::<anyhow::Result<Vec<_>>>();
+                        match local {
+                            Ok(markdown) => (markdown, Some(err)),
+                            Err(local_err) => {
+                                editor.show_image_paste_error(
+                                    local_err.context(format!("PicGo failed: {err}")),
+                                    cx,
+                                );
+                                return;
+                            }
+                        }
+                    }
+                };
+                let replace_cross_selection = editor.cross_block_selection == original_selection;
+                editor.insert_pasted_image_batch(
+                    block,
+                    &leading,
+                    &markdown,
+                    &trailing,
+                    replace_cross_selection,
+                    cx,
+                );
+                if let Some(error) = error {
+                    editor.show_picgo_fallback_notice(error, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// Reports a PicGo failure once after the whole paste batch uses local paths.
+    fn show_picgo_fallback_notice(&mut self, error: anyhow::Error, cx: &mut Context<Self>) {
+        let strings = cx.global::<crate::i18n::I18nManager>().strings().clone();
+        let message = format!("{}\n{}", error, strings.image_paste_picgo_fallback_message);
+        self.pending_image_paste_prompts
+            .push_back(ImagePastePrompt::PicGoFallback(message));
+        cx.notify();
     }
 
     /// Focuses the registered definition for a footnote ID.
@@ -882,7 +1069,7 @@ impl Editor {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let max_offset_y = self.scroll_handle.max_offset().height.max(px(0.0));
+        let max_offset_y = self.scroll_handle.max_offset().y.max(px(0.0));
         self.set_vertical_scroll_offset(-max_offset_y, cx);
     }
 
@@ -897,7 +1084,7 @@ impl Editor {
     /// Applies an absolute vertical scroll offset, clamped to the scrollable
     /// range. Offsets run from 0 at the top to `-max_offset` at the bottom.
     fn set_vertical_scroll_offset(&mut self, target_y: Pixels, cx: &mut Context<Self>) {
-        let max_offset_y = self.scroll_handle.max_offset().height.max(px(0.0));
+        let max_offset_y = self.scroll_handle.max_offset().y.max(px(0.0));
         let mut offset = self.scroll_handle.offset();
         offset.y = target_y.min(px(0.0)).max(-max_offset_y);
         self.scroll_handle.set_offset(offset);
@@ -1468,11 +1655,11 @@ impl Editor {
 
         if let BlockEvent::RequestPasteImage {
             leading,
-            source,
+            sources,
             trailing,
         } = event
         {
-            self.handle_paste_image_request(block, leading, source, trailing, cx);
+            self.handle_paste_image_request(block, leading, sources, trailing, cx);
             return;
         }
 
@@ -2216,7 +2403,7 @@ impl Editor {
 
 #[cfg(test)]
 mod tests {
-    use super::Editor;
+    use super::{Editor, ImagePastePrompt};
     use crate::components::{
         Block, BlockEvent, BlockKind, BlockRecord, CalloutVariant, Delete, DeleteBack,
         ExitCodeBlock, InlineTextTree, Newline,
@@ -2515,6 +2702,50 @@ mod tests {
             );
             assert!(visible[1].entity.read(cx).image_runtime().is_some());
             assert_eq!(visible[2].entity.read(cx).display_text(), "after");
+        });
+    }
+
+    #[gpui::test]
+    async fn image_batch_insert_keeps_each_image_and_surrounding_text(cx: &mut TestAppContext) {
+        let editor = cx.new(|cx| Editor::from_markdown(cx, "beforeafter".to_string(), None));
+        editor.update(cx, |editor, cx| {
+            let paragraph = editor.document.first_root().unwrap().clone();
+            editor.insert_image_blocks_after_paragraph(
+                &paragraph,
+                &InlineTextTree::plain("before"),
+                &["![one](./one.png)".into(), "![two](./two.png)".into()],
+                &InlineTextTree::plain("after"),
+                cx,
+            );
+            let visible = editor.document.visible_blocks();
+            assert_eq!(visible.len(), 4);
+            assert_eq!(visible[0].entity.read(cx).display_text(), "before");
+            assert_eq!(
+                visible[1].entity.read(cx).display_text(),
+                "![one](./one.png)"
+            );
+            assert_eq!(
+                visible[2].entity.read(cx).display_text(),
+                "![two](./two.png)"
+            );
+            assert_eq!(visible[3].entity.read(cx).display_text(), "after");
+            assert!(visible[1].entity.read(cx).image_runtime().is_some());
+            assert!(visible[2].entity.read(cx).image_runtime().is_some());
+        });
+    }
+
+    #[gpui::test]
+    async fn picgo_failure_waits_for_owning_window_prompt(cx: &mut TestAppContext) {
+        cx.update(crate::i18n::I18nManager::init);
+        let editor = cx.new(|cx| Editor::from_markdown(cx, String::new(), None));
+        editor.update(cx, |editor, cx| {
+            editor.show_picgo_fallback_notice(anyhow::anyhow!("upload failed"), cx);
+            assert_eq!(editor.pending_image_paste_prompts.len(), 1);
+            assert!(matches!(
+                editor.pending_image_paste_prompts.front(),
+                Some(ImagePastePrompt::PicGoFallback(message))
+                    if message.contains("upload failed")
+            ));
         });
     }
 

@@ -226,7 +226,7 @@ impl Editor {
             cx.subscribe_in(&input, window, |this, _, _: &InputSubmitted, window, cx| {
                 this.confirm_name_dialog(window, cx);
             });
-        window.focus(&input.focus_handle(cx));
+        window.focus(&input.focus_handle(cx), cx);
         self.workspace.name_dialog = Some(NameDialog {
             kind,
             input,

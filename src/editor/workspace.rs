@@ -1039,7 +1039,7 @@ fn workspace_tree(
     });
     cx.spawn(async move |cx| {
         let tree = read.await;
-        let _ = cx.update(|cx| {
+        cx.update(|cx| {
             let cache = cx.default_global::<WorkspaceTreeCache>();
             let current = match cache.entries.get(&root) {
                 Some(CachedTree::Scanning(id)) => *id == scan,
