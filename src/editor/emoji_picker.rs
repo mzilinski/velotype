@@ -51,6 +51,10 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.emoji_picker.is_some() {
+            self.close_emoji_picker(window, cx);
+            return;
+        }
         if self.is_read_only() {
             return;
         }

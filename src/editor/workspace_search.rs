@@ -396,6 +396,14 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // The shortcut of the palette already shown closes it again.
+        if self.palette.as_ref().is_some_and(|palette| palette.mode == mode) {
+            self.close_palette(cx);
+            if let Some(active) = self.active_entity_id {
+                self.focus_block(active);
+            }
+            return;
+        }
         let strings = cx.global::<I18nManager>().strings().clone();
         let placeholder = match mode {
             PaletteMode::QuickOpen => strings.quick_open_placeholder.clone(),

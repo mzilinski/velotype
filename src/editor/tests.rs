@@ -4010,3 +4010,60 @@ async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
 
     let _ = fs::remove_dir_all(&root);
 }
+
+#[gpui::test]
+async fn workspace_tab_shortcut_toggles_the_drawer(cx: &mut TestAppContext) {
+    use super::workspace::WorkspaceTab;
+    init_editor_test_app(cx);
+    let (editor, cx) =
+        cx.add_window_view(|_window, cx| Editor::from_markdown(cx, "text".to_string(), None));
+    let state = |editor: &gpui::Entity<Editor>, cx: &mut VisualTestContext| {
+        editor.read_with(cx, |editor, _cx| {
+            (editor.workspace.is_open, editor.workspace.active_tab)
+        })
+    };
+    editor.update_in(cx, |editor, window, cx| {
+        editor.show_workspace_tab(WorkspaceTab::Links, window, cx);
+    });
+    assert_eq!(state(&editor, cx), (true, WorkspaceTab::Links));
+    editor.update_in(cx, |editor, window, cx| {
+        editor.show_workspace_tab(WorkspaceTab::Outline, window, cx);
+    });
+    assert_eq!(state(&editor, cx), (true, WorkspaceTab::Outline));
+    editor.update_in(cx, |editor, window, cx| {
+        editor.show_workspace_tab(WorkspaceTab::Outline, window, cx);
+    });
+    assert!(!state(&editor, cx).0);
+}
+
+#[gpui::test]
+async fn overlay_shortcuts_close_their_overlay_again(cx: &mut TestAppContext) {
+    use super::workspace_search::PaletteMode;
+    init_editor_test_app(cx);
+    let (editor, cx) =
+        cx.add_window_view(|_window, cx| Editor::from_markdown(cx, "text".to_string(), None));
+    let palette = |editor: &gpui::Entity<Editor>, cx: &mut VisualTestContext| {
+        editor.read_with(cx, |editor, _cx| editor.palette.as_ref().map(|p| p.mode))
+    };
+    editor.update_in(cx, |editor, window, cx| {
+        editor.open_palette(PaletteMode::QuickOpen, window, cx);
+    });
+    assert_eq!(palette(&editor, cx), Some(PaletteMode::QuickOpen));
+    editor.update_in(cx, |editor, window, cx| {
+        editor.open_palette(PaletteMode::SearchInFolder, window, cx);
+    });
+    assert_eq!(palette(&editor, cx), Some(PaletteMode::SearchInFolder));
+    editor.update_in(cx, |editor, window, cx| {
+        editor.open_palette(PaletteMode::SearchInFolder, window, cx);
+    });
+    assert_eq!(palette(&editor, cx), None);
+
+    editor.update_in(cx, |editor, window, cx| {
+        editor.on_open_emoji_picker(&crate::components::OpenEmojiPicker, window, cx);
+    });
+    assert!(editor.read_with(cx, |editor, _cx| editor.emoji_picker.is_some()));
+    editor.update_in(cx, |editor, window, cx| {
+        editor.on_open_emoji_picker(&crate::components::OpenEmojiPicker, window, cx);
+    });
+    assert!(editor.read_with(cx, |editor, _cx| editor.emoji_picker.is_none()));
+}

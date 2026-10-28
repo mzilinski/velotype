@@ -215,6 +215,11 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // The shortcut of the tab already shown closes the drawer again.
+        if self.workspace.is_open && self.workspace.active_tab == tab {
+            self.toggle_workspace_drawer(window, cx);
+            return;
+        }
         if !self.workspace.is_open {
             self.toggle_workspace_drawer(window, cx);
         }
