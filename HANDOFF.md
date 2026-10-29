@@ -1,36 +1,47 @@
-# Velotype – Handoff (Stand 2026-10-13)
+# Velotype – Handoff (Stand 2026-10-29)
 
-Ziel: Velotype (Rust/GPUI-Markdown-Editor) an Typora heranführen. Gearbeitet wird im Fork
+Ziel: Velotype (Rust/GPUI-Markdown-Editor) an Typora heranführen, seit dem 27.10. auch Obsidian-Funktionen
+(Links, Tags, Tagesnotizen, Vorlagen, Abfragen, Graph). Gearbeitet wird im Fork
 `origin = github.com/mzilinski/velotype`. `upstream = manyougz/velotype` bleibt unberührt,
 PRs dorthin nur auf ausdrücklichen Wunsch.
 
 ## Arbeitsweise
 
-- Jedes Feature kommt auf einen eigenen Branch, abgezweigt von `dev`. Der Branch `integration` führt alle zusammen und ist der Stand zum Testen.
+- Jedes Feature kommt auf einen eigenen Branch, abgezweigt von `integration`. `integration` führt alle zusammen und ist der Stand zum Testen;
+  `main` wird per Fast-Forward auf `integration` nachgezogen (Stand 2026-10-29: beide auf e3dbd8c). `dev` gibt es nicht mehr.
+- Gemergte Branches werden lokal und auf origin gelöscht (Aufräumen am 2026-10-29: übrig sind nur `main`, `integration`, `handoff`).
+  Die Branch-Namen in der Tabelle „Erledigt“ sind deshalb nur noch Bezeichnungen, der Code steckt in `integration`.
 - **Push nur nach expliziter Freigabe** durch Malte.
-- Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
+- Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Test-Builds: `cargo build --release`, dann die Exe kopieren nach
   `C:\Users\mzili\Developer\velotype-builds\velotype-integration-N.exe`. Bei jedem Build wird N hochgezählt, weil eine laufende Exe gesperrt ist.
 - Linux-Rechner (CachyOS): Klon in `~/Developer/velotype`, Rust per `pacman -S rustup` (stable 1.99). Test-Build ist einfach
   `target/release/velotype`; die GPUI-Systembibliotheken waren schon installiert.
-- Tests mit `cargo test`. Zuletzt liefen 1013 grün; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
-- `.claude/` steht in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
+- Tests mit `cargo test`; ein Netzwerk-Test ist mit `#[ignore]` markiert und läuft nur mit `-- --ignored`.
+- Regel für Fenster-Tests: nach `add_window_view` nie `cx.quit()` auf dem zurückgegebenen `cx` (Use-after-free in gpui, siehe Mac-Runde, Punkt 1).
+- `.claude/` (und `HANDOFF.md`, falls lokal kopiert) gehört in `.git/info/exclude`, damit Agent-Worktrees nicht mit committet werden.
+  Auf dem Linux-Rechner fehlt dieser Eintrag noch.
+- `gh` zeigt in diesem Klon standardmäßig auf `upstream` (manyougz). Für den Fork `gh … -R mzilinski/velotype` angeben.
+- `HANDOFF.md` bearbeiten: `git worktree add ../velotype-handoff handoff`, dort ändern, committen, pushen, danach `git worktree remove ../velotype-handoff`.
 
-## Offener Punkt
+## Aktueller Stand
 
-Alles ist gepusht (Stand 2026-10-12): `integration` enthält alle Feature-Branches. Test-Exe unter Windows: `velotype-integration-8.exe`.
-Die neuen Features sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
+Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8. CI auf `integration` und `main` grün
+(Linux, macOS, Windows; Lauf 40675401479). Seit dem 13.10. dazugekommen (Details in der Tabelle „Erledigt“):
+- **Obsidian-Funktionen** (2026-10-27): Links-Reiter mit Backlinks, ausgehenden Links, unverlinkten Erwähnungen und Tags; `[[`-Vervollständigung;
+  Links beim Umbenennen/Verschieben anpassen; Front Matter als Eigenschaften-Tabelle; Tagesnotiz; Vorlagen; Dataview-Abfragen; Graph.
+- **Upstream gemergt** (2026-10-28, `upstream/main`): Umstieg auf `gpui-pre` 0.3.9, PicGo-Server-Upload, .md-Dateizuordnung, optionaler Updater.
+- Fixes: Einstellungen bleiben im Datei-Menü an ihrem Platz; ein Panel-/Overlay-Kürzel schließt beim zweiten Drücken.
 
-**CI** (`.github/workflows/ci.yml`, `gh run list`): mit dem Test-Fix grün auf Linux, macOS und Windows (Lauf 38224033844 auf `fix/ci-segfault`).
-Ursache des SIGSEGV: der Upstream-Test `editor::selection::tests::cross_block_cut_writes_markdown_deletes_range_and_undo_restores`
-rief als einziger Fenster-Test `cx.quit()` auf dem von `add_window_view` zurückgegebenen `VisualTestContext` auf (Use-after-free in gpui,
-Details in der Mac-Runde, Punkt 1). Fix (5919c4b auf `fix/unix-test-segfault`, in `integration` gemergt): `quit()` läuft über den
-ursprünglichen `TestAppContext`. Der parallele Versuch 775ebad auf `fix/ci-segfault` (`#[gpui::test]`) umgeht dieselbe Ursache und ist
-überholt; `fix/ci-segfault` nicht mergen, sondern löschen (`git push origin --delete fix/ci-segfault`).
-Alles gepusht bis `fix/open-non-utf8` (2026-10-13). Test-Exe: `velotype-integration-28.exe`. Offen: nach der Fehlermeldung „Öffnen fehlgeschlagen“ (nativer TaskDialog) dauerte der nächste Öffnen-Dialog >4 min – Rückmeldung von Malte ausstehend, ob die Meldung hinter dem Fenster hing (dann durch In-Fenster-Meldung ersetzen). Test-Checkliste (Artifact, privat): https://claude.ai/artifact/DMG154bZTwyfnu49VYsSLB
-**Upstream v0.7.5 gemergt** (2026-10-13, Linux): `merge/upstream-0.7.5` (411f556) und darauf `feat/menu-cleanup` (d349576),
-`integration` per Fast-Forward auf d349576, alles gepusht. CI-Lauf 38439034623 auf `integration` grün (Linux, macOS, Windows).
-`dev` enthält upstream v0.7.5 noch nicht; neue Branches deshalb von `integration` abzweigen oder `dev` vorher nachziehen.
+Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
+
+**Offen:**
+- Nach der Fehlermeldung „Öffnen fehlgeschlagen“ (nativer TaskDialog, Windows) dauerte der nächste Öffnen-Dialog >4 min. Rückmeldung von Malte ausstehend,
+  ob die Meldung hinter dem Fenster hing (dann durch In-Fenster-Meldung ersetzen). Test-Checkliste (Artifact, privat): https://claude.ai/artifact/DMG154bZTwyfnu49VYsSLB
+- Obsidian-Funktionen und der Upstream-Merge von Hand in der App prüfen (v. a. Bild einfügen mit Upload/PicGo, Updater zeigt auf Fork-Releases).
+- Mac-Runde (unten) steht noch aus.
+- `.github/workflows/ci.yml` hat `dev` noch als Trigger-Branch; kann raus.
+
 **Pandoc:** auf dem Windows-Rechner installiert (winget, 3.12.1, liegt in `%LOCALAPPDATA%Pandoc`, nicht im PATH; die Ersatzsuche findet es). Die Tests `round_trip_through_installed_pandoc` und `all_formats_and_import_with_images` laufen nur, wo Pandoc installiert ist, sonst überspringen sie sich.
 **PicGo:** nicht installiert (braucht ein Bild-Hosting-Konto); der Upload ist mit einem echten Skript getestet (`upload_script_receives_paths_with_spaces`).
 
@@ -132,13 +143,26 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | feat/articles-toolbar | Seitenleiste: Reiter „Artikel“ (`WorkspaceTab::Articles`, `src/editor/articles.rs`): Markdown-Dateien des Ordners flach, neueste zuerst, mit Titel (erste Überschrift), Datum, Textanfang; im Hintergrund gelesen (erste 4 KB, max. 500 Dateien). Ansicht → Gliederung / Artikel / Dateien (Strg+Shift+1/2/3). Ansicht → Werkzeugleiste (`editor.toolbar`, Standard aus, `src/editor/toolbar.rs`): Knöpfe über dem Dokument, dispatchen die Menü-Aktionen über den fokussierten Block (Klick behält Fokus, per simuliertem Klick getestet), Tooltip mit Name und Kürzel |
 | feat/css-themes | Typora-CSS-Themes: `.css` im Theme-Ordner bzw. über „Theme hinzufügen…“ werden Themes (`css-<Name>`). GPUI rendert kein CSS, daher `src/theme/css_theme.rs`: einfacher Regel-Parser (Kommentare, At-Rules wie `@media` übersprungen, `var(--x)` aufgelöst), überträgt Hintergrund, Text, Links, Überschriften (Farben, Größen), Zitat, Code/`.md-fences`, Tabelle, Auswahl, Trennlinie, `mark` auf GitHub- bzw. Night-Basis (nach Helligkeit). `Theme.css` (serde skip) hängt der HTML/PDF-Export ans CSS, `<main id="write">` wie Typora. Theme → Theme-Ordner öffnen. Geprüft mit Typoras github/newsprint/night/pixyll |
 | feat/help-docs | Hilfe → Schnellstart, Markdown-Referenz (gebündelt in `assets/help/*.{de,en}.md`, Sprache nach UI, zh → en), Tastenkürzel (aus aktueller Belegung erzeugt, nach Kategorien wie in den Einstellungen, nur Kürzel dieser Plattform, „Strg“ auf Deutsch). Öffnen als schreibgeschützter Tab über eine Kopie in `<config>/help` (`app_menu::open_read_only_document`). Test: Referenz rendert Tabelle, Mathe, TOC, Fußnote, Hinweis, Code und bleibt unverändert gespeichert byte-gleich |
-| feat/about-fork | Über-Dialog: „Weiterentwicklung von Malte Zilinski“, Link auf github.com/mzilinski/velotype (`ABOUT_GITHUB_URL`), Herkunftshinweis „Basiert auf Velotype von manyougz und Mitwirkenden, Apache-Lizenz 2.0“ mit Link (`ABOUT_ORIGIN_URL`, `help_about_origin`). Umbenennung, eigene App-Kennung und Update-URL auf den Fork bewusst noch nicht (Malte: „erst mal nicht“) |
+| feat/about-fork | Über-Dialog: „Weiterentwicklung von Malte Zilinski“, Link auf github.com/mzilinski/velotype (`ABOUT_GITHUB_URL`), Herkunftshinweis „Basiert auf Velotype von manyougz und Mitwirkenden, Apache-Lizenz 2.0“ mit Link (`ABOUT_ORIGIN_URL`, `help_about_origin`). Umbenennung und eigene App-Kennung bewusst noch nicht (Malte: „erst mal nicht“). Die Update-Prüfung zeigt seit dem Upstream-Merge vom 28.10. auf die Releases des Forks |
 | perf/workspace-scan | Langsames Öffnen behoben: jeder Tab las den Ordner der Seitenleiste rekursiv auf dem UI-Thread (beim 2. Öffnen = neuer Tab; gemessen 0,5 s Developer, 9,3 s Home). Jetzt `WorkspaceTreeCache` (gpui-Global in `src/editor/workspace.rs`): Baum je Wurzel, geteilt von allen Tabs/Fenstern, im Hintergrund gelesen („Ordner wird gelesen …“), älter als 10 s → beim Öffnen der Seitenleiste/neuem Tab im Hintergrund neu gelesen, Limit 20.000 Einträge mit Hinweis. `forget_workspace_tree` nach Dateioperationen (je Wurzel einmal). Gliederung nutzt `last_stable_source_text` statt das Dokument bei jedem Render zu serialisieren |
 | diag/perf-log | Diagnose-Protokoll `<config>/logs/perf.log` (`src/perf_log.rs`): `perf_log::Span`/`step`/`note` an allen Stufen des Öffnens (Dialog, Lesen, Parsen, Runtimes, Fidelity, Undo-Snapshot, Recent, Menüs, Render, Rechtschreibung, Dateibaum) ab 15 ms; Watchdog-Thread meldet UI-Hänger ≥250 ms mit letztem Schritt; neu ab 2 MB; in Tests aus |
 | fix/open-non-utf8 | Ursache des „Hängers“ beim Öffnen: Word-Datei gewählt → UTF-8-Fehler. Jetzt `src/text_file.rs`: `read_text_file` (UTF-8 ±BOM, UTF-16 BOM, sonst Windows-1252, Binär → `NotText` mit Meldung `open_not_text_message`); .docx/.odt/.rtf/.epub öffnen über `app_menu::import_document_in_tab` (Pandoc im Hintergrund) aus Dialog, CLI, Dateibaum, Zuletzt geöffnet. CLI: vorhandene unlesbare Datei wird nicht mehr als leeres Dokument mit Pfad geöffnet (Überschreibgefahr) |
 | fix/unix-test-segfault | SIGSEGV im Testprozess auf macOS/Linux: `quit()` nicht über den geleakten `VisualTestContext` (Use-after-free in gpui) |
 | merge/upstream-0.7.5 | Upstream v0.7.5: einstellbare Schriften für Text/Code/Oberfläche (#121), Doppelklick-Wortauswahl (#119, war schon in `dev`), Gliederungs-Navigation (#116), Markdown in `<div>`-Blöcken, IME-Unicode-Absturz behoben (`src/ime.rs`, `src/text_offsets.rs`). 36 Konfliktdateien, fast nur upstream-Doku-Kommentare an Fork-Code. Gliederung: Fork-Variante `jump_to_source_line` bleibt, upstreams `reveal_outline_heading` entfällt, sein Test bleibt. Upstream-Test `source_selection_snapshot_clips_partial_unicode_offsets` erwartet jetzt unescapten Quelltext (`*测试`, wegen `fix/source-fidelity`) |
 | feat/menu-cleanup | Menü „Arbeitsbereich“ entfernt (Seitenleiste ein/aus jetzt unter Ansicht über Gliederung/Artikel/Dateien), Sprache rechts vor Hilfe; Reihenfolge Export, Theme, Ansicht, Sprache, Hilfe. Deutsch „Theme“ statt „Design“ (Menü, Einstellungen, Dialoge). Wunsch von Malte: Sprache evtl. nur noch in den Einstellungen – dort gibt es noch keine Sprachauswahl |
+| feat/backlinks | Seitenleiste: Reiter „Links“ (Ansicht → Links, Strg/Cmd+Shift+B; Strg+Shift+4 war auf macOS Screenshot). Link-Index des Ordners (`src/editor/link_index.rs`): `[[Wiki-Links]]` und relative Markdown-Links mit Zeile und Text, ohne Code/Bilder/Front Matter; Auflösung wie Obsidian (neben der Datei, ab Wurzel, dann Dateiname irgendwo, ohne Groß/Klein). Im Hintergrund gelesen, geteilt von allen Tabs/Fenstern, neu nach 10 s, nach Speichern und Dateioperationen. Ohne geöffneten Ordner gilt der Vault: nächster Ordner darüber mit `.obsidian` oder `.git`, nie Home. Geklickte Wiki-Links finden ihre Notiz im ganzen Ordner (`src/editor/backlinks.rs`). Reiterleiste bricht um |
+| feat/link-autocomplete | `[[` tippen listet Notizen des Vaults (fuzzy, mit Ordner); ↑/↓, Enter/Tab vervollständigt zu `[[Notiz]]` (Pfad ab Wurzel bei doppeltem Namen), Escape schließt. Fix: Tippen in automatisch gepaarte `[[ ]]` ließ den Cursor hinter `]]` springen. `src/editor/link_completion.rs` |
+| feat/rename-links | Umbenennen/Verschieben (Dateibaum, Datei → Verschieben nach…) sucht Links auf die alte Stelle und bietet an, sie umzuschreiben („12 Links in 4 Dokumenten …“). Wiki-Links bekommen den neuen Namen (bzw. Pfad, wenn nicht mehr eindeutig), Anker/Beschriftungen bleiben; Markdown-Links den neuen relativen Pfad. Tabs mit ungespeicherten Änderungen werden übersprungen und gelistet. `src/editor/link_rewrite.rs` |
+| feat/tags | Tags wie Obsidian: `#tag` im Text (verschachtelt mit `/`) und `tags:`/`tag:` in der Front Matter; nicht in Code/Links/HTML, ohne Groß/Klein. Links-Reiter zeigt Tags des Dokuments und alle Tags des Vaults mit Anzahl; Klick listet die Dokumente. `src/editor/tags.rs` |
+| feat/outgoing-mentions | Links-Reiter: ausgehende Links aus dem Live-Text (fehlende Notizen gedimmt), „Unverlinkte Erwähnungen“ (Dateiname als ganzes Wort in anderen Dokumenten, max. 200, im Hintergrund). `src/editor/mentions.rs` |
+| feat/properties | Front Matter ohne Fokus als Eigenschaften-Tabelle (Listen/Tags als Chips, Leeres als Strich, verschachteltes YAML als Quelltext); mit Fokus YAML zum Bearbeiten. Beim Öffnen wird der erste Block nach der Front Matter fokussiert. `src/components/markdown/front_matter.rs` |
+| feat/daily-notes | Datei → Heutige Notiz (Strg/Cmd+Alt+J), legt sie beim ersten Mal an; Ordner, Datumsformat und Vorlage aus `.obsidian/daily-notes.json`. Einfügen → Vorlage einfügen… (Strg/Cmd+Alt+Shift+T) aus `.obsidian/templates.json` bzw. `Templates/`; Variablen `{{title}}`, `{{date}}`, `{{time}}`, `{{date:FORMAT}}`. Einfügelogik jetzt in `Block::paste_text`. `src/editor/daily_notes.rs` |
+| feat/queries | ```` ```dataview ````/```` ```query ```` zeigt ohne Fokus das Ergebnis als Tabelle/Liste (Klick öffnet). Teilmenge von Dataview: TABLE/LIST [WITHOUT ID], FROM #tag/"ordner"/[[notiz]]/outgoing([[notiz]]) mit and/or/-, WHERE mit Vergleichen und contains/startswith/length/date(today)…, SORT, LIMIT; über Front-Matter- und `file.*`-Felder. Link-Index hält dafür Eigenschaften und ausgehende Links. `src/editor/query.rs` |
+| feat/graph | Ansicht → Graph (Strg/Cmd+Alt+G): Notizen als Knoten, Links als Kanten, Fruchterman-Reingold im Hintergrund. Lokal: Notizen bis zwei Links entfernt; global: die 400 am besten verbundenen. Hover hebt Links hervor, Klick öffnet. `src/editor/graph.rs` |
+| fix/windows-backlink-test | Backlink-Test vergleicht Pfade statt Strings (Windows-Backslashes) |
+| fix/menu-daily-note-order | „Heutige Notiz“ im Datei-Menü nach „Einstellungen“, damit die Menü-Tests unter Linux/Windows stimmen |
+| fix/toggle-workspace-tabs | Kürzel der Seitenleisten-Reiter, der Paletten (Quick Open, Ordnersuche, Vorlage) und der Emoji-Auswahl schließen beim zweiten Drücken (wie schon der Graph) |
+| merge upstream/main (2026-10-28) | Upstream bis 0.7.8: Umstieg auf `gpui-pre` 0.3.9 (Fork-Code portiert: Fokus braucht `cx`, Menüs mit `disabled`, `AsyncApp::update` liefert Wert, `ScrollHandle::max_offset` ist `Point`), PicGo-Server-Upload, .md-Dateizuordnung in den Einstellungen, optionaler Updater (`src/updater/`, Standard aus). Bild einfügen: upstreams Batch/PicGo nutzt die Fork-Ablage (`images.rs`); „Hochladen“ (Befehl) und „PicGo“ (Server) getrennt, keins ist lokaler Fallback. Beenden/Update fragen jeden Tab nach Speichern. Export läuft auf dem Background-Executor. Updater zeigt auf Fork-Releases. Deutsche Texte für neue Upstream-Strings |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
 
 ## Wichtige Stellen im Code
@@ -146,6 +170,8 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 - `src/editor/workspace_search.rs`: Palette (PaletteState, fuzzy_score, search_files, reveal_search_hit)
 - `src/editor/tabs.rs`: `EditorTabEvent::OpenPathAndReveal`
 - `src/editor/find.rs`, `writing.rs`, `spelling.rs`: Suchen, Schreibhilfen, Kontextmenü der Rechtschreibprüfung
+- `src/editor/link_index.rs`: gemeinsamer Link-Index (Links, Tags, Eigenschaften je Notiz); darauf bauen `backlinks.rs`, `link_completion.rs`,
+  `link_rewrite.rs`, `tags.rs`, `mentions.rs`, `query.rs`, `graph.rs` auf. Vault-Ermittlung in `backlinks.rs`
 - `src/spellcheck/{mod,hunspell,windows_backend}.rs`. Die Wörterbücher werden zur Laufzeit von
   wooorm/dictionaries geladen, weil sie unter GPL stehen und deshalb nicht mitgeliefert werden. Ablage: `%APPDATA%\manyougz\Velotype\config\dictionaries`,
   dazu `personal.txt` als eigenes Wörterbuch. de-DE und en-US sind lokal schon installiert.
