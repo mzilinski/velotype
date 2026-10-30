@@ -37,9 +37,9 @@ Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8.
   und `templates.json`). Monats-/Wochentagsnamen in Vorlagen sind englisch (Moment-Format), deshalb `{{date:DD.MM.YYYY}}`.
 - **Upstream-Issue** zu den Fork-Funktionen: https://github.com/manyougz/velotype/issues/134 (2026-10-28). Antwort abwarten; je nach
   Antwort kleine PRs schneiden oder Fork eigenständig weiterführen (ggf. umbenennen).
-- **2026-10-30 (Mac): Absturz behoben**, `fix/selection-word-count-panic` (8dc09ce), lokal in `integration` gemergt (63d3390), **noch nicht gepusht**.
+- **2026-10-30 (Mac): Absturz behoben**, `fix/selection-word-count-panic` (8dc09ce), in `integration` gemergt (63d3390), gepusht.
   Die installierte App (e3dbd8c) stürzte ab, wenn in der Quelltext-Ansicht oder in einem Codeblock Text nach einem escapeten Zeichen (`*`, `\`)
-  und vor einem Umlaut ausgewählt war und die Wortzählung lief. Details in der Tabelle „Erledigt“. App in `/Applications` noch nicht neu gebaut.
+  und vor einem Umlaut ausgewählt war und die Wortzählung lief. Details in der Tabelle „Erledigt“. App in `/Applications` aus 63d3390 neu gebaut und installiert.
 - Bekannt: Clippy-Fehler `text_offsets.rs:116` (`reversed_empty_ranges` in einem Test) und einige Warnungen sind vorbestehend/upstream.
 
 Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
