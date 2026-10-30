@@ -4186,3 +4186,24 @@ async fn overlay_shortcuts_close_their_overlay_again(cx: &mut TestAppContext) {
     });
     assert!(editor.read_with(cx, |editor, _cx| editor.emoji_picker.is_none()));
 }
+
+#[gpui::test]
+async fn source_view_selection_after_escaped_markup_keeps_umlauts_whole(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+
+    let source = "*fett äöü";
+    let (editor, cx) =
+        cx.add_window_view(|_window, cx| Editor::from_markdown(cx, source.to_string(), None));
+
+    editor.update(cx, |editor, cx| {
+        editor.toggle_view_mode(cx);
+        assert!(editor.view_mode == ViewMode::Source);
+        let block = editor.document.root_blocks()[0].clone();
+        // The serialized title escapes `*`, shifting its offsets by one byte;
+        // slicing it with display offsets split `ü` and aborted the app while
+        // rendering the status bar word count.
+        let start = source.find('ä').unwrap();
+        block.update(cx, |block, _cx| block.selected_range = start..source.len());
+        assert_eq!(editor.selected_markdown_text(cx).as_deref(), Some("äöü"));
+    });
+}
