@@ -44,7 +44,7 @@ Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8.
   `../velotype-upstream-fix`), PR-Text `~/Developer/velotype-pr-143.md`, bezieht sich auf Upstream-Issue #143. Enthält 8dc09ce plus neuen Fix:
   Code-Zäune in Listen waren in der Quellzuordnung nicht eingerückt (Absturz/falscher Bereich bei blockübergreifender Auswahl). Der zweite Fix
   ist als `fix/list-code-block-mapping` (5d0084a) in `integration` gemergt (c017df3) und gepusht. 1096 Tests grün. Offen: dieselbe Art Abweichung bei Zitat und Tabelle in Listen. Issue #134 bisher ohne Antwort.
-- **2026-11-24 (Mac): `fix/inline-style-rendering`**, lokal in `integration` gemergt, nicht gepusht: `==markiert==` hatte nie einen Hintergrund;
+- **2026-11-24 (Mac): `fix/inline-style-rendering`**, in `integration` gemergt (c11ddda) und gepusht: `==markiert==` hatte nie einen Hintergrund;
   Absätze mit Hoch-/Tiefstellung oder Formel zeigten kursiv, durchgestrichen und markiert nicht. Demo-Vault `~/Documents/Velotype-Showcase`
   (7 Akte, `Start.md`). Offen: 41 ms je Bild bei 6400 Zeilen; wird der letzte Absatz bearbeitet, fehlt der Zeilenumbruch am Dateiende
   (per Test gesehen, Einstellung „Beim Speichern mit Zeilenumbruch enden“ nicht geprüft).
