@@ -1256,8 +1256,30 @@ impl Element for BlockTextElement {
                 (vec![], None)
             };
 
-        // Compute code-span background quads with rounded corners and padding.
         let mut code_quads = Vec::new();
+        // GPUI paints run backgrounds only through `paint_background`, which
+        // would also double the translucent code background, so `==marked==`
+        // spans get their own quads beneath the text and the selection.
+        if !self.is_placeholder {
+            let text = input.display_text();
+            for span in input.inline_spans() {
+                if !span.style.highlight || span.range.end > text.len() {
+                    continue;
+                }
+                for segment in range_segment_bounds(
+                    &lines,
+                    text_bounds,
+                    line_height,
+                    text,
+                    span.range.clone(),
+                    text_align,
+                ) {
+                    code_quads.push(fill(segment, theme.colors.highlight_bg));
+                }
+            }
+        }
+
+        // Compute code-span background quads with rounded corners and padding.
         if show_inline_code_backgrounds && !self.is_placeholder {
             let text = input.display_text();
             let code_color = theme.colors.code_bg;
