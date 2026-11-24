@@ -40,6 +40,10 @@ Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8.
 - **2026-10-30 (Mac): Absturz behoben**, `fix/selection-word-count-panic` (8dc09ce), in `integration` gemergt (63d3390), gepusht.
   Die installierte App (e3dbd8c) stürzte ab, wenn in der Quelltext-Ansicht oder in einem Codeblock Text nach einem escapeten Zeichen (`*`, `\`)
   und vor einem Umlaut ausgewählt war und die Wortzählung lief. Details in der Tabelle „Erledigt“. App in `/Applications` aus 63d3390 neu gebaut und installiert.
+- **2026-11-24 (Mac): Upstream-PR vorbereitet, nicht gepusht**: Branch `fix/selection-char-boundaries` (ab `upstream/dev` c3b6256, Worktree
+  `../velotype-upstream-fix`), PR-Text `~/Developer/velotype-pr-143.md`, bezieht sich auf Upstream-Issue #143. Enthält 8dc09ce plus neuen Fix:
+  Code-Zäune in Listen waren in der Quellzuordnung nicht eingerückt (Absturz/falscher Bereich bei blockübergreifender Auswahl). Der zweite Fix
+  fehlt in `integration` noch. Offen: dieselbe Art Abweichung bei Zitat und Tabelle in Listen. Issue #134 bisher ohne Antwort.
 - Bekannt: Clippy-Fehler `text_offsets.rs:116` (`reversed_empty_ranges` in einem Test) und einige Warnungen sind vorbestehend/upstream.
 
 Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
