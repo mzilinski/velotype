@@ -4,6 +4,43 @@ use std::ops::Range;
 
 use super::*;
 
+/// Collects block mappings, either all of them or only one block's.
+///
+/// The offset tables cost memory per byte of the document. A caller that
+/// needs a single block only has to know how long the others are.
+#[derive(Default)]
+pub(super) struct MappingSink {
+    mappings: Vec<SourceTargetMapping>,
+    only: Option<EntityId>,
+}
+
+impl MappingSink {
+    fn push(&mut self, mapping: SourceTargetMapping) {
+        if !self.skips(&mapping.entity) {
+            self.mappings.push(mapping);
+        }
+    }
+
+    fn skips(&self, block: &Entity<Block>) -> bool {
+        self.only.is_some_and(|only| only != block.entity_id())
+    }
+}
+
+/// Byte length of `content` after [`Editor::build_prefixed_content_mapping`]
+/// and one `> ` per line for each quote level.
+fn prefixed_len(
+    content: &str,
+    first_prefix: &str,
+    continuation_prefix: &str,
+    quote_depth: usize,
+) -> usize {
+    let breaks = content.matches('\n').count();
+    first_prefix.len()
+        + content.len()
+        + breaks * continuation_prefix.len()
+        + (breaks + 1) * quote_depth * "> ".len()
+}
+
 impl Editor {
     /// Returns canonical rendered Markdown or the source editor's raw text.
     pub(super) fn current_document_source(&self, cx: &App) -> String {
@@ -144,8 +181,16 @@ impl Editor {
         continuation_prefix: String,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
     ) -> usize {
+        if mappings.skips(block) {
+            return prefixed_len(
+                &content_markdown,
+                &first_prefix,
+                &continuation_prefix,
+                quote_depth,
+            );
+        }
         let (full_text, content_to_source, source_to_content) =
             Self::build_prefixed_content_mapping(
                 &content_markdown,
@@ -175,7 +220,7 @@ impl Editor {
         include_trailing_space: bool,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
     ) -> usize {
         let mut full_text = format!("[^{footnote_id}]:");
         if include_trailing_space {
@@ -220,7 +265,7 @@ impl Editor {
         block: &Entity<Block>,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
         cx: &App,
     ) -> usize {
         let (content, indentation) = {
@@ -234,6 +279,9 @@ impl Editor {
                 },
             )
         };
+        if mappings.skips(block) {
+            return prefixed_len(&content, &indentation, &indentation, quote_depth);
+        }
         let (full_text, content_to_source, source_to_content) =
             Self::build_prefixed_content_mapping(&content, &indentation, &indentation);
         let (full_text, content_to_source, source_to_content) =
@@ -259,7 +307,7 @@ impl Editor {
         list_depth: usize,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
         cx: &App,
     ) -> usize {
         let (language, indentation, content) = {
@@ -329,7 +377,7 @@ impl Editor {
         list_depth: usize,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
         cx: &App,
     ) -> usize {
         let Some(table) = block.read(cx).record.table.clone() else {
@@ -410,7 +458,7 @@ impl Editor {
         list_depth: usize,
         quote_depth: usize,
         absolute_start: usize,
-        mappings: &mut Vec<SourceTargetMapping>,
+        mappings: &mut MappingSink,
         block_ranges: &mut HashMap<EntityId, Range<usize>>,
         cx: &App,
     ) -> usize {
@@ -430,7 +478,7 @@ impl Editor {
                     | BlockKind::TableOfContents
                     | BlockKind::Separator
             ))
-            .then(|| block_ref.record.title.markdown_offset_map());
+            .then(|| block_ref.record.title.serialize_markdown());
             (
                 kind,
                 block_ref.list_ordinal,
@@ -485,7 +533,7 @@ impl Editor {
             }
             BlockKind::Heading { level } => self.push_inline_block_mapping(
                 block,
-                title.expect("heading title").markdown().to_string(),
+                title.expect("heading title"),
                 format!("{}{} ", "  ".repeat(list_depth), "#".repeat(level as usize)),
                 String::new(),
                 quote_depth,
@@ -496,7 +544,7 @@ impl Editor {
                 let indentation = "  ".repeat(list_depth);
                 self.push_inline_block_mapping(
                     block,
-                    title.expect("paragraph title").markdown().to_string(),
+                    title.expect("paragraph title"),
                     indentation.clone(),
                     indentation,
                     quote_depth,
@@ -508,7 +556,7 @@ impl Editor {
                 let indentation = "  ".repeat(list_depth);
                 self.push_inline_block_mapping(
                     block,
-                    title.expect("bullet title").markdown().to_string(),
+                    title.expect("bullet title"),
                     format!("{indentation}- "),
                     format!("{indentation}  "),
                     quote_depth,
@@ -520,7 +568,7 @@ impl Editor {
                 let indentation = "  ".repeat(list_depth);
                 self.push_inline_block_mapping(
                     block,
-                    title.expect("task title").markdown().to_string(),
+                    title.expect("task title"),
                     format!("{indentation}- [{}] ", if checked { "x" } else { " " }),
                     format!("{indentation}      "),
                     quote_depth,
@@ -533,7 +581,7 @@ impl Editor {
                 let ordinal = list_ordinal.unwrap_or(1);
                 self.push_inline_block_mapping(
                     block,
-                    title.expect("numbered title").markdown().to_string(),
+                    title.expect("numbered title"),
                     format!("{indentation}{ordinal}. "),
                     format!("{indentation}   "),
                     quote_depth,
@@ -542,7 +590,7 @@ impl Editor {
                 )
             }
             BlockKind::Quote => {
-                let title = title.expect("quote title").markdown().to_string();
+                let title = title.expect("quote title");
                 if title.is_empty() && !children.is_empty() {
                     0
                 } else {
@@ -558,7 +606,7 @@ impl Editor {
                 }
             }
             BlockKind::Callout(variant) => {
-                let title_markdown = title.expect("callout title").markdown().to_string();
+                let title_markdown = title.expect("callout title");
                 if title_markdown.is_empty() {
                     let full_text = Self::wrap_source_mapping_with_quotes(
                         format!("[!{}]", variant.marker()),
@@ -587,7 +635,7 @@ impl Editor {
                 }
             }
             BlockKind::FootnoteDefinition => {
-                let footnote_id = title.expect("footnote id").markdown().to_string();
+                let footnote_id = title.expect("footnote id");
                 let first_child = children.first().cloned();
                 let first_is_paragraph = first_child
                     .as_ref()
@@ -611,13 +659,7 @@ impl Editor {
             {
                 total_len = self.push_inline_block_mapping(
                     first_child,
-                    first_child
-                        .read(cx)
-                        .record
-                        .title
-                        .markdown_offset_map()
-                        .markdown()
-                        .to_string(),
+                    first_child.read(cx).record.title.serialize_markdown(),
                     block
                         .read(cx)
                         .footnote_definition_id()
@@ -705,7 +747,30 @@ impl Editor {
         &self,
         cx: &App,
     ) -> (Vec<SourceTargetMapping>, HashMap<EntityId, Range<usize>>) {
-        let mut mappings = Vec::new();
+        self.collect_source_mappings(None, cx)
+    }
+
+    /// The mapping of one block or table cell, without building the others.
+    pub(super) fn source_target_mapping_for(
+        &self,
+        entity_id: EntityId,
+        cx: &App,
+    ) -> Option<SourceTargetMapping> {
+        self.collect_source_mappings(Some(entity_id), cx)
+            .0
+            .into_iter()
+            .next()
+    }
+
+    fn collect_source_mappings(
+        &self,
+        only: Option<EntityId>,
+        cx: &App,
+    ) -> (Vec<SourceTargetMapping>, HashMap<EntityId, Range<usize>>) {
+        let mut mappings = MappingSink {
+            only,
+            ..Default::default()
+        };
         let mut block_ranges = HashMap::new();
         let mut absolute = 0usize;
         let mut pending_empty_roots = 0usize;
@@ -767,6 +832,6 @@ impl Editor {
             absolute += 1;
         }
 
-        (mappings, block_ranges)
+        (mappings.mappings, block_ranges)
     }
 }

@@ -34,11 +34,7 @@ impl Editor {
         let Some(target) = self.current_edit_target_from_state(cx) else {
             return self.last_selection_snapshot.clone();
         };
-        let Some(mapping) = self
-            .build_source_target_mappings(cx)
-            .into_iter()
-            .find(|mapping| mapping.entity.entity_id() == target.entity_id())
-        else {
+        let Some(mapping) = self.source_target_mapping_for(target.entity_id(), cx) else {
             return self.last_selection_snapshot.clone();
         };
 
