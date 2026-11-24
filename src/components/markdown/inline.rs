@@ -539,9 +539,25 @@ impl InlineRenderCache {
 /// Markdown and HTML delimiter variants, avoiding ambiguous `****` runs.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InlineTextTree {
-    /// Ordered, normalized fragments of visible inline text.
+    /// Ordered, normalized fragments of visible inline text. Change them only
+    /// in this module, followed by `normalize_fragments`.
     pub(crate) fragments: Vec<InlineFragment>,
+    /// Markdown of the fragments, filled on first use.
+    serialized: SerializedMarkdown,
 }
+
+/// Cached Markdown of a tree; dropped by `normalize_fragments`, which ends
+/// every in-place change. It is derived data, so trees compare without it.
+#[derive(Clone, Debug, Default)]
+struct SerializedMarkdown(std::sync::OnceLock<std::sync::Arc<str>>);
+
+impl PartialEq for SerializedMarkdown {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for SerializedMarkdown {}
 
 impl InlineTextTree {
     /// Build an unformatted tree from literal text.
@@ -598,7 +614,10 @@ impl InlineTextTree {
 
     /// Build a tree from fragments, merging adjacent compatible runs.
     pub fn from_fragments(fragments: Vec<InlineFragment>) -> Self {
-        let mut tree = Self { fragments };
+        let mut tree = Self {
+            fragments,
+            serialized: SerializedMarkdown::default(),
+        };
         tree.normalize_fragments();
         tree
     }
@@ -690,7 +709,17 @@ impl InlineTextTree {
     /// Fragment attributes determine surrounding markers, while source-preserving
     /// inline constructs retain their stored spelling.
     pub fn serialize_markdown(&self) -> String {
-        self.markdown_offset_map().markdown
+        let serialized = self
+            .serialized
+            .0
+            .get_or_init(|| self.markdown_offset_map().markdown.into());
+        #[cfg(test)]
+        assert_eq!(
+            **serialized,
+            *self.markdown_offset_map().markdown,
+            "stale serialized Markdown"
+        );
+        serialized.to_string()
     }
 
     /// Serialize Markdown together with byte-offset maps in both directions.
@@ -1386,6 +1415,7 @@ impl InlineTextTree {
 
     /// Remove empty fragments and merge adjacent compatible non-math runs.
     fn normalize_fragments(&mut self) {
+        self.serialized = SerializedMarkdown::default();
         let mut normalized: Vec<InlineFragment> = Vec::new();
         for fragment in self.fragments.drain(..) {
             if fragment.text.is_empty() {

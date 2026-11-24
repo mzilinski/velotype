@@ -4280,3 +4280,26 @@ async fn cross_block_selection_after_list_code_block_keeps_characters_whole(
         ));
     });
 }
+
+#[gpui::test]
+async fn single_block_source_mapping_matches_the_full_mapping(cx: &mut TestAppContext) {
+    init_editor_test_app(cx);
+
+    let source = "---\ntitel: ä\n---\n\n# Größe *x*\n\nA **b**\\\nzweite Zeile\n\n> Zitat\n> weiter\n>\n> > tief\n> > unten\n\n\
+        > [!NOTE] Titel\n> Text\n>\n> ```rust\n> fn a() {}\n> ```\n\n1. eins\n2. zwei\n   - drei\n\n   ```text\n   ä\n   b\n   ```\n\n\
+        - [ ] offen\n- [x] fertig\n\n| A | B |\n|---|---|\n| ä *k* | x |\n\n$$\nx^2\ny\n$$\n\n<div>\nhtml\n</div>\n\n---\n\n\
+        Ende[^1] H~2~O\n\n[^1]: Fuß\n\n    zweiter Absatz\n";
+    let editor = cx.new(|cx| Editor::from_markdown(cx, source.to_string(), None));
+    editor.update(cx, |editor, cx| {
+        let all = editor.build_source_target_mappings(cx);
+        assert!(all.len() > 20);
+        for mapping in &all {
+            let single = editor
+                .source_target_mapping_for(mapping.entity.entity_id(), cx)
+                .expect("mapping");
+            assert_eq!(single.full_source_range, mapping.full_source_range);
+            assert_eq!(single.content_to_source, mapping.content_to_source);
+            assert_eq!(single.source_to_content, mapping.source_to_content);
+        }
+    });
+}
