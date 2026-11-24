@@ -159,6 +159,11 @@ impl SourceFidelity {
                 (None, Some(Some(0))) => Some(0),
                 (Some(Some(end)), None) if end == current.len() => Some(end),
                 (Some(Some(end)), Some(Some(start))) if end == start => Some(end),
+                // Text edited or added at the end keeps the final
+                // newline, unless it now ends in blank lines itself.
+                (Some(_), None) if current.last().is_some_and(|line| !line.is_empty()) => {
+                    Some(current.len())
+                }
                 _ => None,
             };
             if let Some(position) = position {
@@ -327,6 +332,32 @@ mod tests {
             restored.contains("text ~5 and `n\n    indented"),
             "{restored}"
         );
+    }
+
+    #[test]
+    fn editing_the_last_region_keeps_the_end_of_the_file() {
+        let fidelity = fixture();
+        let normalized = fidelity.normalized.join("\n");
+        let edited = normalized.replace("\nend", "\nend edited");
+        assert_eq!(
+            fidelity.restore(&edited).text,
+            ORIGINAL.replace("\nend\n", "\nend edited\n")
+        );
+        // A removed last region and text appended after it end the same way.
+        let removed = normalized.strip_suffix("\n\nend").unwrap();
+        assert!(fidelity.restore(removed).text.ends_with("code\n"));
+        let appended = format!("{normalized}\n\nmore");
+        assert!(fidelity.restore(&appended).text.ends_with("more\n"));
+        // Blank lines typed at the end are not doubled.
+        let blank = edited.clone() + "\n\n";
+        assert!(fidelity.restore(&blank).text.ends_with("end edited\n\n"));
+    }
+
+    #[test]
+    fn a_file_without_final_newline_gets_none_when_edited() {
+        let regions = vec![(0..1, "one".to_string()), (2..3, "two".to_string())];
+        let fidelity = SourceFidelity::build("one\n\ntwo", &regions, "one\n\ntwo").unwrap();
+        assert_eq!(fidelity.restore("one\n\ntwo x").text, "one\n\ntwo x");
     }
 
     #[test]
