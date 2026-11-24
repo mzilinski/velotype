@@ -7,11 +7,14 @@ use gpui::{
     VisualTestContext,
 };
 
-use super::{Editor, MountedRun, UndoSelectionSnapshot, ViewMode};
+use super::{
+    CrossBlockSelection, CrossBlockSelectionEndpoint, Editor, MountedRun, UndoSelectionSnapshot,
+    ViewMode,
+};
 use crate::components::{
     BlockKind, CloseWindow, FocusNext, ImageReferenceDefinitions, ImageResolvedSource,
     InlineTextTree, Newline, QuitApplication, SaveDocument, TableCellInlineImageSegment,
-    TableColumnAlignment, parse_table_cell_inline_images, superscript_ordinal,
+    TableColumnAlignment, UndoCaptureKind, parse_table_cell_inline_images, superscript_ordinal,
 };
 use crate::export::ExportFormat;
 use crate::i18n::{I18nManager, I18nStrings};
@@ -4205,5 +4208,75 @@ async fn source_view_selection_after_escaped_markup_keeps_umlauts_whole(cx: &mut
         let start = source.find('ä').unwrap();
         block.update(cx, |block, _cx| block.selected_range = start..source.len());
         assert_eq!(editor.selected_markdown_text(cx).as_deref(), Some("äöü"));
+    });
+}
+
+#[gpui::test]
+async fn cross_block_selection_after_list_code_block_keeps_characters_whole(
+    cx: &mut TestAppContext,
+) {
+    init_editor_test_app(cx);
+
+    let source = "1. 第一\n2. 第二\n\n   ```text\n   键 = 值\n   行\n   ```\n\n尾部";
+    let editor = cx.new(|cx| Editor::from_markdown(cx, source.to_string(), None));
+
+    editor.update(cx, |editor, cx| {
+        let visible = editor.document.visible_blocks().to_vec();
+        let document = editor.current_document_source(cx);
+        let mappings = editor.build_source_target_mappings(cx);
+        let code = visible
+            .iter()
+            .find(|visible| visible.entity.read(cx).kind().is_code_block())
+            .expect("code block");
+        let mapping = mappings
+            .iter()
+            .find(|mapping| mapping.entity == code.entity)
+            .expect("code block mapping");
+        assert_eq!(
+            &document[mapping.full_source_range.clone()],
+            "  ```text\n  键 = 值\n  行\n  ```"
+        );
+
+        // Every selection into the code block or the paragraph after it used
+        // unindented fence lengths and could split a character.
+        for end in 1..visible.len() {
+            let text = visible[end].entity.read(cx).display_text().to_owned();
+            for (offset, _) in text.char_indices() {
+                editor.cross_block_selection = Some(CrossBlockSelection {
+                    anchor: CrossBlockSelectionEndpoint {
+                        entity_id: visible[0].entity.entity_id(),
+                        offset: 0,
+                    },
+                    focus: CrossBlockSelectionEndpoint {
+                        entity_id: visible[end].entity.entity_id(),
+                        offset,
+                    },
+                });
+                assert!(editor.cross_block_selected_markdown(cx).is_some());
+            }
+        }
+
+        let last = visible.last().unwrap().entity.entity_id();
+        editor.cross_block_selection = Some(CrossBlockSelection {
+            anchor: CrossBlockSelectionEndpoint {
+                entity_id: code.entity.entity_id(),
+                offset: "键 = ".len(),
+            },
+            focus: CrossBlockSelectionEndpoint {
+                entity_id: last,
+                offset: "尾".len(),
+            },
+        });
+        assert_eq!(
+            editor.cross_block_selected_markdown(cx).as_deref(),
+            Some("值\n  行\n  ```\n\n尾")
+        );
+        assert!(editor.replace_cross_block_selection_with_text(
+            "",
+            None,
+            false,
+            UndoCaptureKind::NonCoalescible,
+            cx,
+        ));
     });
 }
