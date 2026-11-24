@@ -1311,6 +1311,12 @@ impl Block {
         if span.style.underline || span.link.is_some() || span.footnote.is_some() {
             element = element.underline();
         }
+        if span.style.strikethrough {
+            element = element.line_through();
+        }
+        if span.style.highlight && !span.style.code {
+            element = element.bg(theme.colors.highlight_bg);
+        }
         if span.style.code {
             element = element
                 .font(FontSettings::code_font(cx))
@@ -1318,6 +1324,10 @@ impl Block {
                 .px(px(theme.dimensions.code_bg_pad_x))
                 .py(px(theme.dimensions.code_bg_pad_y))
                 .bg(theme.colors.code_bg);
+        }
+        // After `.font(...)`, which would reset the style.
+        if span.style.italic {
+            element = element.italic();
         }
         if let Some(style) = span.html_style
             && let Some(background) = style.background_color
