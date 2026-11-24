@@ -46,8 +46,11 @@ Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8.
   ist als `fix/list-code-block-mapping` (5d0084a) in `integration` gemergt (c017df3) und gepusht. 1096 Tests grün. Offen: dieselbe Art Abweichung bei Zitat und Tabelle in Listen. Issue #134 bisher ohne Antwort.
 - **2026-11-24 (Mac): `fix/inline-style-rendering`**, in `integration` gemergt (c11ddda) und gepusht: `==markiert==` hatte nie einen Hintergrund;
   Absätze mit Hoch-/Tiefstellung oder Formel zeigten kursiv, durchgestrichen und markiert nicht. Demo-Vault `~/Documents/Velotype-Showcase`
-  (7 Akte, `Start.md`). Offen: 41 ms je Bild bei 6400 Zeilen; wird der letzte Absatz bearbeitet, fehlt der Zeilenumbruch am Dateiende
-  (per Test gesehen, Einstellung „Beim Speichern mit Zeilenumbruch enden“ nicht geprüft).
+  (7 Akte, `Start.md`).
+- **2026-11-24 (Mac), lokal in `integration`, nicht gepusht:** `fix/final-newline-after-edit` (Zeilenumbruch am Dateiende blieb beim Bearbeiten des
+  letzten Blocks nicht erhalten) und `perf/large-document-render` (je Bild wurde das ganze Dokument serialisiert und zugeordnet: 24 + 18 ms bei
+  3151 Blöcken, jetzt 1,7 + 1,5 ms). `InlineTextTree` merkt sich sein Markdown; `fragments` nur in `inline.rs` ändern und danach
+  `normalize_fragments` aufrufen (Tests prüfen jeden Treffer gegen frisch berechneten Text).
 - Bekannt: Clippy-Fehler `text_offsets.rs:116` (`reversed_empty_ranges` in einem Test) und einige Warnungen sind vorbestehend/upstream.
 
 Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
