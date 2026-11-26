@@ -3182,13 +3182,17 @@ impl Render for Block {
                             let hover_block = weak_table_block.clone();
                             let select_block = weak_table_block.clone();
                             let menu_block = weak_table_block.clone();
-                            let marker = crate::components::TableAxisMarker {
-                                kind: TableAxisKind::Column,
-                                index: column,
-                            };
-                            let band_bg = if selected_marker == Some(marker) {
+                            let marker = crate::components::TableAxisMarker::single(
+                                TableAxisKind::Column,
+                                column,
+                            );
+                            let band_bg = if selected_marker
+                                .is_some_and(|selected| selected.covers(marker.kind, marker.index))
+                            {
                                 c.table_axis_selected_bg
-                            } else if preview_marker == Some(marker) {
+                            } else if preview_marker
+                                .is_some_and(|preview| preview.covers(marker.kind, marker.index))
+                            {
                                 c.table_axis_preview_bg
                             } else {
                                 hsla(0.0, 0.0, 0.0, 0.0)
@@ -3223,14 +3227,33 @@ impl Render for Block {
                                                 });
                                             });
                                         })
+                                        .on_mouse_move({
+                                            let drag_block = select_block.clone();
+                                            move |event: &MouseMoveEvent, _window, cx| {
+                                                if event.pressed_button == Some(MouseButton::Left) {
+                                                    let _ = drag_block.update(cx, |_block, cx| {
+                                                        cx.emit(
+                                                            BlockEvent::RequestSelectTableAxis {
+                                                                kind: TableAxisKind::Column,
+                                                                index: column,
+                                                                extend: true,
+                                                                dragging: true,
+                                                            },
+                                                        );
+                                                    });
+                                                }
+                                            }
+                                        })
                                         .on_mouse_down(
                                             MouseButton::Left,
-                                            move |_event, _window, cx| {
+                                            move |event, _window, cx| {
                                                 let _ = select_block.update(cx, |_block, cx| {
                                                     cx.stop_propagation();
                                                     cx.emit(BlockEvent::RequestSelectTableAxis {
                                                         kind: TableAxisKind::Column,
                                                         index: column,
+                                                        extend: event.modifiers.shift,
+                                                        dragging: false,
                                                     });
                                                 });
                                             },
@@ -3258,13 +3281,15 @@ impl Render for Block {
                 let header_menu_block = weak_table_block.clone();
                 // The header is visual row 0; its handle uses a more opaque
                 // version of the body-row color to signal its distinct role.
-                let header_marker = crate::components::TableAxisMarker {
-                    kind: TableAxisKind::Row,
-                    index: 0,
-                };
-                let header_band_bg = if selected_marker == Some(header_marker) {
+                let header_marker =
+                    crate::components::TableAxisMarker::single(TableAxisKind::Row, 0);
+                let header_band_bg = if selected_marker.is_some_and(|selected| {
+                    selected.covers(header_marker.kind, header_marker.index)
+                }) {
                     header_axis_emphasis(c.table_axis_selected_bg)
-                } else if preview_marker == Some(header_marker) {
+                } else if preview_marker
+                    .is_some_and(|preview| preview.covers(header_marker.kind, header_marker.index))
+                {
                     header_axis_emphasis(c.table_axis_preview_bg)
                 } else {
                     hsla(0.0, 0.0, 0.0, 0.0)
@@ -3299,12 +3324,29 @@ impl Render for Block {
                                     });
                                 });
                             })
-                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                            .on_mouse_move({
+                                let drag_block = header_select_block.clone();
+                                move |event: &MouseMoveEvent, _window, cx| {
+                                    if event.pressed_button == Some(MouseButton::Left) {
+                                        let _ = drag_block.update(cx, |_block, cx| {
+                                            cx.emit(BlockEvent::RequestSelectTableAxis {
+                                                kind: TableAxisKind::Row,
+                                                index: 0,
+                                                extend: true,
+                                                dragging: true,
+                                            });
+                                        });
+                                    }
+                                }
+                            })
+                            .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
                                 let _ = header_select_block.update(cx, |_block, cx| {
                                     cx.stop_propagation();
                                     cx.emit(BlockEvent::RequestSelectTableAxis {
                                         kind: TableAxisKind::Row,
                                         index: 0,
+                                        extend: event.modifiers.shift,
+                                        dragging: false,
                                     });
                                 });
                             })
@@ -3355,12 +3397,29 @@ impl Render for Block {
                                             });
                                         });
                                     })
-                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                    .on_mouse_move({
+                                        let drag_block = select_block.clone();
+                                        move |event: &MouseMoveEvent, _window, cx| {
+                                            if event.pressed_button == Some(MouseButton::Left) {
+                                                let _ = drag_block.update(cx, |_block, cx| {
+                                                    cx.emit(BlockEvent::RequestSelectTableAxis {
+                                                        kind: TableAxisKind::Column,
+                                                        index: column,
+                                                        extend: true,
+                                                        dragging: true,
+                                                    });
+                                                });
+                                            }
+                                        }
+                                    })
+                                    .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
                                         let _ = select_block.update(cx, |_block, cx| {
                                             cx.stop_propagation();
                                             cx.emit(BlockEvent::RequestSelectTableAxis {
                                                 kind: TableAxisKind::Column,
                                                 index: column,
+                                                extend: event.modifiers.shift,
+                                                dragging: false,
                                             });
                                         });
                                     })
@@ -3391,13 +3450,17 @@ impl Render for Block {
                             // Row selections are addressed by visual index, where
                             // the header is `0` and body rows follow at `1..`.
                             let visual_row = body_row_index + 1;
-                            let marker = crate::components::TableAxisMarker {
-                                kind: TableAxisKind::Row,
-                                index: visual_row,
-                            };
-                            let band_bg = if selected_marker == Some(marker) {
+                            let marker = crate::components::TableAxisMarker::single(
+                                TableAxisKind::Row,
+                                visual_row,
+                            );
+                            let band_bg = if selected_marker
+                                .is_some_and(|selected| selected.covers(marker.kind, marker.index))
+                            {
                                 c.table_axis_selected_bg
-                            } else if preview_marker == Some(marker) {
+                            } else if preview_marker
+                                .is_some_and(|preview| preview.covers(marker.kind, marker.index))
+                            {
                                 c.table_axis_preview_bg
                             } else {
                                 hsla(0.0, 0.0, 0.0, 0.0)
@@ -3433,14 +3496,33 @@ impl Render for Block {
                                                 });
                                             });
                                         })
+                                        .on_mouse_move({
+                                            let drag_block = select_block.clone();
+                                            move |event: &MouseMoveEvent, _window, cx| {
+                                                if event.pressed_button == Some(MouseButton::Left) {
+                                                    let _ = drag_block.update(cx, |_block, cx| {
+                                                        cx.emit(
+                                                            BlockEvent::RequestSelectTableAxis {
+                                                                kind: TableAxisKind::Row,
+                                                                index: visual_row,
+                                                                extend: true,
+                                                                dragging: true,
+                                                            },
+                                                        );
+                                                    });
+                                                }
+                                            }
+                                        })
                                         .on_mouse_down(
                                             MouseButton::Left,
-                                            move |_event, _window, cx| {
+                                            move |event, _window, cx| {
                                                 let _ = select_block.update(cx, |_block, cx| {
                                                     cx.stop_propagation();
                                                     cx.emit(BlockEvent::RequestSelectTableAxis {
                                                         kind: TableAxisKind::Row,
                                                         index: visual_row,
+                                                        extend: event.modifiers.shift,
+                                                        dragging: false,
                                                     });
                                                 });
                                             },
@@ -3841,25 +3923,16 @@ mod tests {
     fn top_gutter_only_appears_for_column_axis_state() {
         assert!(!column_axis_gutter_visible(None, None));
         assert!(!column_axis_gutter_visible(
-            Some(TableAxisMarker {
-                kind: TableAxisKind::Row,
-                index: 0,
-            }),
+            Some(TableAxisMarker::single(TableAxisKind::Row, 0)),
             None,
         ));
         assert!(column_axis_gutter_visible(
-            Some(TableAxisMarker {
-                kind: TableAxisKind::Column,
-                index: 0,
-            }),
+            Some(TableAxisMarker::single(TableAxisKind::Column, 0)),
             None,
         ));
         assert!(column_axis_gutter_visible(
             None,
-            Some(TableAxisMarker {
-                kind: TableAxisKind::Column,
-                index: 0,
-            }),
+            Some(TableAxisMarker::single(TableAxisKind::Column, 0)),
         ));
     }
 

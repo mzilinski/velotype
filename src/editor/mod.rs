@@ -303,15 +303,54 @@ struct TableCellBinding {
     position: TableCellPosition,
 }
 
-/// Selected row or column in a rendered native table.
+/// Selected rows or columns in a rendered native table: the contiguous range
+/// `index..=end`, grown from `anchor` by dragging over the axis handles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct TableAxisSelection {
     /// Table entity whose axis is selected.
     table_block_id: EntityId,
     /// Whether the selection is a row or column.
     kind: TableAxisKind,
-    /// Visual index, with row zero denoting the header.
+    /// First visual index, with row zero denoting the header.
     index: usize,
+    /// Last visual index (inclusive); equal to `index` for a single axis.
+    end: usize,
+    /// The index the selection was started from; a drag spans from here.
+    anchor: usize,
+}
+
+impl TableAxisSelection {
+    /// One row or column.
+    pub(super) fn single(table_block_id: EntityId, kind: TableAxisKind, index: usize) -> Self {
+        Self {
+            table_block_id,
+            kind,
+            index,
+            end: index,
+            anchor: index,
+        }
+    }
+
+    /// The range from `anchor` to `index`, in either direction.
+    pub(super) fn spanning(
+        table_block_id: EntityId,
+        kind: TableAxisKind,
+        anchor: usize,
+        index: usize,
+    ) -> Self {
+        Self {
+            table_block_id,
+            kind,
+            index: anchor.min(index),
+            end: anchor.max(index),
+            anchor,
+        }
+    }
+
+    /// Whether visual index `index` lies in the selection.
+    pub(super) fn contains(&self, index: usize) -> bool {
+        (self.index..=self.end).contains(&index)
+    }
 }
 
 /// Pixel geometry for the custom editor scrollbar.

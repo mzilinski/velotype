@@ -331,7 +331,12 @@ impl Editor {
             return;
         };
         self.close_context_menu(cx);
-        self.set_table_column_alignment(&table_block, selection.index, alignment, cx);
+        self.set_table_column_alignment(
+            &table_block,
+            selection.index..=selection.end,
+            alignment,
+            cx,
+        );
     }
 
     /// Sets the selected column to default (unmarked left) alignment.
@@ -410,7 +415,7 @@ impl Editor {
         };
         self.close_context_menu(cx);
         // Visual row `n` is body row `n - 1`, so "below" is body index `n`.
-        self.insert_table_row(&table_block, selection.index, cx);
+        self.insert_table_row(&table_block, selection.end, cx);
     }
 
     pub(super) fn on_insert_table_column_left(
@@ -436,7 +441,7 @@ impl Editor {
             return;
         };
         self.close_context_menu(cx);
-        self.insert_table_column(&table_block, selection.index + 1, cx);
+        self.insert_table_column(&table_block, selection.end + 1, cx);
     }
 
     /// Moves the selected visual row upward when it is not the header.
@@ -456,7 +461,7 @@ impl Editor {
             return;
         };
         self.close_context_menu(cx);
-        self.move_table_row(&table_block, selection.index, -1, cx);
+        self.move_table_row(&table_block, selection.index..=selection.end, -1, cx);
     }
 
     /// Moves the selected visual row downward when another row follows.
@@ -480,13 +485,13 @@ impl Editor {
             .record
             .table
             .as_ref()
-            .map(|table| selection.index < table.rows.len())
+            .map(|table| selection.end < table.rows.len())
             .unwrap_or(false);
         if !can_move {
             return;
         }
         self.close_context_menu(cx);
-        self.move_table_row(&table_block, selection.index, 1, cx);
+        self.move_table_row(&table_block, selection.index..=selection.end, 1, cx);
     }
 
     /// Moves the selected column left when it has a preceding column.
@@ -506,7 +511,7 @@ impl Editor {
             return;
         };
         self.close_context_menu(cx);
-        self.move_table_column(&table_block, selection.index, -1, cx);
+        self.move_table_column(&table_block, selection.index..=selection.end, -1, cx);
     }
 
     /// Moves the selected column right when it has a following column.
@@ -530,13 +535,13 @@ impl Editor {
             .record
             .table
             .as_ref()
-            .map(|table| selection.index + 1 < table.column_count())
+            .map(|table| selection.end + 1 < table.column_count())
             .unwrap_or(false);
         if !can_move {
             return;
         }
         self.close_context_menu(cx);
-        self.move_table_column(&table_block, selection.index, 1, cx);
+        self.move_table_column(&table_block, selection.index..=selection.end, 1, cx);
     }
 
     /// Deletes the selected row, promoting a body row or removing an empty table.
@@ -555,25 +560,10 @@ impl Editor {
         let Some(table_block) = self.table_block_by_id(selection.table_block_id, cx) else {
             return;
         };
-        let row_count = table_block
-            .read(cx)
-            .record
-            .table
-            .as_ref()
-            .map(|table| table.rows.len());
         self.close_context_menu(cx);
         // Visual index 0 is the header: deleting it promotes the first body row,
-        // unless there is no body row left, in which case it was the table's last
-        // row and the whole table is removed.
-        if selection.index == 0 {
-            if row_count == Some(0) {
-                self.remove_table_block(&table_block, cx);
-            } else {
-                self.delete_table_header_row(&table_block, cx);
-            }
-        } else {
-            self.delete_table_row(&table_block, selection.index - 1, cx);
-        }
+        // unless no body row is left, in which case the whole table is removed.
+        self.delete_table_rows(&table_block, selection.index..=selection.end, cx);
     }
 
     /// Toggles the preference for visually distinct table headers.
@@ -607,19 +597,9 @@ impl Editor {
         let Some(table_block) = self.table_block_by_id(selection.table_block_id, cx) else {
             return;
         };
-        let column_count = table_block
-            .read(cx)
-            .record
-            .table
-            .as_ref()
-            .map(|table| table.column_count());
         self.close_context_menu(cx);
-        // Removing the only column empties the table, so drop the whole block.
-        if column_count == Some(1) {
-            self.remove_table_block(&table_block, cx);
-        } else {
-            self.delete_table_column(&table_block, selection.index, cx);
-        }
+        // Removing every column empties the table, so that drops the block.
+        self.delete_table_columns(&table_block, selection.index..=selection.end, cx);
     }
 
     /// Builds an enabled or disabled table-axis command row.
@@ -837,7 +817,7 @@ impl Editor {
                             theme,
                             "table-axis-move-column-right",
                             s.table_axis_move_column_right.clone(),
-                            selection.index + 1 < table.column_count(),
+                            selection.end + 1 < table.column_count(),
                             false,
                             Self::on_move_table_column_right,
                             cx,
@@ -928,7 +908,7 @@ impl Editor {
                             theme,
                             "table-axis-move-row-down",
                             s.table_axis_move_row_down.clone(),
-                            selection.index < table.rows.len(),
+                            selection.end < table.rows.len(),
                             false,
                             Self::on_move_table_row_down,
                             cx,

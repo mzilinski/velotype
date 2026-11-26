@@ -967,6 +967,12 @@ pub enum BlockEvent {
         kind: TableAxisKind,
         /// Index of the selected axis.
         index: usize,
+        /// Grow the current selection to `index` instead of replacing it
+        /// (Shift-click, or dragging over the handles with the button held).
+        extend: bool,
+        /// Sent while dragging: only grows a selection that already exists,
+        /// so a text drag that crosses a handle selects nothing.
+        dragging: bool,
     },
     /// Open the axis context menu for a native table row or column.
     RequestOpenTableAxisMenu {
