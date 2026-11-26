@@ -47,7 +47,7 @@ fn log() -> &'static Mutex<Log> {
 }
 
 pub(crate) fn log_path() -> Option<PathBuf> {
-    crate::config::VelotypeConfigDirs::from_system()
+    crate::config::VelinConfigDirs::from_system()
         .ok()
         .map(|dirs| dirs.logs_dir().join("perf.log"))
 }
@@ -120,7 +120,7 @@ pub(crate) fn start(cx: &mut App) {
     static HEARTBEAT_AT: AtomicU64 = AtomicU64::new(0);
     let origin = Instant::now();
     note(format!(
-        "--- Velotype {} gestartet (Protokoll: {}) ---",
+        "--- Velin {} gestartet (Protokoll: {}) ---",
         env!("CARGO_PKG_VERSION"),
         log_path()
             .map(|p| p.display().to_string())
@@ -137,7 +137,7 @@ pub(crate) fn start(cx: &mut App) {
     .detach();
 
     let _ = std::thread::Builder::new()
-        .name("velotype-watchdog".into())
+        .name("velin-watchdog".into())
         .spawn(move || {
             let mut stalled_since: Option<u64> = None;
             loop {

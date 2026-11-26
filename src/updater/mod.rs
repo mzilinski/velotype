@@ -188,7 +188,7 @@ impl UpdateManager {
         let cancelled = self.cancelled.clone();
         let (sender, mut receiver) = mpsc::unbounded();
         let worker = std::thread::Builder::new()
-            .name("velotype-update".into())
+            .name("velin-update".into())
             .spawn(move || {
                 download::cleanup_stale();
                 let result = (|| -> anyhow::Result<WorkerOutcome> {
@@ -586,7 +586,7 @@ mod tests {
     async fn updater_does_not_launch_helper_with_a_dirty_second_window(cx: &mut TestAppContext) {
         init_test_app(cx);
         let directory = tempfile::Builder::new()
-            .prefix("velotype-update-")
+            .prefix("velin-update-")
             .tempdir()
             .unwrap();
         let job_path = directory.path().join("job.json");

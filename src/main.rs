@@ -1,4 +1,4 @@
-//! Velotype - a block-based Markdown editor built with GPUI.
+//! Velin - a block-based Markdown editor built with GPUI.
 //!
 //! Reads file paths from command-line arguments and opens them as tabs of one
 //! GPUI window. With no arguments, startup preferences select a recent file or
@@ -50,7 +50,7 @@ use i18n::I18nManager;
 use theme::ThemeManager;
 
 /// Serves the workspace and titlebar SVGs embedded in the executable.
-struct VelotypeAssets;
+struct VelinAssets;
 
 /// Opens the preferred recent Markdown file, falling back to an empty document.
 fn open_startup_window(cx: &mut App, startup_open: config::StartupOpenPreference) {
@@ -79,7 +79,7 @@ fn open_startup_document(cx: &mut App, startup_open: config::StartupOpenPreferen
     open_editor_window(cx, String::new(), None);
 }
 
-impl AssetSource for VelotypeAssets {
+impl AssetSource for VelinAssets {
     /// Returns embedded bytes for known icon paths, or `None` for other assets.
     fn load(&self, path: &str) -> gpui::Result<Option<Cow<'static, [u8]>>> {
         match path {
@@ -158,17 +158,17 @@ fn main() {
                 break;
             }
             "--version" | "-v" => {
-                println!("velotype {}", env!("CARGO_PKG_VERSION"));
+                println!("velin {}", env!("CARGO_PKG_VERSION"));
                 return;
             }
             "--help" | "-h" => {
                 println!(
-                    "velotype {} - A block-based Markdown editor",
+                    "velin {} - A block-based Markdown editor",
                     env!("CARGO_PKG_VERSION")
                 );
                 println!();
                 println!("USAGE:");
-                println!("    velotype [OPTIONS] [FILES...]");
+                println!("    velin [OPTIONS] [FILES...]");
                 println!();
                 println!("OPTIONS:");
                 println!("    -v, --version    Print version information");
@@ -224,7 +224,7 @@ fn main() {
     #[cfg(target_os = "macos")]
     let open_file_requested = Arc::new(AtomicBool::new(false));
 
-    let app = gpui_platform::application().with_assets(VelotypeAssets);
+    let app = gpui_platform::application().with_assets(VelinAssets);
 
     #[cfg(target_os = "macos")]
     {

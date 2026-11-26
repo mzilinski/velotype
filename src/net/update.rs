@@ -25,12 +25,12 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 const UPDATE_ACCEPT: &str = "text/plain,application/toml,*/*;q=0.8";
 /// Identifies the compiled app version and project in update requests.
 const UPDATE_USER_AGENT: &str = concat!(
-    "Velotype/",
+    "Velin/",
     env!("CARGO_PKG_VERSION"),
     " (+https://github.com/mzilinski/velotype)"
 );
 
-/// Remote endpoint used to retrieve the published Velotype manifest.
+/// Remote endpoint used to retrieve the published Velin manifest.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum UpdateSource {
     /// GitHub raw content endpoint.
@@ -288,7 +288,7 @@ mod tests {
     fn extracts_package_version_from_cargo_toml() {
         let manifest = r#"
             [package]
-            name = "velotype"
+            name = "velin"
             version = "0.2.2"
         "#;
 
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn rejects_invalid_or_missing_versions() {
         assert!(extract_package_version("not toml").is_err());
-        assert!(extract_package_version("[package]\nname = \"velotype\"").is_err());
+        assert!(extract_package_version("[package]\nname = \"velin\"").is_err());
 
         let error = check_latest_version_with("0.2.1", |_| {
             Ok("[package]\nversion = \"not-a-version\"".to_string())

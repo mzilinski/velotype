@@ -206,14 +206,14 @@ impl Editor {
     ) -> String {
         let base_title = if let Some(path) = file_path {
             format!(
-                "Velotype - {}",
+                "Velin - {}",
                 path.file_name().map_or_else(
                     || path.to_string_lossy().to_string(),
                     |name| name.to_string_lossy().to_string()
                 )
             )
         } else {
-            "Velotype".to_string()
+            "Velin".to_string()
         };
 
         if is_dirty && !strings.dirty_title_marker.is_empty() {

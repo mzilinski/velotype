@@ -1,6 +1,6 @@
 # Markdown Reference
 
-Each section shows the syntax first and below it how Velotype renders it. Press **Ctrl+/** to see the source of this page.
+Each section shows the syntax first and below it how Velin renders it. Press **Ctrl+/** to see the source of this page.
 
 [TOC]
 

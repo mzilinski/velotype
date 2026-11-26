@@ -373,8 +373,7 @@ mod export_again_tests {
         });
         let (editor, cx) =
             cx.add_window_view(|_window, cx| Editor::from_markdown(cx, "# Doc".to_string(), None));
-        let path =
-            std::env::temp_dir().join(format!("velotype-export-{}.html", uuid::Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!("velin-export-{}.html", uuid::Uuid::new_v4()));
         cx.update(|window, cx| {
             editor.update(cx, |editor, cx| {
                 assert!(editor.last_export.is_none());

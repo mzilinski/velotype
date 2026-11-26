@@ -33,7 +33,7 @@ fn temp_markdown_path(test_name: &str) -> PathBuf {
         .expect("system clock before unix epoch")
         .as_nanos();
     std::env::temp_dir().join(format!(
-        "velotype-{test_name}-{}-{nanos}.md",
+        "velin-{test_name}-{}-{nanos}.md",
         std::process::id()
     ))
 }
@@ -468,7 +468,7 @@ fn about_dialog_body_lines_include_repository_and_star_message() {
     let strings = I18nStrings::zh_cn();
     let lines = Editor::about_dialog_body_lines(&strings);
 
-    assert_eq!(lines[0], format!("Velotype {}", env!("CARGO_PKG_VERSION")));
+    assert_eq!(lines[0], format!("Velin {}", env!("CARGO_PKG_VERSION")));
     assert_eq!(
         lines[2],
         format!("GitHub: {}", super::render::ABOUT_GITHUB_URL)
@@ -4192,7 +4192,7 @@ mod help_document_tests {
 #[gpui::test]
 async fn typing_a_wiki_link_suggests_and_completes_notes(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-complete-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-complete-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join(".git")).expect("create vault");
     fs::create_dir_all(root.join("people")).expect("create people dir");
     fs::write(root.join("people").join("Anna.md"), "# Anna").expect("write note");
@@ -4234,7 +4234,7 @@ async fn typing_a_wiki_link_suggests_and_completes_notes(cx: &mut TestAppContext
 #[gpui::test]
 async fn insert_template_fills_and_pastes_at_the_caret(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-template-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-template-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join(".git")).expect("create vault");
     fs::create_dir_all(root.join("Templates")).expect("create templates dir");
     fs::write(
@@ -4282,7 +4282,7 @@ async fn insert_template_fills_and_pastes_at_the_caret(cx: &mut TestAppContext) 
 #[gpui::test]
 async fn dataview_block_lists_matching_notes(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-query-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-query-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join(".git")).expect("create vault");
     fs::write(root.join("Alpha.md"), "---\nstatus: open\n---\n#project").expect("write note");
     fs::write(root.join("Beta.md"), "---\nstatus: done\n---\n#project").expect("write note");
@@ -4328,7 +4328,7 @@ async fn dataview_block_lists_matching_notes(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn links_tab_shows_backlinks_and_tags(cx: &mut TestAppContext) {
     init_editor_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-links-tab-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-links-tab-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join(".git")).expect("create vault");
     let current = root.join("Anna.md");
     let text = "# Anna\n\n#person [[Home]] [[Nope]]";

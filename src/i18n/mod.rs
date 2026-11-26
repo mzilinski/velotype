@@ -12,7 +12,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 
 use crate::config::{
-    VelotypeConfigDirs, object_without_empty_values, prune_empty_json_values, read_json_or_jsonc,
+    VelinConfigDirs, object_without_empty_values, prune_empty_json_values, read_json_or_jsonc,
     sanitize_config_file_stem,
 };
 
@@ -3036,7 +3036,7 @@ impl I18nStrings {
                 "请拖入 Markdown 文件（.md 或 .markdown）以在当前窗口打开。".into(),
             info_dialog_ok: "确定".into(),
             help_check_updates_title: "检查更新".into(),
-            help_check_updates_message: "正在检查 Velotype 的最新版本...".into(),
+            help_check_updates_message: "正在检查 Velin 的最新版本...".into(),
             update_available_title: "发现新版本".into(),
             update_available_message_template:
                 "当前版本：{current}\n最新版本：{latest}\n是否前往 GitHub Releases 下载？".into(),
@@ -3046,7 +3046,7 @@ impl I18nStrings {
             update_failed_message_template: "无法完成更新：{error}".into(),
             update_open_release: "前往下载".into(),
             update_later: "稍后".into(),
-            help_about_title: "关于 Velotype".into(),
+            help_about_title: "关于 Velin".into(),
             help_about_message: "由 Malte Zilinski 开发维护".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message: "如果本项目对您有帮助，那不妨给本项目一颗 Star⭐，十分感谢！"
@@ -3143,7 +3143,7 @@ impl I18nStrings {
             export_again_nothing: "此文档尚未导出。请先从“导出”菜单导出一次，之后 Ctrl+Shift+E 会重复该导出。".into(),
             menu_autosave: "自动保存".into(),
             menu_show_backups: "显示备份".into(),
-            backups_none: "此文件还没有备份。Velotype 会在保存覆盖文件之前复制一份（每 10 分钟最多一次，保留最近 20 份）。".into(),
+            backups_none: "此文件还没有备份。Velin 会在保存覆盖文件之前复制一份（每 10 分钟最多一次，保留最近 20 份）。".into(),
             menu_source_mode: "源代码模式".into(),
             menu_image: "图片".into(),
             menu_upload_image: "上传图片".into(),
@@ -3286,7 +3286,7 @@ impl I18nStrings {
             export_open_file: "打开".into(),
             export_close: "关闭".into(),
             export_pdf_browser_missing_title: "PDF 导出需要浏览器".into(),
-            export_pdf_browser_missing_message: "Velotype 使用 Google Chrome、Microsoft Edge 或 Chromium 生成 PDF，但未找到其中任何一个。\n\n请安装其中一个浏览器，或将 CHROME 环境变量设置为浏览器可执行文件的路径，然后重试。你也可以改为将文档导出为 HTML。".into(),
+            export_pdf_browser_missing_message: "Velin 使用 Google Chrome、Microsoft Edge 或 Chromium 生成 PDF，但未找到其中任何一个。\n\n请安装其中一个浏览器，或将 CHROME 环境变量设置为浏览器可执行文件的路径，然后重试。你也可以改为将文档导出为 HTML。".into(),
             export_as_html_instead: "导出为 HTML".into(),
             export_cancel: "取消".into(),
             preferences_nav_export: "导出".into(),
@@ -3458,8 +3458,8 @@ impl I18nStrings {
             ..Self::en_us()
         };
         strings.image_paste_failed_title = "图片粘贴失败".into();
-        strings.update_downloading = "正在下载并验证 Velotype {version}...".into();
-        strings.update_ready_message = "Velotype {version} 已下载并验证，可以安装并重启。".into();
+        strings.update_downloading = "正在下载并验证 Velin {version}...".into();
+        strings.update_ready_message = "Velin {version} 已下载并验证，可以安装并重启。".into();
         strings.update_restart = "更新并重启".into();
         strings.update_status_ready = "更新至 {version} 并重启".into();
         strings.update_save_first_message =
@@ -3468,9 +3468,9 @@ impl I18nStrings {
         strings.preferences_file_associations = "Markdown 文件关联（.md）".into();
         strings.preferences_associate_formats = "关联格式".into();
         strings.preferences_file_associations_checking = "正在检查文件关联...".into();
-        strings.preferences_file_associations_associated = "已关联到 Velotype。".into();
+        strings.preferences_file_associations_associated = "已关联到 Velin。".into();
         strings.preferences_file_associations_pending =
-            "请在系统默认应用设置中确认选择 Velotype。".into();
+            "请在系统默认应用设置中确认选择 Velin。".into();
         strings.preferences_file_associations_failed = "无法检查或更新文件关联：{error}".into();
         strings.preferences_updates_auto_download = "自动下载更新".into();
         strings.preferences_updates_auto_download_hint = "启动时自动检查并下载最新正式版".into();
@@ -3522,7 +3522,7 @@ impl I18nStrings {
                 "Drop a Markdown file (.md or .markdown) to open it in this window.".into(),
             info_dialog_ok: "OK".into(),
             help_check_updates_title: "Check for Updates".into(),
-            help_check_updates_message: "Checking the latest Velotype version...".into(),
+            help_check_updates_message: "Checking the latest Velin version...".into(),
             update_available_title: "Update Available".into(),
             update_available_message_template:
                 "Current version: {current}\nLatest version: {latest}\nOpen GitHub Releases to download it?"
@@ -3535,8 +3535,8 @@ impl I18nStrings {
                 .into(),
             update_open_release: "Open Releases".into(),
             update_later: "Later".into(),
-            update_downloading: "Downloading and verifying Velotype {version}...".into(),
-            update_ready_message: "Velotype {version} has been downloaded and verified. Install it and restart now?".into(),
+            update_downloading: "Downloading and verifying Velin {version}...".into(),
+            update_ready_message: "Velin {version} has been downloaded and verified. Install it and restart now?".into(),
             update_restart: "Update and Restart".into(),
             update_status_ready: "Update to {version} and Restart".into(),
             update_save_first_message: "Save this window's changes, then click Update and Restart again. Saving will keep the window open.".into(),
@@ -3544,12 +3544,12 @@ impl I18nStrings {
             preferences_file_associations: "Markdown File Association (.md)".into(),
             preferences_associate_formats: "Associate Formats".into(),
             preferences_file_associations_checking: "Checking file associations...".into(),
-            preferences_file_associations_associated: "Associated with Velotype.".into(),
-            preferences_file_associations_pending: "Confirm Velotype in your system's default-app settings.".into(),
+            preferences_file_associations_associated: "Associated with Velin.".into(),
+            preferences_file_associations_pending: "Confirm Velin in your system's default-app settings.".into(),
             preferences_file_associations_failed: "Could not check or update file associations: {error}".into(),
             preferences_updates_auto_download: "Automatically Download Updates".into(),
             preferences_updates_auto_download_hint: "Automatically check for and download the latest stable version on startup.".into(),
-            help_about_title: "About Velotype".into(),
+            help_about_title: "About Velin".into(),
             help_about_message: "Developed by Malte Zilinski".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message:
@@ -3646,7 +3646,7 @@ impl I18nStrings {
             export_again_nothing: "This document has not been exported yet. Export it once from the Export menu; afterwards Ctrl+Shift+E repeats that export.".into(),
             menu_autosave: "Auto Save".into(),
             menu_show_backups: "Show Backups".into(),
-            backups_none: "There are no backups of this file yet. Velotype copies a file before a save overwrites it (at most once every 10 minutes, the last 20 copies are kept).".into(),
+            backups_none: "There are no backups of this file yet. Velin copies a file before a save overwrites it (at most once every 10 minutes, the last 20 copies are kept).".into(),
             menu_source_mode: "Source Code Mode".into(),
             menu_image: "Image".into(),
             menu_upload_image: "Upload Image".into(),
@@ -3789,7 +3789,7 @@ impl I18nStrings {
             export_open_file: "Open".into(),
             export_close: "Close".into(),
             export_pdf_browser_missing_title: "PDF Export Needs a Browser".into(),
-            export_pdf_browser_missing_message: "Velotype prints PDFs with Google Chrome, Microsoft Edge or Chromium, but none of them was found.\n\nInstall one of these browsers, or set the CHROME environment variable to the path of the browser executable, and try again. You can export the document as HTML instead.".into(),
+            export_pdf_browser_missing_message: "Velin prints PDFs with Google Chrome, Microsoft Edge or Chromium, but none of them was found.\n\nInstall one of these browsers, or set the CHROME environment variable to the path of the browser executable, and try again. You can export the document as HTML instead.".into(),
             export_as_html_instead: "Export as HTML".into(),
             export_cancel: "Cancel".into(),
             preferences_nav_export: "Export".into(),
@@ -4010,12 +4010,12 @@ impl I18nStrings {
                     .into(),
             info_dialog_ok: "OK".into(),
             help_check_updates_title: "Nach Updates suchen".into(),
-            help_check_updates_message: "Neueste Velotype-Version wird geprüft …".into(),
+            help_check_updates_message: "Neueste Velin-Version wird geprüft …".into(),
             update_available_title: "Update verfügbar".into(),
             update_available_message_template:
                 "Aktuelle Version: {current}\nNeueste Version: {latest}\nGitHub Releases zum Herunterladen öffnen?"
                     .into(),
-            update_up_to_date_title: "Velotype ist aktuell".into(),
+            update_up_to_date_title: "Velin ist aktuell".into(),
             update_up_to_date_message_template:
                 "Aktuelle Version: {current}\nVersion online: {latest}".into(),
             update_failed_title: "Update-Prüfung fehlgeschlagen".into(),
@@ -4023,7 +4023,7 @@ impl I18nStrings {
                 "Die Online-Prüfung auf Updates konnte nicht abgeschlossen werden: {error}".into(),
             update_open_release: "Releases öffnen".into(),
             update_later: "Später".into(),
-            help_about_title: "Über Velotype".into(),
+            help_about_title: "Über Velin".into(),
             help_about_message: "Weiterentwicklung von Malte Zilinski".into(),
             help_about_github_label: "GitHub".into(),
             help_about_star_message:
@@ -4120,7 +4120,7 @@ impl I18nStrings {
             export_again_nothing: "Dieses Dokument wurde noch nicht exportiert. Exportiere es einmal über das Export-Menü, danach wiederholt Strg+Shift+E diesen Export.".into(),
             menu_autosave: "Automatisch speichern".into(),
             menu_show_backups: "Sicherungskopien anzeigen".into(),
-            backups_none: "Von dieser Datei gibt es noch keine Sicherungskopie. Velotype kopiert eine Datei, bevor das Speichern sie überschreibt (höchstens alle 10 Minuten, die letzten 20 Kopien bleiben erhalten).".into(),
+            backups_none: "Von dieser Datei gibt es noch keine Sicherungskopie. Velin kopiert eine Datei, bevor das Speichern sie überschreibt (höchstens alle 10 Minuten, die letzten 20 Kopien bleiben erhalten).".into(),
             menu_source_mode: "Quelltextmodus".into(),
             menu_image: "Bild".into(),
             menu_upload_image: "Bild hochladen".into(),
@@ -4263,7 +4263,7 @@ impl I18nStrings {
             export_open_file: "Öffnen".into(),
             export_close: "Schließen".into(),
             export_pdf_browser_missing_title: "PDF-Export benötigt einen Browser".into(),
-            export_pdf_browser_missing_message: "Velotype erstellt PDFs mit Google Chrome, Microsoft Edge oder Chromium, aber keiner dieser Browser wurde gefunden.\n\nInstallieren Sie einen dieser Browser oder setzen Sie die Umgebungsvariable CHROME auf den Pfad der Browser-Programmdatei und versuchen Sie es erneut. Sie können das Dokument stattdessen als HTML exportieren.".into(),
+            export_pdf_browser_missing_message: "Velin erstellt PDFs mit Google Chrome, Microsoft Edge oder Chromium, aber keiner dieser Browser wurde gefunden.\n\nInstallieren Sie einen dieser Browser oder setzen Sie die Umgebungsvariable CHROME auf den Pfad der Browser-Programmdatei und versuchen Sie es erneut. Sie können das Dokument stattdessen als HTML exportieren.".into(),
             export_as_html_instead: "Als HTML exportieren".into(),
             export_cancel: "Abbrechen".into(),
             preferences_nav_export: "Export".into(),
@@ -4453,8 +4453,8 @@ impl I18nStrings {
             preferences_status_bar_show_cursor_position: "Cursorposition".into(),
             preferences_status_bar_show_sidebar_toggle: "Seitenleisten-Schalter".into(),
             preferences_status_bar_show_mode_switch: "Ansichtsumschalter".into(),
-            update_downloading: "Velotype {version} wird heruntergeladen und geprüft …".into(),
-            update_ready_message: "Velotype {version} wurde heruntergeladen und geprüft. Jetzt installieren und neu starten?".into(),
+            update_downloading: "Velin {version} wird heruntergeladen und geprüft …".into(),
+            update_ready_message: "Velin {version} wurde heruntergeladen und geprüft. Jetzt installieren und neu starten?".into(),
             update_restart: "Aktualisieren und neu starten".into(),
             update_status_ready: "Auf {version} aktualisieren und neu starten".into(),
             update_save_first_message: "Speichere die Änderungen dieses Fensters und klicke dann erneut auf „Aktualisieren und neu starten“. Das Fenster bleibt beim Speichern offen.".into(),
@@ -4464,8 +4464,8 @@ impl I18nStrings {
             preferences_file_associations: "Markdown-Dateizuordnung (.md)".into(),
             preferences_associate_formats: "Formate zuordnen".into(),
             preferences_file_associations_checking: "Dateizuordnungen werden geprüft …".into(),
-            preferences_file_associations_associated: "Mit Velotype verknüpft.".into(),
-            preferences_file_associations_pending: "Bestätige Velotype in den Standard-App-Einstellungen deines Systems.".into(),
+            preferences_file_associations_associated: "Mit Velin verknüpft.".into(),
+            preferences_file_associations_pending: "Bestätige Velin in den Standard-App-Einstellungen deines Systems.".into(),
             preferences_file_associations_failed: "Dateizuordnungen konnten nicht geprüft oder geändert werden: {error}".into(),
             image_paste_picgo_failed_title: "PicGo-Upload fehlgeschlagen".into(),
             image_paste_picgo_fallback_message: "Die Bilder wurden mit der bisherigen lokalen Ablage eingefügt.".into(),
@@ -4716,7 +4716,7 @@ impl I18nManager {
     /// Unknown IDs leave English selected; pack-loading errors are logged.
     pub fn init_with_language_id(cx: &mut App, language_id: &str) {
         let mut manager = Self::new_with_language_id(BUILTIN_LANGUAGE_EN_US_ID);
-        if let Ok(dirs) = VelotypeConfigDirs::from_system()
+        if let Ok(dirs) = VelinConfigDirs::from_system()
             && let Err(err) = manager.load_custom_languages_from_dirs(&dirs)
         {
             eprintln!("failed to load custom languages: {err}");
@@ -4785,7 +4785,7 @@ impl I18nManager {
 
     /// Imports a user language pack, persists a normalized copy, and activates it.
     pub fn import_language_config(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        let dirs = VelotypeConfigDirs::from_system()?;
+        let dirs = VelinConfigDirs::from_system()?;
         self.import_language_config_with_dirs(path, &dirs)
     }
 
@@ -4793,7 +4793,7 @@ impl I18nManager {
     fn import_language_config_with_dirs(
         &mut self,
         path: impl AsRef<Path>,
-        dirs: &VelotypeConfigDirs,
+        dirs: &VelinConfigDirs,
     ) -> anyhow::Result<String> {
         let raw = read_json_or_jsonc(path.as_ref())?;
         let (pack, normalized) = custom_language_pack_from_value(raw)?;
@@ -4811,7 +4811,7 @@ impl I18nManager {
     }
 
     /// Loads packs sorted by name/ID, logging and skipping invalid configuration files.
-    fn load_custom_languages_from_dirs(&mut self, dirs: &VelotypeConfigDirs) -> anyhow::Result<()> {
+    fn load_custom_languages_from_dirs(&mut self, dirs: &VelinConfigDirs) -> anyhow::Result<()> {
         let languages_dir = dirs.languages_dir();
         if !languages_dir.exists() {
             return Ok(());
@@ -4927,7 +4927,7 @@ fn required_string(object: &Map<String, Value>, key: &str) -> anyhow::Result<Str
 #[cfg(test)]
 mod tests {
     use super::{I18nLanguagePack, I18nManager, I18nStrings, language_id_for_locale_preferences};
-    use crate::config::VelotypeConfigDirs;
+    use crate::config::VelinConfigDirs;
     use crate::theme::ThemeManager;
 
     #[test]
@@ -4952,11 +4952,11 @@ mod tests {
         );
         assert_eq!(
             strings.preferences_file_associations_associated,
-            "已关联到 Velotype。"
+            "已关联到 Velin。"
         );
         assert_eq!(
             strings.help_check_updates_message,
-            "正在检查 Velotype 的最新版本..."
+            "正在检查 Velin 的最新版本..."
         );
         assert_eq!(strings.update_open_release, "前往下载");
         assert_eq!(strings.help_about_github_label, "GitHub");
@@ -5028,10 +5028,10 @@ mod tests {
         let mut theme_manager = ThemeManager::default();
         let mut i18n_manager = I18nManager::new_with_language_id("zh-CN");
 
-        assert!(theme_manager.set_theme_by_id("velotype"));
+        assert!(theme_manager.set_theme_by_id("velin"));
         assert!(!i18n_manager.set_language_by_id("missing"));
 
-        assert_eq!(theme_manager.current_theme_id(), "velotype");
+        assert_eq!(theme_manager.current_theme_id(), "velin");
         assert_eq!(i18n_manager.current_language_id(), "zh-CN");
         assert_eq!(i18n_manager.strings().menu_file, "文件");
     }
@@ -5060,7 +5060,7 @@ mod tests {
 
     #[test]
     fn imports_jsonc_language_pack_and_persists_normalized_json() {
-        let root = std::env::temp_dir().join(format!("velotype-i18n-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-i18n-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("temp root should be created");
         let source = root.join("language.jsonc");
         std::fs::write(
@@ -5078,7 +5078,7 @@ mod tests {
         )
         .expect("language config should be written");
 
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         let mut manager = I18nManager::default();
         let imported_id = manager
             .import_language_config_with_dirs(&source, &dirs)
@@ -5106,7 +5106,7 @@ mod tests {
 
     #[test]
     fn custom_language_cannot_override_builtin_language_id() {
-        let root = std::env::temp_dir().join(format!("velotype-i18n-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-i18n-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("temp root should be created");
         let source = root.join("language.json");
         std::fs::write(
@@ -5119,7 +5119,7 @@ mod tests {
         )
         .expect("language config should be written");
 
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         let mut manager = I18nManager::default();
         let err = manager
             .import_language_config_with_dirs(&source, &dirs)

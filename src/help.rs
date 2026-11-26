@@ -207,7 +207,7 @@ pub(crate) fn open_help(document: HelpDocument, cx: &mut App) {
         .map(|preferences| preferences.keybindings)
         .unwrap_or_default();
     let (file_name, markdown) = help_document(document, &strings, &language_id, &keybindings);
-    let path = crate::config::VelotypeConfigDirs::from_system()
+    let path = crate::config::VelinConfigDirs::from_system()
         .ok()
         .map(|dirs| dirs.help_dir().join(&file_name));
     let path: Option<PathBuf> = path.filter(|path| {
@@ -239,9 +239,9 @@ mod tests {
         let strings = crate::i18n::I18nManager::default().strings().clone();
         let keys = BTreeMap::new();
         let (_, de) = help_document(HelpDocument::QuickStart, &strings, "de-DE", &keys);
-        assert!(de.starts_with("# Velotype – Schnellstart"));
+        assert!(de.starts_with("# Velin – Schnellstart"));
         let (_, en) = help_document(HelpDocument::QuickStart, &strings, "zh-CN", &keys);
-        assert!(en.starts_with("# Velotype – Quick Start"));
+        assert!(en.starts_with("# Velin – Quick Start"));
         let (name, reference) =
             help_document(HelpDocument::MarkdownReference, &strings, "en", &keys);
         assert!(name.ends_with(".md"));

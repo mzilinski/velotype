@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn reads_obsidian_settings_and_creates_the_note() {
-        let dir = std::env::temp_dir().join(format!("velotype-daily-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-daily-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let root = dir.as_path();
         assert_eq!(DailyNotesConfig::load(root), DailyNotesConfig::default());

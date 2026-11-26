@@ -20,15 +20,15 @@ const SVG_CACHE_REFRESH_AFTER: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 /// refresh the files they use before stale files are judged.
 const SVG_CACHE_CLEANUP_DELAY: Duration = Duration::from_secs(30);
 
-/// Root of Velotype's per-user cache directory.
-pub(crate) fn velotype_cache_root() -> PathBuf {
-    ProjectDirs::from("com", "manyougz", "Velotype")
+/// Root of Velin's per-user cache directory.
+pub(crate) fn velin_cache_root() -> PathBuf {
+    ProjectDirs::from("eu", "zilinski", "Velin")
         .map(|dirs| dirs.cache_dir().to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir().join("Velotype"))
+        .unwrap_or_else(|| std::env::temp_dir().join("Velin"))
 }
 
 fn svg_cache_dirs() -> [PathBuf; 2] {
-    let root = velotype_cache_root();
+    let root = velin_cache_root();
     [root.join("mermaid-svg"), root.join("latex-svg")]
 }
 
@@ -105,10 +105,8 @@ mod tests {
     use super::*;
 
     fn temp_cache_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "velotype-svg-cache-{label}-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("velin-svg-cache-{label}-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(dir.join("nested")).expect("create temp cache dir");
         dir
     }
@@ -148,7 +146,7 @@ mod tests {
 
     #[test]
     fn pruning_a_missing_dir_is_a_no_op() {
-        let dir = std::env::temp_dir().join(format!("velotype-missing-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-missing-{}", uuid::Uuid::new_v4()));
         assert_eq!(
             prune_stale_svg_files(&dir, SVG_CACHE_MAX_AGE, SystemTime::now()),
             0

@@ -12,7 +12,7 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 use serde::{Deserialize, Serialize};
 
-use super::{VelotypeConfigDirs, read_recent_files};
+use super::{VelinConfigDirs, read_recent_files};
 use crate::components::single_line_input::{InputChanged, SingleLineInput, SingleLineOverflow};
 use crate::components::{
     ShortcutCategory, ShortcutCommand, ShortcutDefinition, install_keybindings,
@@ -23,12 +23,10 @@ use crate::export::{DEFAULT_PDF_MARGIN_MM, PdfExportOptions, PdfOrientation, Pdf
 use crate::fonts::{FontCatalog, FontPreferences, FontSettings, FontStackParseError};
 use crate::i18n::{I18nManager, I18nStrings, language_id_for_locale_preferences};
 use crate::theme::{AppearanceThemes, Theme, ThemeCatalogEntry, ThemeManager};
-use crate::window_chrome::{
-    custom_titlebar_height, render_custom_titlebar, velotype_window_options,
-};
+use crate::window_chrome::{custom_titlebar_height, render_custom_titlebar, velin_window_options};
 
 /// Built-in dark theme used when a configured theme is absent or unavailable.
-const DEFAULT_THEME_ID: &str = "velotype";
+const DEFAULT_THEME_ID: &str = "velin";
 /// Language fallback for ordinary preference reads without locale detection.
 const DEFAULT_LANGUAGE_ID: &str = "en-US";
 
@@ -651,12 +649,12 @@ impl From<&AppPreferences> for PreferencesFile {
 
 /// Reads system preferences without writing, using English for a missing language.
 pub(crate) fn read_app_preferences() -> anyhow::Result<AppPreferences> {
-    read_app_preferences_with_dirs(&VelotypeConfigDirs::from_system()?)
+    read_app_preferences_with_dirs(&VelinConfigDirs::from_system()?)
 }
 
 /// Reads preferences from the supplied root; missing or malformed TOML uses defaults.
 pub(crate) fn read_app_preferences_with_dirs(
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<AppPreferences> {
     let path = dirs.app_config_file();
     let text = match std::fs::read_to_string(&path) {
@@ -677,7 +675,7 @@ pub(crate) fn read_app_preferences_with_dirs(
 
 /// Loads and rewrites normalized preferences, detecting an unset language from locales.
 pub(crate) fn load_or_create_app_preferences() -> anyhow::Result<AppPreferences> {
-    let dirs = VelotypeConfigDirs::from_system()?;
+    let dirs = VelinConfigDirs::from_system()?;
     load_or_create_app_preferences_with_dirs_and_locales(&dirs, sys_locale::get_locales())
 }
 
@@ -920,7 +918,7 @@ where
 
 /// Loads or repairs preferences using locale fallback, then saves the normalized result.
 fn load_or_create_app_preferences_with_dirs_and_locales<I, S>(
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
     locales: I,
 ) -> anyhow::Result<AppPreferences>
 where
@@ -950,13 +948,13 @@ where
 
 /// Writes normalized preferences to the platform configuration directory.
 pub(crate) fn save_app_preferences(preferences: &AppPreferences) -> anyhow::Result<()> {
-    save_app_preferences_with_dirs(preferences, &VelotypeConfigDirs::from_system()?)
+    save_app_preferences_with_dirs(preferences, &VelinConfigDirs::from_system()?)
 }
 
 /// Creates the config directory as needed and writes pretty-printed TOML preferences.
 pub(crate) fn save_app_preferences_with_dirs(
     preferences: &AppPreferences,
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<()> {
     let path = dirs.app_config_file();
     if let Some(parent) = path.parent() {
@@ -1128,7 +1126,7 @@ pub(crate) fn save_preferences_from_window(
     status_bar: &StatusBarPreferences,
     fonts: &FontPreferences,
 ) -> anyhow::Result<AppPreferences> {
-    let dirs = VelotypeConfigDirs::from_system()?;
+    let dirs = VelinConfigDirs::from_system()?;
     save_preferences_from_window_with_dirs(
         startup_open,
         default_theme_id,
@@ -1154,7 +1152,7 @@ fn save_preferences_from_window_with_dirs(
     keybindings: BTreeMap<String, Vec<String>>,
     status_bar: &StatusBarPreferences,
     fonts: &FontPreferences,
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<AppPreferences> {
     let mut preferences =
         load_or_create_app_preferences_with_dirs_and_locales(dirs, sys_locale::get_locales())?;
@@ -1513,13 +1511,13 @@ impl PreferencesWindow {
         .unwrap_or(false);
     }
 
-    /// Looks up the draft theme's display name, falling back to `Velotype`.
+    /// Looks up the draft theme's display name, falling back to `Velin`.
     fn selected_theme_name(&self) -> String {
         self.theme_options
             .iter()
             .find(|entry| entry.id == self.selected_theme_id)
             .map(|entry| entry.name.clone())
-            .unwrap_or_else(|| "Velotype".into())
+            .unwrap_or_else(|| "Velin".into())
     }
 
     /// Compares draft values with saved baselines, normalizing shortcut overrides.
@@ -3215,7 +3213,7 @@ impl Render for PreferencesWindow {
         let t = &theme.typography;
         let can_save = self.has_unsaved_changes();
         let window_title =
-            SharedString::from(format!("Velotype - {}", strings.preferences_window_title));
+            SharedString::from(format!("Velin - {}", strings.preferences_window_title));
         window.set_window_title(window_title.as_ref());
         let titlebar_height = custom_titlebar_height(window, d);
 
@@ -3509,10 +3507,10 @@ fn open_preferences_window_with_state(
     title: String,
 ) -> WindowHandle<PreferencesWindow> {
     let bounds = Bounds::centered(None, size(px(720.0), px(480.0)), cx);
-    let window_title = SharedString::from(format!("Velotype - {title}"));
+    let window_title = SharedString::from(format!("Velin - {title}"));
     let handle = cx
         .open_window(
-            velotype_window_options(window_title, bounds),
+            velin_window_options(window_title, bounds),
             move |_window, cx| {
                 cx.new(move |cx| PreferencesWindow::new(preferences, theme_options, cx))
             },
@@ -3581,7 +3579,7 @@ mod tests {
         AppearanceThemes, DEFAULT_LANGUAGE_ID, app_preferences_from_toml_value,
         system_appearance_is_dark,
     };
-    use crate::config::VelotypeConfigDirs;
+    use crate::config::VelinConfigDirs;
     use crate::export::{PdfExportOptions, PdfOrientation, PdfPaperSize};
     use crate::fonts::FontPreferences;
     use crate::i18n::I18nManager;
@@ -3593,7 +3591,7 @@ mod tests {
     fn init_preferences_test_app(cx: &mut TestAppContext) {
         cx.update(|cx| {
             I18nManager::init_with_language_id(cx, "en-US");
-            ThemeManager::init_with_theme_id(cx, "velotype");
+            ThemeManager::init_with_theme_id(cx, "velin");
             crate::components::init(cx);
             EditorSettings::init(cx, true);
         });
@@ -3601,8 +3599,8 @@ mod tests {
 
     fn default_theme_options() -> Vec<ThemeCatalogEntry> {
         vec![ThemeCatalogEntry {
-            id: "velotype".into(),
-            name: "Velotype".into(),
+            id: "velin".into(),
+            name: "Velin".into(),
         }]
     }
 
@@ -3628,10 +3626,10 @@ mod tests {
     #[test]
     fn missing_preferences_file_returns_defaults() {
         let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-missing-{}",
+            "velin-preferences-missing-{}",
             uuid::Uuid::new_v4()
         ));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         let preferences =
             read_app_preferences_with_dirs(&dirs).expect("missing preferences should load");
         assert_eq!(preferences, AppPreferences::default());
@@ -3658,11 +3656,11 @@ mod tests {
     #[test]
     fn partial_or_invalid_preferences_fall_back_by_field() {
         let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-partial-{}",
+            "velin-preferences-partial-{}",
             uuid::Uuid::new_v4()
         ));
         std::fs::create_dir_all(&root).expect("temp root should exist");
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::write(
             dirs.app_config_file(),
             r#"
@@ -3670,7 +3668,7 @@ mod tests {
                 open = "not-valid"
 
                 [theme]
-                default_theme_id = "velotype-light"
+                default_theme_id = "velin-light"
             "#,
         )
         .expect("preferences should be written");
@@ -3679,7 +3677,7 @@ mod tests {
             read_app_preferences_with_dirs(&dirs).expect("partial preferences should load");
         assert_eq!(preferences.startup_open, StartupOpenPreference::NewFile);
         assert_eq!(preferences.default_language_id, "en-US");
-        assert_eq!(preferences.default_theme_id, "velotype-light");
+        assert_eq!(preferences.default_theme_id, "velin-light");
         assert_eq!(preferences.image_paste_behavior, ImagePasteBehavior::None);
         let _ = std::fs::remove_dir_all(root);
     }
@@ -3687,11 +3685,11 @@ mod tests {
     #[test]
     fn invalid_font_stacks_fall_back_independently() {
         let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-invalid-font-{}",
+            "velin-preferences-invalid-font-{}",
             uuid::Uuid::new_v4()
         ));
         std::fs::create_dir_all(&root).expect("temp root should exist");
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::write(
             dirs.app_config_file(),
             r#"
@@ -3716,11 +3714,11 @@ mod tests {
     #[test]
     fn invalid_image_paste_behavior_falls_back_to_none() {
         let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-image-invalid-{}",
+            "velin-preferences-image-invalid-{}",
             uuid::Uuid::new_v4()
         ));
         std::fs::create_dir_all(&root).expect("temp root should exist");
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::write(
             dirs.app_config_file(),
             r#"
@@ -3737,11 +3735,9 @@ mod tests {
 
     #[test]
     fn picgo_settings_round_trip_and_never_use_picgo_as_fallback() {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-picgo-{}",
-            uuid::Uuid::new_v4()
-        ));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root =
+            std::env::temp_dir().join(format!("velin-preferences-picgo-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let preferences = AppPreferences {
             image_paste_behavior: ImagePasteBehavior::UsePicGo,
             image_paste_fallback: ImagePasteBehavior::CopyToAssetsFolder,
@@ -3767,11 +3763,11 @@ mod tests {
     #[test]
     fn damaged_preferences_file_returns_defaults() {
         let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-damaged-{}",
+            "velin-preferences-damaged-{}",
             uuid::Uuid::new_v4()
         ));
         std::fs::create_dir_all(&root).expect("temp root should exist");
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::write(dirs.app_config_file(), "not = [valid")
             .expect("preferences should be written");
 
@@ -3812,15 +3808,13 @@ mod tests {
 
     #[test]
     fn saves_and_reads_preferences() {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-save-{}",
-            uuid::Uuid::new_v4()
-        ));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root =
+            std::env::temp_dir().join(format!("velin-preferences-save-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let preferences = AppPreferences {
             startup_open: StartupOpenPreference::LastOpenedFile,
             default_language_id: "zh-CN".into(),
-            default_theme_id: "velotype-light".into(),
+            default_theme_id: "velin-light".into(),
             appearance_themes: AppearanceThemes {
                 follow_system: true,
                 light_theme_id: "github".into(),
@@ -3869,7 +3863,7 @@ mod tests {
             std::fs::read_to_string(dirs.app_config_file()).expect("config.toml should exist");
         assert!(text.contains("open = \"last_opened_file\""));
         assert!(text.contains("default_language_id = \"zh-CN\""));
-        assert!(text.contains("default_theme_id = \"velotype-light\""));
+        assert!(text.contains("default_theme_id = \"velin-light\""));
         assert!(text.contains("follow_system_appearance = true"));
         assert!(text.contains("light_theme_id = \"github\""));
         assert!(text.contains("dark_theme_id = \"night\""));
@@ -3898,11 +3892,9 @@ mod tests {
 
     #[test]
     fn missing_preferences_file_is_created_with_detected_language() {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-create-{}",
-            uuid::Uuid::new_v4()
-        ));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root =
+            std::env::temp_dir().join(format!("velin-preferences-create-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let preferences = load_or_create_app_preferences_with_dirs_and_locales(&dirs, ["zh-HK"])
             .expect("preferences should be created");
         assert_eq!(preferences.default_language_id, "zh-CN");
@@ -3916,12 +3908,10 @@ mod tests {
 
     #[test]
     fn legacy_preferences_are_normalized_with_language() {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-legacy-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("velin-preferences-legacy-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("temp root should exist");
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::write(
             dirs.app_config_file(),
             r#"
@@ -3929,7 +3919,7 @@ mod tests {
                 open = "last_opened_file"
 
                 [theme]
-                default_theme_id = "velotype-light"
+                default_theme_id = "velin-light"
             "#,
         )
         .expect("legacy preferences should be written");
@@ -3941,7 +3931,7 @@ mod tests {
             StartupOpenPreference::LastOpenedFile
         );
         assert_eq!(preferences.default_language_id, "en-US");
-        assert_eq!(preferences.default_theme_id, "velotype-light");
+        assert_eq!(preferences.default_theme_id, "velin-light");
         let text =
             std::fs::read_to_string(dirs.app_config_file()).expect("config.toml should exist");
         assert!(text.contains("[language]"));
@@ -3950,15 +3940,13 @@ mod tests {
 
     #[test]
     fn saving_preferences_window_preserves_language() {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-preferences-window-{}",
-            uuid::Uuid::new_v4()
-        ));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root =
+            std::env::temp_dir().join(format!("velin-preferences-window-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let preferences = AppPreferences {
             startup_open: StartupOpenPreference::NewFile,
             default_language_id: "zh-CN".into(),
-            default_theme_id: "velotype".into(),
+            default_theme_id: "velin".into(),
             appearance_themes: AppearanceThemes::default(),
             show_table_headers: true,
             writing: WritingPreferences::default(),
@@ -3977,7 +3965,7 @@ mod tests {
 
         let saved = save_preferences_from_window_with_dirs(
             StartupOpenPreference::LastOpenedFile,
-            "velotype-light",
+            "velin-light",
             ImagePasteBehavior::CopyToNamedAssetsFolder,
             ImagePasteBehavior::CopyToNamedAssetsFolder,
             DEFAULT_PICGO_SERVER_URL,
@@ -3990,7 +3978,7 @@ mod tests {
         .expect("window preferences should save");
         assert_eq!(saved.default_language_id, "zh-CN");
         assert_eq!(saved.startup_open, StartupOpenPreference::LastOpenedFile);
-        assert_eq!(saved.default_theme_id, "velotype-light");
+        assert_eq!(saved.default_theme_id, "velin-light");
         assert_eq!(
             saved.image_paste_behavior,
             ImagePasteBehavior::CopyToNamedAssetsFolder

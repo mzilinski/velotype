@@ -1,13 +1,13 @@
-# Velotype – Quick Start
+# Velin – Quick Start
 
-Velotype is a Markdown editor that shows your formatting while you type. You write Markdown and see finished headings, lists, tables and formulas.
+Velin is a Markdown editor that shows your formatting while you type. You write Markdown and see finished headings, lists, tables and formulas.
 
 > This document is read-only. **View → Read-Only Mode** unlocks it for trying things out; changes are not saved.
 
 ## Writing
 
 - Just type Markdown: `# ` at the start of a line becomes a heading, `- ` a list, `> ` a quote, `**bold**` turns bold.
-- When the cursor is inside a formatted span, Velotype shows its Markdown characters there so you can edit them.
+- When the cursor is inside a formatted span, Velin shows its Markdown characters there so you can edit them.
 - **Ctrl+B**, **Ctrl+I**, **Ctrl+U** make the selection bold, italic or underlined; **Ctrl+K** turns it into a link (a URL on the clipboard is used).
 - **Ctrl+1** to **Ctrl+6** turn the paragraph into a heading, **Ctrl+0** back into a paragraph.
 - The **Paragraph** and **Format** menus (and a **right click**) contain every command with its shortcut.
@@ -28,9 +28,9 @@ Velotype is a Markdown editor that shows your formatting while you type. You wri
 
 ## Saving and safety
 
-- **Ctrl+S** saves. Velotype writes unchanged parts back exactly as they were in the file.
+- **Ctrl+S** saves. Velin writes unchanged parts back exactly as they were in the file.
 - **File → Auto Save** saves documents shortly after every change.
-- Before a file is overwritten, Velotype keeps a **backup** (**File → Show Backups**).
+- Before a file is overwritten, Velin keeps a **backup** (**File → Show Backups**).
 - Untitled documents are kept as drafts when you quit and reopen on the next start.
 
 ## Images
@@ -46,8 +46,8 @@ Velotype is a Markdown editor that shows your formatting while you type. You wri
 
 ## Appearance
 
-- The **Theme** menu switches the color scheme; Velotype can follow the system's light or dark appearance.
-- Put Typora themes (`.css`) and your own Velotype themes into the folder that **Theme → Open Theme Folder** shows.
+- The **Theme** menu switches the color scheme; Velin can follow the system's light or dark appearance.
+- Put Typora themes (`.css`) and your own Velin themes into the folder that **Theme → Open Theme Folder** shows.
 - Fonts, status bar, shortcuts and more are in **File → Preferences**.
 
 ## More

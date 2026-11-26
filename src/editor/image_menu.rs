@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn copies_get_a_free_name_in_the_target_folder() {
-        let dir = std::env::temp_dir().join(format!("velotype-imgmenu-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-imgmenu-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("target")).unwrap();
         let file = dir.join("pic.png");
         std::fs::write(&file, b"png").unwrap();

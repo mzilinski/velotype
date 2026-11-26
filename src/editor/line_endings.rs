@@ -191,7 +191,7 @@ mod tests {
             crate::theme::ThemeManager::init(cx);
             crate::components::init(cx);
         });
-        let root = std::env::temp_dir().join(format!("velotype-eol-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-eol-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("doc.md");
         let source = "# Title\r\n\r\nBody text\r\n";

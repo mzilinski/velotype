@@ -29,7 +29,7 @@ fn temp_markdown_path(test_name: &str) -> PathBuf {
         .expect("system clock before unix epoch")
         .as_nanos();
     std::env::temp_dir().join(format!(
-        "velotype-{test_name}-{}-{nanos}.md",
+        "velin-{test_name}-{}-{nanos}.md",
         std::process::id()
     ))
 }
@@ -424,7 +424,7 @@ async fn hosted_editor_routes_close_window_to_its_tab_host(cx: &mut TestAppConte
 
 fn install_temp_drafts(cx: &mut TestAppContext) -> SessionDrafts {
     let store = SessionDrafts::new(
-        std::env::temp_dir().join(format!("velotype-tab-drafts-{}", uuid::Uuid::new_v4())),
+        std::env::temp_dir().join(format!("velin-tab-drafts-{}", uuid::Uuid::new_v4())),
     );
     let global = store.clone();
     cx.update(move |cx| cx.set_global(global));
@@ -634,7 +634,7 @@ async fn opened_folder_is_shared_by_all_tabs_and_new_ones(cx: &mut TestAppContex
 #[gpui::test]
 async fn opening_a_directory_makes_it_the_workspace_folder(cx: &mut TestAppContext) {
     init_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-open-dir-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-open-dir-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&root).unwrap();
     fs::write(root.join("note.md"), "note").unwrap();
     let handle = open_tab_window(cx, "keep me");
@@ -702,7 +702,7 @@ async fn opening_a_directory_makes_it_the_workspace_folder(cx: &mut TestAppConte
 #[gpui::test]
 async fn file_tree_is_read_once_in_the_background_and_shared_by_tabs(cx: &mut TestAppContext) {
     init_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-tab-tree-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-tab-tree-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(root.join("nested")).unwrap();
     fs::write(root.join("a.md"), "a").unwrap();
     fs::write(root.join("nested").join("b.md"), "b").unwrap();
@@ -757,7 +757,7 @@ async fn replace_in_files_reloads_clean_tabs_and_skips_dirty_ones(cx: &mut TestA
     use crate::editor::workspace_search::{SearchOptions, build_matcher};
 
     init_test_app(cx);
-    let root = std::env::temp_dir().join(format!("velotype-tab-replace-{}", uuid::Uuid::new_v4()));
+    let root = std::env::temp_dir().join(format!("velin-tab-replace-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&root).unwrap();
     let clean = root.join("clean.md");
     let dirty = root.join("dirty.md");

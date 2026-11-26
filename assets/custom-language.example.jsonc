@@ -1,8 +1,8 @@
-// Velotype custom language pack example.
+// Velin custom language pack example.
 //
 // Save a copy as .json or .jsonc, fill only the fields you want to customize,
 // then import it from Language -> Add Language Config. Empty strings and null
-// values are ignored when Velotype normalizes the file. Missing UI strings fall
+// values are ignored when Velin normalizes the file. Missing UI strings fall
 // back to the built-in English language pack.
 {
   // Required. Use a BCP 47-style id that does not replace built-in zh-CN/en-US.

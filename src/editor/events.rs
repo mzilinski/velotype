@@ -2608,7 +2608,7 @@ mod tests {
 
     #[gpui::test]
     async fn wiki_link_event_queues_sibling_markdown_file(cx: &mut TestAppContext) {
-        let root = std::env::temp_dir().join(format!("velotype-wiki-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-wiki-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("create temp dir");
         let current = root.join("current.md");
         let other = root.join("Other Note.md");
@@ -2660,7 +2660,7 @@ mod tests {
 
     #[gpui::test]
     async fn wiki_link_resolves_by_name_in_the_workspace_folder(cx: &mut TestAppContext) {
-        let root = std::env::temp_dir().join(format!("velotype-wiki-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-wiki-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(root.join("notes")).expect("create notes dir");
         std::fs::create_dir_all(root.join("people")).expect("create people dir");
         let current = root.join("notes").join("current.md");

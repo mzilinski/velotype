@@ -1,13 +1,13 @@
-# Velotype – Schnellstart
+# Velin – Schnellstart
 
-Velotype ist ein Markdown-Editor, der deine Formatierung beim Schreiben direkt anzeigt. Du schreibst Markdown, siehst aber fertige Überschriften, Listen, Tabellen und Formeln.
+Velin ist ein Markdown-Editor, der deine Formatierung beim Schreiben direkt anzeigt. Du schreibst Markdown, siehst aber fertige Überschriften, Listen, Tabellen und Formeln.
 
 > Dieses Dokument ist schreibgeschützt. Über **Ansicht → Schreibschutz** kannst du es zum Ausprobieren freigeben, Änderungen werden aber nicht gespeichert.
 
 ## Schreiben
 
 - Tippe einfach Markdown: `# ` am Zeilenanfang wird eine Überschrift, `- ` eine Liste, `> ` ein Zitat, `**fett**` wird fett.
-- Steht der Cursor in einem formatierten Abschnitt, zeigt Velotype dort die Markdown-Zeichen, damit du sie bearbeiten kannst.
+- Steht der Cursor in einem formatierten Abschnitt, zeigt Velin dort die Markdown-Zeichen, damit du sie bearbeiten kannst.
 - **Strg+B**, **Strg+I**, **Strg+U** formatieren die Auswahl fett, kursiv oder unterstrichen; **Strg+K** macht einen Link daraus (eine Adresse in der Zwischenablage wird übernommen).
 - **Strg+1** bis **Strg+6** machen den Absatz zur Überschrift, **Strg+0** wieder zum normalen Absatz.
 - Die Menüs **Absatz** und **Format** (und ein **Rechtsklick**) enthalten alle Befehle mit ihren Tastenkürzeln.
@@ -28,9 +28,9 @@ Velotype ist ein Markdown-Editor, der deine Formatierung beim Schreiben direkt a
 
 ## Speichern und Sicherheit
 
-- **Strg+S** speichert. Velotype schreibt unveränderte Teile genau so zurück, wie sie in der Datei standen.
+- **Strg+S** speichert. Velin schreibt unveränderte Teile genau so zurück, wie sie in der Datei standen.
 - **Datei → Automatisch speichern** speichert Dokumente kurz nach jeder Änderung.
-- Bevor eine Datei überschrieben wird, legt Velotype eine **Sicherungskopie** an (**Datei → Sicherungskopien anzeigen**).
+- Bevor eine Datei überschrieben wird, legt Velin eine **Sicherungskopie** an (**Datei → Sicherungskopien anzeigen**).
 - Unbenannte Dokumente werden beim Beenden als Entwurf aufgehoben und beim nächsten Start wieder geöffnet.
 
 ## Bilder
@@ -46,8 +46,8 @@ Velotype ist ein Markdown-Editor, der deine Formatierung beim Schreiben direkt a
 
 ## Aussehen
 
-- Das Menü **Theme** wechselt das Farbschema; Velotype kann der hellen oder dunklen Systemdarstellung folgen.
-- Typora-Themes (`.css`) und eigene Velotype-Themes legst du in den Ordner, den **Theme → Theme-Ordner öffnen** zeigt.
+- Das Menü **Theme** wechselt das Farbschema; Velin kann der hellen oder dunklen Systemdarstellung folgen.
+- Typora-Themes (`.css`) und eigene Velin-Themes legst du in den Ordner, den **Theme → Theme-Ordner öffnen** zeigt.
 - Schriften, Statusleiste, Tastenkürzel und mehr stellst du unter **Datei → Einstellungen** ein.
 
 ## Mehr

@@ -16,7 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Context as _;
 use gpui::{App, Global};
 
-use super::VelotypeConfigDirs;
+use super::VelinConfigDirs;
 
 const DRAFT_EXTENSION: &str = "md";
 
@@ -31,7 +31,7 @@ impl Global for SessionDrafts {}
 impl SessionDrafts {
     /// Installs the store rooted in the platform config directory.
     pub(crate) fn init(cx: &mut App) {
-        match VelotypeConfigDirs::from_system() {
+        match VelinConfigDirs::from_system() {
             Ok(dirs) => cx.set_global(Self::new(dirs.drafts_dir())),
             Err(err) => eprintln!("session drafts disabled: {err}"),
         }
@@ -134,7 +134,7 @@ mod tests {
 
     fn temp_store() -> SessionDrafts {
         SessionDrafts::new(
-            std::env::temp_dir().join(format!("velotype-drafts-{}", uuid::Uuid::new_v4())),
+            std::env::temp_dir().join(format!("velin-drafts-{}", uuid::Uuid::new_v4())),
         )
     }
 

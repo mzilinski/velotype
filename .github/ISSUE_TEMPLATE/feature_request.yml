@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a new feature or improvement for velotype
+description: Suggest a new feature or improvement for velin
 title: "[Feature]: "
 labels:
   - enhancement
@@ -9,7 +9,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature for velotype.
+        Thanks for suggesting a feature for velin.
 
         Before submitting, please search existing issues, keep the request focused,
         and describe the real workflow or use case behind it.
@@ -41,7 +41,7 @@ body:
     id: solution
     attributes:
       label: Proposed solution
-      description: Describe how you would like Velotype to behave.
+      description: Describe how you would like Velin to behave.
       placeholder: |
         Example:
         Add a floating outline panel that...

@@ -438,7 +438,7 @@ mod editor_tests {
     }
 
     fn temp_file(content: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("velotype-fidelity-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-fidelity-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("script.md");
         std::fs::write(&path, content).unwrap();
@@ -515,7 +515,7 @@ mod normalization_tests {
 
     use crate::editor::Editor;
 
-    /// What Velotype writes for regions it has to regenerate.
+    /// What Velin writes for regions it has to regenerate.
     #[gpui::test]
     async fn regenerated_markdown_stays_close_to_the_source(cx: &mut TestAppContext) {
         cx.update(|cx| {

@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in velotype
+description: Report a bug in velin
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
 body:
@@ -24,7 +24,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: velotype version
+      label: velin version
       description: Exact version number or commit hash.
       placeholder: e.g. 0.3.2
     validations:
@@ -56,7 +56,7 @@ body:
     id: area
     attributes:
       label: Affected area
-      description: Which part of velotype is affected?
+      description: Which part of velin is affected?
       options:
         - Rendering / layout
         - Editing / IME / shortcuts
@@ -93,7 +93,7 @@ body:
       label: Steps to reproduce
       description: Please provide the shortest possible steps.
       placeholder: |
-        1. Open velotype
+        1. Open velin
         2. Load a markdown file
         3. Click ...
         4. Observe ...

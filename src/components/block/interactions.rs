@@ -2036,10 +2036,8 @@ mod tests {
     use std::fs;
 
     fn temp_image_path(name: &str) -> std::path::PathBuf {
-        let root = std::env::temp_dir().join(format!(
-            "velotype-paste-image-path-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("velin-paste-image-path-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).expect("temp image dir should exist");
         let path = root.join(name);
         fs::write(

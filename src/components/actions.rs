@@ -12,7 +12,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 actions!(
-    velotype,
+    velin,
     [
         Newline,
         DeleteBack,
@@ -185,7 +185,7 @@ actions!(
 
 /// Inserts a GitHub-style alert block (`> [!NOTE]` and friends).
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct InsertCallout {
     /// Alert type: note, tip, important, warning or caution.
@@ -194,7 +194,7 @@ pub struct InsertCallout {
 
 /// Zooms the image at the caret (Format > Image > Zoom).
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct SetImageZoom {
     /// Zoom in percent; 100 restores the plain Markdown image.
@@ -203,7 +203,7 @@ pub struct SetImageZoom {
 
 /// Exports the document with Pandoc (File > Export > Word, LaTeX, ...).
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct ExportWithPandoc {
     /// Pandoc writer name such as `docx` or `latex`.
@@ -212,7 +212,7 @@ pub struct ExportWithPandoc {
 
 /// Selects a theme from the app-level theme registry.
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct SelectTheme {
     /// Stable theme id from the built-in theme catalog.
@@ -221,7 +221,7 @@ pub struct SelectTheme {
 
 /// Selects a UI language from the app-level language registry.
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct SelectLanguage {
     /// Stable language id from the built-in language catalog.
@@ -230,7 +230,7 @@ pub struct SelectLanguage {
 
 /// Selects the spell-check dictionary language.
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct SelectSpellcheckLanguage {
     /// BCP-47 language tag such as `de-DE`.
@@ -239,10 +239,10 @@ pub struct SelectSpellcheckLanguage {
 
 /// Opens a previously recorded Markdown file path.
 #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
-#[action(namespace = velotype)]
+#[action(namespace = velin)]
 #[serde(deny_unknown_fields)]
 pub struct OpenRecentFile {
-    /// Path stored in Velotype's recent-file history.
+    /// Path stored in Velin's recent-file history.
     pub path: String,
 }
 

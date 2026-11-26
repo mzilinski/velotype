@@ -660,7 +660,7 @@ mod tests {
     #[gpui::test]
     async fn new_file_rename_and_trash_follow_the_open_document(cx: &mut TestAppContext) {
         init(cx);
-        let root = std::env::temp_dir().join(format!("velotype-tree-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-tree-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).unwrap();
         let note = root.join("note.md");
         fs::write(&note, "hello").unwrap();

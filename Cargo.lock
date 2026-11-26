@@ -7309,7 +7309,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "velotype"
+name = "velin"
 version = "0.7.8"
 dependencies = [
  "adot-tree-sitter-toml",

@@ -8,7 +8,7 @@ use gpui::{
     svg,
 };
 
-use crate::app_identity::VELOTYPE_APP_ID;
+use crate::app_identity::VELIN_APP_ID;
 use crate::theme::{Theme, ThemeDimensions};
 
 /// Minimum custom titlebar height in logical pixels.
@@ -28,7 +28,7 @@ const TITLEBAR_MINIMIZE_ICON: &str = "icon/titlebar/chrome-minimize.svg";
 /// Embedded asset path shown when a maximized or fullscreen window can restore.
 const TITLEBAR_RESTORE_ICON: &str = "icon/titlebar/chrome-restore.svg";
 
-/// Selects whether Velotype or the platform should render window controls.
+/// Selects whether Velin or the platform should render window controls.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TitlebarControlMode {
     /// Leaves macOS window controls to the platform.
@@ -92,13 +92,13 @@ pub(crate) fn window_decorations_for_target_os(target_os: &str) -> Option<Window
 }
 
 /// Builds opaque, windowed options with shared app identity and platform chrome.
-pub(crate) fn velotype_window_options_for_target_os(
+pub(crate) fn velin_window_options_for_target_os(
     target_os: &str,
     title: SharedString,
     bounds: Bounds<Pixels>,
 ) -> WindowOptions {
     WindowOptions {
-        app_id: Some(VELOTYPE_APP_ID.to_string()),
+        app_id: Some(VELIN_APP_ID.to_string()),
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: Some(titlebar_options_for_target_os(target_os, title)),
         window_background: WindowBackgroundAppearance::Opaque,
@@ -108,11 +108,8 @@ pub(crate) fn velotype_window_options_for_target_os(
 }
 
 /// Builds the shared window options for the host operating system.
-pub(crate) fn velotype_window_options(
-    title: SharedString,
-    bounds: Bounds<Pixels>,
-) -> WindowOptions {
-    velotype_window_options_for_target_os(std::env::consts::OS, title, bounds)
+pub(crate) fn velin_window_options(title: SharedString, bounds: Bounds<Pixels>) -> WindowOptions {
+    velin_window_options_for_target_os(std::env::consts::OS, title, bounds)
 }
 
 /// Selects custom titlebar geometry, or `None` when native decorations suffice.
@@ -426,9 +423,9 @@ mod tests {
 
     #[test]
     fn titlebar_options_enable_transparency_on_mac_and_windows() {
-        assert!(titlebar_options_for_target_os("windows", "Velotype".into()).appears_transparent);
-        assert!(titlebar_options_for_target_os("macos", "Velotype".into()).appears_transparent);
-        assert!(!titlebar_options_for_target_os("linux", "Velotype".into()).appears_transparent);
+        assert!(titlebar_options_for_target_os("windows", "Velin".into()).appears_transparent);
+        assert!(titlebar_options_for_target_os("macos", "Velin".into()).appears_transparent);
+        assert!(!titlebar_options_for_target_os("linux", "Velin".into()).appears_transparent);
     }
 
     #[test]

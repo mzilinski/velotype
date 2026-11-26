@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create a macOS PKG installer for Velotype
+# Create a macOS PKG installer for Velin
 # Usage: ./scripts/create_pkg_dist.sh <version>
 
 set -euo pipefail
@@ -16,10 +16,10 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$PROJECT_ROOT/dist"
 RESOURCES_DIR="$PROJECT_ROOT/resources/macos"
 
-APP_NAME="Velotype"
+APP_NAME="Velin"
 APP_BUNDLE="${APP_NAME}.app"
-BINARY_NAME="velotype"
-BUNDLE_ID="com.manyougz.Velotype"
+BINARY_NAME="velin"
+BUNDLE_ID="eu.zilinski.Velin"
 
 PKG_DIR="$DIST_DIR/pkg"
 PKG_NAME="${APP_NAME}-${VERSION}.pkg"
@@ -83,7 +83,7 @@ pkgbuild --identifier "$BUNDLE_ID" \
 
 echo "==> Creating distribution package..."
 cp "$RESOURCES_DIR/pkg/Distribution.xml" "$PKG_DIR/"
-sed -i '' "s/__VELOTYPE_VERSION__/${VERSION}/g" "$PKG_DIR/Distribution.xml"
+sed -i '' "s/__VELIN_VERSION__/${VERSION}/g" "$PKG_DIR/Distribution.xml"
 
 productbuild --distribution "$PKG_DIR/Distribution.xml" \
     --package-path "$PKG_DIR" \

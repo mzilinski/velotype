@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context as _, anyhow};
 use gpui::{Hsla, Rgba};
 
-use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
+use crate::components::svg_cache::{mark_svg_cache_hit, velin_cache_root};
 use crate::theme::Theme;
 
 /// Maximum semantic line count that retains the renderer's original size.
@@ -655,7 +655,7 @@ fn svg_root_attrs(root_tag: &str) -> Vec<SvgRootAttr> {
 
 /// Creates the per-user Mermaid cache, falling back to the temp directory.
 fn mermaid_cache_dir() -> anyhow::Result<PathBuf> {
-    let dir = velotype_cache_root().join("mermaid-svg");
+    let dir = velin_cache_root().join("mermaid-svg");
     fs::create_dir_all(&dir)
         .with_context(|| format!("failed to create Mermaid SVG cache '{}'", dir.display()))?;
     Ok(dir)

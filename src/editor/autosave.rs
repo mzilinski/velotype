@@ -97,7 +97,7 @@ fn backups_root() -> Option<PathBuf> {
     if cfg!(test) {
         return None;
     }
-    crate::config::VelotypeConfigDirs::from_system()
+    crate::config::VelinConfigDirs::from_system()
         .ok()
         .map(|dirs| dirs.backups_dir())
 }
@@ -190,7 +190,7 @@ mod tests {
     use super::*;
 
     fn temp_dir() -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("velotype-backup-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-backup-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
@@ -276,7 +276,7 @@ mod editor_tests {
                 },
             );
         });
-        let dir = std::env::temp_dir().join(format!("velotype-autosave-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-autosave-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("doc.md");
         std::fs::write(&path, "Hello").unwrap();

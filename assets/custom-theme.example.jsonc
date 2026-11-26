@@ -1,8 +1,8 @@
-// Velotype custom theme pack example.
+// Velin custom theme pack example.
 //
 // Save a copy as .json or .jsonc, fill only the fields you want to customize,
 // then import it from Theme -> Add Theme Config. Empty strings and null values
-// are ignored when Velotype normalizes the file. Missing theme fields inherit
+// are ignored when Velin normalizes the file. Missing theme fields inherit
 // the selected base theme. If base_theme_id is omitted, import uses the current
 // built-in theme as the base and writes that choice into the normalized file.
 // Color values use the same serialized format produced by Theme::to_json().
@@ -12,7 +12,7 @@
   // Required. The Theme menu displays custom themes as "<name> - <creator>".
   "creator": "",
   // Optional. Choose the built-in theme used for missing fields.
-  // Supported values: "velotype", "velotype-light", "github", "newsprint",
+  // Supported values: "velin", "velin-light", "github", "newsprint",
   // "night", "whitey".
   "base_theme_id": "",
   // Optional short description for theme galleries, release notes, or sharing.
@@ -487,7 +487,7 @@
     },
     // Placeholder strings customize empty editing surfaces.
     "placeholders": {
-      // Text shown in an empty focused block. Empty string inherits Velotype.
+      // Text shown in an empty focused block. Empty string inherits Velin.
       "empty_editing": ""
     }
   }

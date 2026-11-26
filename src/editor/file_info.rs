@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn moves_files_and_keeps_content() {
-        let dir = std::env::temp_dir().join(format!("velotype-move-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-move-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         let from = dir.join("a.md");
         std::fs::write(&from, "content").unwrap();
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn properties_list_counts_and_file_data() {
         let strings = crate::i18n::I18nManager::default().strings().clone();
-        let dir = std::env::temp_dir().join(format!("velotype-props-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-props-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("doc.md");
         std::fs::write(&path, "# Title\n\nTwo words").unwrap();
@@ -289,8 +289,7 @@ mod moved_link_tests {
 
     #[test]
     fn image_links_follow_a_moved_document() {
-        let root =
-            std::env::temp_dir().join(format!("velotype-movelinks-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-movelinks-{}", uuid::Uuid::new_v4()));
         let old_dir = root.join("notes");
         let new_dir = root.join("archive").join("2026");
         std::fs::create_dir_all(old_dir.join("img")).unwrap();

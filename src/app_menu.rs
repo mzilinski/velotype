@@ -31,7 +31,7 @@ use crate::editor::{Editor, EditorWindow, InfoDialogKind};
 use crate::export::ExportFormat;
 use crate::i18n::I18nManager;
 use crate::theme::ThemeManager;
-use crate::window_chrome::velotype_window_options;
+use crate::window_chrome::velin_window_options;
 
 /// Global app-menu state for platform menu lifecycle hooks.
 #[derive(Default)]
@@ -51,14 +51,14 @@ fn window_title(file_path: Option<&Path>) -> SharedString {
         // Display impl writes the borrowed bytes straight into the output
         // String, no intermediate allocation.
         format!(
-            "Velotype - {}",
+            "Velin - {}",
             path.file_name()
                 .map(|name| name.to_string_lossy())
                 .unwrap_or_else(|| path.to_string_lossy())
         )
         .into()
     } else {
-        SharedString::new("Velotype")
+        SharedString::new("Velin")
     }
 }
 
@@ -86,7 +86,7 @@ pub(crate) fn open_editor_window(
                 .is_none_or(|path| path.starts_with(folder))
         });
     let handle = cx
-        .open_window(velotype_window_options(title, bounds), move |window, cx| {
+        .open_window(velin_window_options(title, bounds), move |window, cx| {
             let editor = cx.new(move |cx| Editor::from_markdown(cx, markdown, file_path));
             cx.new(|cx| EditorWindow::new(editor, window, cx))
         })
@@ -301,12 +301,12 @@ fn record_recent_file_and_refresh(path: &Path, cx: &mut App) {
 }
 
 #[cfg(target_os = "macos")]
-/// Check whether `/usr/local/bin/velotype` is correctly installed for this app.
+/// Check whether `/usr/local/bin/velin` is correctly installed for this app.
 ///
 /// Compares the canonicalized link target (or raw target if that fails) with
 /// the running executable path; relative targets resolve from the link's parent.
 fn is_cli_symlink_current_app() -> bool {
-    let link = std::path::Path::new("/usr/local/bin/velotype");
+    let link = std::path::Path::new("/usr/local/bin/velin");
     let Ok(target) = std::fs::read_link(link) else {
         return false; // does not exist or not a symlink
     };
@@ -350,7 +350,7 @@ fn applescript_string_literal(value: &str) -> String {
 pub(crate) fn install_cli_tool(cx: &mut App) {
     use std::process::Command;
 
-    let bin_link = "/usr/local/bin/velotype";
+    let bin_link = "/usr/local/bin/velin";
     let strings = cx.global::<I18nManager>().strings();
 
     let current_exe = match std::env::current_exe() {
@@ -388,12 +388,12 @@ do shell script "rm -f " & quoted form of linkPath & linefeed & "ln -s " & quote
             if output.status.success() {
                 let title = "CLI Command Installed";
                 let detail = format!(
-                    "Successfully installed! You can now use 'velotype' from the terminal:\n\n\
-                     \x1b[1mvelotype README.md\x1b[0m\n\
-                     \x1b[1mvelotype file1.md file2.md\x1b[0m\n\n\
+                    "Successfully installed! You can now use 'velin' from the terminal:\n\n\
+                     \x1b[1mvelin README.md\x1b[0m\n\
+                     \x1b[1mvelin file1.md file2.md\x1b[0m\n\n\
                      Location: {bin_link}\n\n\
-                     Note: If you move or delete Velotype.app,\n\
-                     the 'velotype' command will stop working\n\
+                     Note: If you move or delete Velin.app,\n\
+                     the 'velin' command will stop working\n\
                      automatically (no cleanup needed)."
                 );
                 if let Some(window) = cx.active_window() {
@@ -433,7 +433,7 @@ do shell script "rm -f " & quoted form of linkPath & linefeed & "ln -s " & quote
 pub(crate) fn uninstall_cli_tool(cx: &mut App) {
     use std::process::Command;
 
-    let bin_link = "/usr/local/bin/velotype";
+    let bin_link = "/usr/local/bin/velin";
     let strings = cx.global::<I18nManager>().strings();
 
     if !is_cli_symlink_current_app() {
@@ -856,9 +856,9 @@ pub(crate) fn dispatch_menu_action(action: &dyn Action, cx: &mut App) {
     {
         crate::help::open_help(crate::help::HelpDocument::KeyboardShortcuts, cx);
     } else if action.as_any().is::<crate::components::OpenThemeFolder>() {
-        // Typora CSS themes and Velotype JSON themes placed here are listed in
+        // Typora CSS themes and Velin JSON themes placed here are listed in
         // the Theme menu after a restart (or right away when imported).
-        match crate::config::VelotypeConfigDirs::from_system() {
+        match crate::config::VelinConfigDirs::from_system() {
             Ok(dirs) => {
                 let dir = dirs.themes_dir();
                 let _ = std::fs::create_dir_all(&dir);
@@ -1729,7 +1729,7 @@ fn build_menus_with_view(
         // match standard macOS conventions.
         vec![
             Menu {
-                name: "Velotype".into(),
+                name: "Velin".into(),
                 disabled: false,
                 items: vec![
                     MenuItem::action(strings.menu_preferences.clone(), OpenPreferences),
@@ -2439,17 +2439,17 @@ mod tests {
     fn applescript_string_literal_escapes_special_characters() {
         assert_eq!(
             applescript_string_literal(
-                r#"/Applications/Velotype "Test".app/Contents/MacOS/velotype"#
+                r#"/Applications/Velin "Test".app/Contents/MacOS/velin"#
             ),
-            r#""/Applications/Velotype \"Test\".app/Contents/MacOS/velotype""#
+            r#""/Applications/Velin \"Test\".app/Contents/MacOS/velin""#
         );
         assert_eq!(
-            applescript_string_literal(r#"/Applications/O'Brien\Velotype.app"#),
-            r#""/Applications/O'Brien\\Velotype.app""#
+            applescript_string_literal(r#"/Applications/O'Brien\Velin.app"#),
+            r#""/Applications/O'Brien\\Velin.app""#
         );
     }
 
-    // On macOS the menu bar is: [Velotype app menu, File, Edit, Paragraph,
+    // On macOS the menu bar is: [Velin app menu, File, Edit, Paragraph,
     // Format, Export, Theme, View, Language, Help]; other platforms omit the
     // app menu.
     #[cfg(target_os = "macos")]
@@ -2561,7 +2561,7 @@ mod tests {
         assert_eq!(
             menu_names,
             vec![
-                "Velotype",
+                "Velin",
                 "File",
                 "Edit",
                 "Paragraph",
@@ -2656,7 +2656,7 @@ mod tests {
         assert_eq!(
             menu_names,
             vec![
-                "Velotype", "文件", "编辑", "段落", "格式", "导出", "主题", "视图", "语言", "帮助"
+                "Velin", "文件", "编辑", "段落", "格式", "导出", "主题", "视图", "语言", "帮助"
             ]
         );
         #[cfg(not(target_os = "macos"))]
@@ -2815,7 +2815,7 @@ mod tests {
         assert!(super::is_window_context_menu_action(&QuitApplication));
         assert!(super::is_window_context_menu_action(&CloseWindow));
         assert!(!super::is_window_context_menu_action(&SelectTheme {
-            theme_id: "velotype".into(),
+            theme_id: "velin".into(),
         }));
         assert!(!super::is_window_context_menu_action(&SelectLanguage {
             language_id: "en-US".into(),
@@ -2845,8 +2845,8 @@ mod tests {
         }
 
         let theme_items = &menus[THEME_IDX].items;
-        assert_eq!(action_name(&theme_items[0]), "\u{2713} Velotype");
-        assert_eq!(action_name(&theme_items[1]), "Velotype Light");
+        assert_eq!(action_name(&theme_items[0]), "\u{2713} Velin");
+        assert_eq!(action_name(&theme_items[1]), "Velin Light");
         assert!(matches!(
             theme_items[theme_items.len() - 4],
             MenuItem::Separator
@@ -2901,20 +2901,20 @@ mod tests {
     #[test]
     fn theme_menu_marks_selected_builtin_light_theme() {
         let mut theme_manager = ThemeManager::default();
-        assert!(theme_manager.set_theme_by_id("velotype-light"));
+        assert!(theme_manager.set_theme_by_id("velin-light"));
         let i18n_manager = I18nManager::default();
         let menus = build_menus(&theme_manager, &i18n_manager, &[], Default::default(), &[]);
         let theme_items = &menus[THEME_IDX].items;
 
-        assert_eq!(action_name(&theme_items[0]), "Velotype");
-        assert_eq!(action_name(&theme_items[1]), "\u{2713} Velotype Light");
+        assert_eq!(action_name(&theme_items[0]), "Velin");
+        assert_eq!(action_name(&theme_items[1]), "\u{2713} Velin Light");
         match &theme_items[1] {
             MenuItem::Action { action, .. } => {
                 let action = action
                     .as_any()
                     .downcast_ref::<SelectTheme>()
                     .expect("light theme item should dispatch SelectTheme");
-                assert_eq!(action.theme_id, "velotype-light");
+                assert_eq!(action.theme_id, "velin-light");
             }
             _ => panic!("expected light theme action item"),
         }
