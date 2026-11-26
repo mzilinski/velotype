@@ -632,6 +632,56 @@ async fn opened_folder_is_shared_by_all_tabs_and_new_ones(cx: &mut TestAppContex
 }
 
 #[gpui::test]
+async fn opening_a_directory_makes_it_the_workspace_folder(cx: &mut TestAppContext) {
+    init_test_app(cx);
+    let root = std::env::temp_dir().join(format!("velotype-open-dir-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("note.md"), "note").unwrap();
+    let handle = open_tab_window(cx, "keep me");
+
+    // Finder and `open` hand folders to the same entry point as files.
+    cx.update(|cx| crate::app_menu::open_file_in_tab(cx, &root))
+        .expect("open directory");
+    cx.run_until_parked();
+
+    assert_eq!(tab_state(&handle, cx), (1, 0), "a folder opens no tab");
+    assert_eq!(cx.update(|cx| cx.windows().len()), 1);
+    let host_folder = with_host(&handle, cx, |host, _window, _cx| {
+        host.workspace_folder().map(PathBuf::from)
+    });
+    assert_eq!(host_folder, Some(root.clone()));
+    let editor = editor_at(&handle, 0, cx);
+    let labels = editor.update(cx, |editor, cx| {
+        assert!(editor.workspace.is_open, "the drawer shows the folder");
+        editor.workspace_tree_labels(cx)
+    });
+    assert_eq!(labels, Some(vec!["note.md".to_string()]));
+    let markdown = editor.update(cx, |editor, cx| editor.serialized_document_text(cx));
+    assert_eq!(
+        markdown.trim_end(),
+        "keep me",
+        "the open document is untouched"
+    );
+
+    // Dropping another folder on the window switches to it without a prompt.
+    let other = root.join("other");
+    fs::create_dir_all(&other).unwrap();
+    let dropped = gpui::ExternalPaths(vec![other.clone()].into());
+    with_tab_editor(&handle, 0, cx, move |editor, window, cx| {
+        editor.on_external_paths_drop(&dropped, window, cx)
+    });
+    cx.run_until_parked();
+    assert_eq!(tab_state(&handle, cx), (1, 0));
+    let host_folder = with_host(&handle, cx, |host, _window, _cx| {
+        host.workspace_folder().map(PathBuf::from)
+    });
+    assert_eq!(host_folder, Some(other));
+    assert!(!cx.has_pending_prompt(), "a dropped folder shows no error");
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[gpui::test]
 async fn file_tree_is_read_once_in_the_background_and_shared_by_tabs(cx: &mut TestAppContext) {
     init_test_app(cx);
     let root = std::env::temp_dir().join(format!("velotype-tab-tree-{}", uuid::Uuid::new_v4()));

@@ -139,6 +139,22 @@ pub(crate) fn open_markdown_in_current_window(
     }
 }
 
+/// Makes `folder` the workspace folder of the current editor window, as
+/// "Open Folder…" does, opening an empty window when there is none. Used for
+/// folders handed to the app from outside (Finder, `open`, command line).
+pub(crate) fn open_folder_in_current_window(cx: &mut App, folder: PathBuf) {
+    let handle = match current_editor_window(cx) {
+        Some(handle) => handle,
+        None => open_editor_window(cx, String::new(), None),
+    };
+    let _ = handle.update(cx, |host, window, cx| {
+        window.activate_window();
+        host.active_editor().clone().update(cx, |editor, cx| {
+            editor.apply_workspace_folder(Some(folder), cx)
+        });
+    });
+}
+
 /// Opens `markdown` as a read-only tab of the current editor window (Help
 /// documents).
 pub(crate) fn open_read_only_document(cx: &mut App, markdown: String, file_path: Option<PathBuf>) {
@@ -192,6 +208,10 @@ pub(crate) fn restore_session_drafts(cx: &mut App) {
 
 /// Reads `path` and opens it in a tab of the current editor window.
 pub(crate) fn open_file_in_tab(cx: &mut App, path: &Path) -> anyhow::Result<()> {
+    if path.is_dir() {
+        open_folder_in_current_window(cx, path.to_path_buf());
+        return Ok(());
+    }
     if crate::text_file::is_import_document(path) {
         import_document_in_tab(cx, path.to_path_buf());
         return Ok(());
