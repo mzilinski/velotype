@@ -223,6 +223,10 @@ pub struct Editor {
     context_menu_submenu_close_task: Option<Task<()>>,
     /// Hover preview is distinct from the committed row/column selection.
     table_axis_preview: Option<TableAxisSelection>,
+    /// How many hovered handles currently show `table_axis_preview`. A column
+    /// has two handles (the strip on the header's top edge and the band that
+    /// strip reveals above the table); the preview stays until both are left.
+    table_axis_preview_hovers: usize,
     /// Committed table row or column selection.
     table_axis_selection: Option<TableAxisSelection>,
     /// Selection spanning visible rendered blocks.
@@ -563,6 +567,7 @@ impl Editor {
             autosave_suspended: false,
             context_menu_submenu_close_task: None,
             table_axis_preview: None,
+            table_axis_preview_hovers: 0,
             table_axis_selection: None,
             cross_block_selection: None,
             cross_block_drag: None,
