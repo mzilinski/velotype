@@ -8,7 +8,7 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 ## Arbeitsweise
 
 - Jedes Feature kommt auf einen eigenen Branch, abgezweigt von `integration`. `integration` führt alle zusammen und ist der Stand zum Testen;
-  `main` wird per Fast-Forward auf `integration` nachgezogen (Stand 2026-11-25: beide auf fedb93f). `dev` gibt es nicht mehr.
+  `main` wird per Fast-Forward auf `integration` nachgezogen (Stand 2026-11-26: beide auf df79d65). `dev` gibt es nicht mehr.
 - Gemergte Branches werden lokal und auf origin gelöscht (Aufräumen am 2026-11-26: übrig sind `main`, `integration`, `handoff` und `fix/selection-char-boundaries` für den Upstream-PR #144).
   Die Branch-Namen in der Tabelle „Erledigt“ sind deshalb nur noch Bezeichnungen, der Code steckt in `integration`.
 - **Push nur nach expliziter Freigabe** durch Malte.
@@ -26,9 +26,9 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 
 ## Aktueller Stand
 
-Alles ist gepusht (2026-11-25). `main` = `integration` = fedb93f, Version 0.7.8. CI auf `integration` und `main` grün
-(Linux, macOS, Windows; Läufe 45577999771 und 45578641349). Mac: App aus fedb93f in `/Applications` installiert,
-vorige Fassung als `~/Developer/Velotype-c11ddda-backup.app`. Seit dem 13.10. dazugekommen (Details in der Tabelle „Erledigt“):
+Alles ist gepusht (2026-11-26). `main` = `integration` = df79d65, Version 0.7.8. CI auf `integration` und `main` grün
+(Linux, macOS, Windows; Lauf 45892138233). Mac: App aus df79d65 in `/Applications` installiert,
+vorige Fassung als `~/Developer/Velotype-6f89506-backup.app` (ältere: `-40abeec-`, `-fedb93f-`, `-c11ddda-backup.app`). Seit dem 13.10. dazugekommen (Details in der Tabelle „Erledigt“):
 - **Obsidian-Funktionen** (2026-10-27): Links-Reiter mit Backlinks, ausgehenden Links, unverlinkten Erwähnungen und Tags; `[[`-Vervollständigung;
   Links beim Umbenennen/Verschieben anpassen; Front Matter als Eigenschaften-Tabelle; Tagesnotiz; Vorlagen; Dataview-Abfragen; Graph.
 - **Upstream gemergt** (2026-10-28, `upstream/main`): Umstieg auf `gpui-pre` 0.3.9, PicGo-Server-Upload, .md-Dateizuordnung, optionaler Updater.
@@ -52,6 +52,24 @@ vorige Fassung als `~/Developer/Velotype-c11ddda-backup.app`. Seit dem 13.10. da
   letzten Blocks nicht erhalten) und `perf/large-document-render` (je Bild wurde das ganze Dokument serialisiert und zugeordnet: 24 + 18 ms bei
   3151 Blöcken, jetzt 1,7 + 1,5 ms). `InlineTextTree` merkt sich sein Markdown; `fragments` nur in `inline.rs` ändern und danach
   `normalize_fragments` aufrufen (Tests prüfen jeden Treffer gegen frisch berechneten Text). Nur in Tests gemessen, in der App noch nicht von Hand geprüft.
+- **2026-11-26 (Mac), gemergt und gepusht (df79d65):**
+  - `feat/open-folder-from-outside`: Ordner über Finder/`open` (`on_open_urls` → `open_file_in_tab`), Kommandozeile und Drag & Drop
+    werden Arbeitsordner (`app_menu::open_folder_in_current_window`, `apply_workspace_folder`). macOS übergibt Ordner mit `/` am Ende;
+    `apply_workspace_folder` normalisiert, sonst bleibt der Wurzelknoten zugeklappt. `Info.plist` deklariert `public.folder` (Alternate).
+  - `fix/table-column-axis-flicker`: Tabelle flackerte unter dem Spaltengriff (Streifen-Leave löschte die Vorschau des Bandes, das er
+    eingeblendet hatte). `table_axis_preview_hovers` zählt die gehoverten Griffe derselben Achse.
+  - `fix/table-column-handle-overlay`: Der Spaltengriff schwebt 8 px über der Tabelle (absolut, `top(-8px)`) statt eine Zeile einzufügen;
+    die Tabelle springt nicht mehr.
+  - `feat/table-axis-drag-range` + `fix/table-axis-plural-labels`: Zeilen/Spalten per Ziehen über die Griffe (oder Shift-Klick)
+    mehrfach markieren. `TableAxisSelection` hat `index..=end` und `anchor`, `TableAxisMarker` hat `end`/`covers()`. Ziehen erweitert nur
+    eine bestehende Auswahl (eine Textmarkierung über einen Griff markiert nichts). Rechtsklick in der Auswahl behält sie; Ausrichten,
+    Verschieben (als Block), Löschen (alles → Tabelle weg, ein Undo-Schritt) wirken auf den Bereich, Einfügen vor/nach dem Bereich.
+    Menütexte im Plural bei mehreren (de/en/zh).
+  - Alles im Fenster selbst geprüft (Fenster-Screenshots, Maus per CGEvent), Bilder in `~/Developer/velotype-screenshots/`.
+- **Sichtkontrolle selbst machen:** nur das Velotype-Fenster fotografieren (`screencapture -l <Fenster-ID>`, ID per Swift
+  `CGWindowListCopyWindowInfo` nach PID), nie den ganzen Bildschirm. Test-Build direkt starten
+  (`dist/Velotype.app/Contents/MacOS/velotype <Dateien>`); liegt das Fenster der installierten App an derselben Stelle, bekommt es die
+  Maus: installierte App per System Events ausblenden und das Testfenster nach vorn holen.
 - Bekannt: Clippy-Fehler `text_offsets.rs:116` (`reversed_empty_ranges` in einem Test) und einige Warnungen sind vorbestehend/upstream.
 
 Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
@@ -183,6 +201,10 @@ Nach Änderungen zurückspielen: `git switch handoff` geht nicht wegen der ausge
 | fix/windows-backlink-test | Backlink-Test vergleicht Pfade statt Strings (Windows-Backslashes) |
 | fix/menu-daily-note-order | „Heutige Notiz“ im Datei-Menü nach „Einstellungen“, damit die Menü-Tests unter Linux/Windows stimmen |
 | fix/toggle-workspace-tabs | Kürzel der Seitenleisten-Reiter, der Paletten (Quick Open, Ordnersuche, Vorlage) und der Emoji-Auswahl schließen beim zweiten Drücken (wie schon der Graph) |
+| feat/open-folder-from-outside (2026-11-26) | Ordner von außen öffnen (Finder/`open`, Kommandozeile, Drag & Drop) als Arbeitsordner; Pfad ohne abschließendes `/` |
+| fix/table-column-axis-flicker (2026-11-26) | Flackern am oberen Tabellenrand: Hover-Zähler für die Achsen-Vorschau |
+| fix/table-column-handle-overlay (2026-11-26) | Spaltengriff schwebt über der Tabelle statt sie zu verschieben |
+| feat/table-axis-drag-range (2026-11-26) | Mehrere Zeilen/Spalten per Ziehen oder Shift-Klick markieren; Menübefehle wirken auf den Bereich, Texte im Plural |
 | merge upstream/main (2026-10-28) | Upstream bis 0.7.8: Umstieg auf `gpui-pre` 0.3.9 (Fork-Code portiert: Fokus braucht `cx`, Menüs mit `disabled`, `AsyncApp::update` liefert Wert, `ScrollHandle::max_offset` ist `Point`), PicGo-Server-Upload, .md-Dateizuordnung in den Einstellungen, optionaler Updater (`src/updater/`, Standard aus). Bild einfügen: upstreams Batch/PicGo nutzt die Fork-Ablage (`images.rs`); „Hochladen“ (Befehl) und „PicGo“ (Server) getrennt, keins ist lokaler Fallback. Beenden/Update fragen jeden Tab nach Speichern. Export läuft auf dem Background-Executor. Updater zeigt auf Fork-Releases. Deutsche Texte für neue Upstream-Strings |
 | fix/selection-word-count-panic | Absturz (SIGABRT) beim Rendern der Statusleiste: `Editor::selected_markdown_text` schnitt `serialize_markdown()` mit Offsets aus `current_range_to_markdown_range`, die bei Raw-/Codeblöcken Anzeige-Offsets sind; der serialisierte Titel escapet aber (`*` → `\*`), so landete der Schnitt mitten in einem Umlaut. Kopieren nutzte denselben Pfad. Neu `Block::markdown_for_current_range`: Raw/Code schneidet den Anzeigetext, sonst serialisiertes Markdown auf Zeichengrenzen gerundet. Regressionstest `source_view_selection_after_escaped_markup_keeps_umlauts_whole` reproduziert die Panic auf dem alten Code |
 | feat/images | Bilder per Drag & Drop (`src/editor/images.rs`), eingefügte Bilder relativ und mit Zeitstempel-Namen, unbenannte Dokumente → Temp-Ordner, `width`/`height` an `<img>`, Kontextmenü Zoom 25–150 % |
