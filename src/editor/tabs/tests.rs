@@ -639,8 +639,10 @@ async fn opening_a_directory_makes_it_the_workspace_folder(cx: &mut TestAppConte
     fs::write(root.join("note.md"), "note").unwrap();
     let handle = open_tab_window(cx, "keep me");
 
-    // Finder and `open` hand folders to the same entry point as files.
-    cx.update(|cx| crate::app_menu::open_file_in_tab(cx, &root))
+    // Finder and `open` hand folders to the same entry point as files, as a
+    // URL with a trailing slash.
+    let handed_over = PathBuf::from(format!("{}/", root.display()));
+    cx.update(|cx| crate::app_menu::open_file_in_tab(cx, &handed_over))
         .expect("open directory");
     cx.run_until_parked();
 
@@ -653,6 +655,22 @@ async fn opening_a_directory_makes_it_the_workspace_folder(cx: &mut TestAppConte
     let editor = editor_at(&handle, 0, cx);
     let labels = editor.update(cx, |editor, cx| {
         assert!(editor.workspace.is_open, "the drawer shows the folder");
+        assert!(
+            editor
+                .workspace
+                .expanded
+                .contains(&crate::editor::workspace::file_node_id(&root)),
+            "the root folder is unfolded"
+        );
+        assert_eq!(
+            editor
+                .workspace
+                .folder
+                .as_deref()
+                .map(|p| p.to_string_lossy().into_owned()),
+            Some(root.to_string_lossy().into_owned()),
+            "stored without the trailing slash"
+        );
         editor.workspace_tree_labels(cx)
     });
     assert_eq!(labels, Some(vec!["note.md".to_string()]));
