@@ -1397,7 +1397,7 @@ async fn setting_column_alignment_updates_record_and_selection(cx: &mut TestAppC
 
     editor.update(cx, |editor, cx| {
         let table = editor.document.first_root().expect("table root").clone();
-        editor.set_table_column_alignment(&table, 1, TableColumnAlignment::Right, cx);
+        editor.set_table_column_alignment(&table, 1..=1, TableColumnAlignment::Right, cx);
 
         let record = table.read(cx).record.table.as_ref().expect("table record");
         assert_eq!(
@@ -1406,11 +1406,11 @@ async fn setting_column_alignment_updates_record_and_selection(cx: &mut TestAppC
         );
         assert_eq!(
             editor.table_axis_selection,
-            Some(super::TableAxisSelection {
-                table_block_id: table.entity_id(),
-                kind: crate::components::TableAxisKind::Column,
-                index: 1,
-            })
+            Some(super::TableAxisSelection::single(
+                table.entity_id(),
+                crate::components::TableAxisKind::Column,
+                1
+            ))
         );
     });
 }
@@ -1423,17 +1423,17 @@ async fn moving_table_row_updates_focus_and_selection(cx: &mut TestAppContext) {
     editor.update(cx, |editor, cx| {
         let table = editor.document.first_root().expect("table root").clone();
         // Visual row 2 is the second body row; move it up above the first.
-        editor.move_table_row(&table, 2, -1, cx);
+        editor.move_table_row(&table, 2..=2, -1, cx);
 
         let record = table.read(cx).record.table.as_ref().expect("table record");
         assert_eq!(record.rows[0][0].serialize_markdown(), "3");
         assert_eq!(
             editor.table_axis_selection,
-            Some(super::TableAxisSelection {
-                table_block_id: table.entity_id(),
-                kind: crate::components::TableAxisKind::Row,
-                index: 1,
-            })
+            Some(super::TableAxisSelection::single(
+                table.entity_id(),
+                crate::components::TableAxisKind::Row,
+                1
+            ))
         );
 
         let runtime = table
@@ -1453,18 +1453,18 @@ async fn moving_first_body_row_up_swaps_with_header(cx: &mut TestAppContext) {
     editor.update(cx, |editor, cx| {
         let table = editor.document.first_root().expect("table root").clone();
         // Visual row 1 (first body row) moves up into the header position.
-        editor.move_table_row(&table, 1, -1, cx);
+        editor.move_table_row(&table, 1..=1, -1, cx);
 
         let record = table.read(cx).record.table.as_ref().expect("table record");
         assert_eq!(record.header[0].serialize_markdown(), "1");
         assert_eq!(record.rows[0][0].serialize_markdown(), "A");
         assert_eq!(
             editor.table_axis_selection,
-            Some(super::TableAxisSelection {
-                table_block_id: table.entity_id(),
-                kind: crate::components::TableAxisKind::Row,
-                index: 0,
-            })
+            Some(super::TableAxisSelection::single(
+                table.entity_id(),
+                crate::components::TableAxisKind::Row,
+                0
+            ))
         );
     });
 }
@@ -1477,18 +1477,18 @@ async fn moving_header_row_down_swaps_with_first_body(cx: &mut TestAppContext) {
     editor.update(cx, |editor, cx| {
         let table = editor.document.first_root().expect("table root").clone();
         // Visual row 0 (header) moves down, swapping with the first body row.
-        editor.move_table_row(&table, 0, 1, cx);
+        editor.move_table_row(&table, 0..=0, 1, cx);
 
         let record = table.read(cx).record.table.as_ref().expect("table record");
         assert_eq!(record.header[0].serialize_markdown(), "1");
         assert_eq!(record.rows[0][0].serialize_markdown(), "A");
         assert_eq!(
             editor.table_axis_selection,
-            Some(super::TableAxisSelection {
-                table_block_id: table.entity_id(),
-                kind: crate::components::TableAxisKind::Row,
-                index: 1,
-            })
+            Some(super::TableAxisSelection::single(
+                table.entity_id(),
+                crate::components::TableAxisKind::Row,
+                1
+            ))
         );
     });
 }
@@ -1564,11 +1564,7 @@ async fn body_row_preview_survives_stale_header_leave(cx: &mut TestAppContext) {
         editor.preview_table_axis(id, TableAxisKind::Row, 0, false, cx);
         assert_eq!(
             editor.table_axis_preview,
-            Some(super::TableAxisSelection {
-                table_block_id: id,
-                kind: TableAxisKind::Row,
-                index: 1,
-            }),
+            Some(super::TableAxisSelection::single(id, TableAxisKind::Row, 1)),
             "body row preview must survive the header's stale leave"
         );
 
@@ -1587,11 +1583,11 @@ async fn column_band_keeps_preview_when_the_top_edge_strip_is_left(cx: &mut Test
     editor.update(cx, |editor, cx| {
         let table = editor.document.first_root().expect("table root").clone();
         let id = table.entity_id();
-        let column = Some(super::TableAxisSelection {
-            table_block_id: id,
-            kind: TableAxisKind::Column,
-            index: 1,
-        });
+        let column = Some(super::TableAxisSelection::single(
+            id,
+            TableAxisKind::Column,
+            1,
+        ));
 
         // The strip on the header's top edge reveals the band above the
         // table, which moves the table down under the pointer: the band is
@@ -1621,6 +1617,216 @@ async fn column_band_keeps_preview_when_the_top_edge_strip_is_left(cx: &mut Test
     });
 }
 
+fn table_cells(table: &gpui::Entity<crate::components::Block>, cx: &gpui::App) -> Vec<Vec<String>> {
+    let record = table.read(cx).record.table.as_ref().expect("table record");
+    std::iter::once(&record.header)
+        .chain(record.rows.iter())
+        .map(|row| row.iter().map(|cell| cell.serialize_markdown()).collect())
+        .collect()
+}
+
+#[gpui::test]
+async fn dragging_over_axis_handles_selects_a_range(cx: &mut TestAppContext) {
+    use crate::components::TableAxisKind::{Column, Row};
+    let markdown = [
+        "| A | B | C | D |",
+        "| --- | --- | --- | --- |",
+        "| 1 | 2 | 3 | 4 |",
+    ]
+    .join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let id = editor
+            .document
+            .first_root()
+            .expect("table root")
+            .entity_id();
+        let range = |first, last, anchor| super::TableAxisSelection {
+            table_block_id: id,
+            kind: Column,
+            index: first,
+            end: last,
+            anchor,
+        };
+
+        // A drag that did not start on a handle selects nothing.
+        editor.extend_table_axis(id, Column, 2, true, cx);
+        assert_eq!(editor.table_axis_selection, None);
+
+        // Press on column B, drag over C and D, then back to A.
+        editor.select_table_axis(id, Column, 1, cx);
+        editor.extend_table_axis(id, Column, 2, true, cx);
+        editor.extend_table_axis(id, Column, 3, true, cx);
+        assert_eq!(editor.table_axis_selection, Some(range(1, 3, 1)));
+        editor.extend_table_axis(id, Column, 0, true, cx);
+        assert_eq!(editor.table_axis_selection, Some(range(0, 1, 1)));
+
+        // Crossing a row handle while dragging columns changes nothing.
+        editor.extend_table_axis(id, Row, 1, true, cx);
+        assert_eq!(editor.table_axis_selection, Some(range(0, 1, 1)));
+
+        // A right-click inside the range keeps it, outside it selects anew.
+        editor.open_table_axis_menu(id, Column, 1, gpui::point(gpui::px(0.0), gpui::px(0.0)), cx);
+        assert_eq!(editor.table_axis_selection, Some(range(0, 1, 1)));
+        editor.context_menu = None;
+        editor.open_table_axis_menu(id, Column, 3, gpui::point(gpui::px(0.0), gpui::px(0.0)), cx);
+        assert_eq!(editor.table_axis_selection, Some(range(3, 3, 3)));
+        editor.context_menu = None;
+
+        // Shift-click grows from the anchor; without a selection it selects.
+        editor.extend_table_axis(id, Column, 1, false, cx);
+        assert_eq!(editor.table_axis_selection, Some(range(1, 3, 3)));
+        editor.clear_table_axis_selection(cx);
+        editor.extend_table_axis(id, Column, 2, false, cx);
+        assert_eq!(editor.table_axis_selection, Some(range(2, 2, 2)));
+    });
+}
+
+#[gpui::test]
+async fn axis_range_highlights_every_cell_in_it(cx: &mut TestAppContext) {
+    use crate::components::TableAxisHighlight;
+    use crate::components::TableAxisKind::Column;
+    let markdown = ["| A | B | C |", "| --- | --- | --- |", "| 1 | 2 | 3 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+        editor.select_table_axis(table.entity_id(), Column, 0, cx);
+        editor.extend_table_axis(table.entity_id(), Column, 1, true, cx);
+        let runtime = table.read(cx).table_runtime.clone().expect("runtime");
+        for row in std::iter::once(&runtime.header).chain(runtime.rows.iter()) {
+            let highlights: Vec<_> = row
+                .iter()
+                .map(|cell| cell.read(cx).table_axis_highlight)
+                .collect();
+            assert_eq!(highlights[0], TableAxisHighlight::Selected);
+            assert_eq!(highlights[1], TableAxisHighlight::Selected);
+            assert_ne!(highlights[2], TableAxisHighlight::Selected);
+        }
+    });
+}
+
+#[gpui::test]
+async fn column_range_commands_apply_to_every_selected_column(cx: &mut TestAppContext) {
+    use crate::components::TableAxisKind::Column;
+    let markdown = [
+        "| A | B | C | D |",
+        "| --- | --- | --- | --- |",
+        "| 1 | 2 | 3 | 4 |",
+    ]
+    .join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+        let id = table.entity_id();
+
+        editor.set_table_column_alignment(&table, 1..=2, TableColumnAlignment::Center, cx);
+        let record = table.read(cx).record.table.clone().expect("table record");
+        assert_eq!(
+            record.alignments,
+            vec![
+                TableColumnAlignment::Default,
+                TableColumnAlignment::Center,
+                TableColumnAlignment::Center,
+                TableColumnAlignment::Default,
+            ]
+        );
+        assert_eq!(
+            editor.table_axis_selection,
+            Some(super::TableAxisSelection::spanning(id, Column, 1, 2))
+        );
+
+        // B and C move right past D, then left past A, as one block.
+        editor.move_table_column(&table, 1..=2, 1, cx);
+        assert_eq!(table_cells(&table, cx)[0], ["A", "D", "B", "C"]);
+        assert_eq!(
+            editor.table_axis_selection,
+            Some(super::TableAxisSelection::spanning(id, Column, 2, 3))
+        );
+        editor.move_table_column(&table, 2..=3, -1, cx);
+        editor.move_table_column(&table, 1..=2, -1, cx);
+        assert_eq!(table_cells(&table, cx)[0], ["B", "C", "A", "D"]);
+        // At the edge nothing moves.
+        editor.move_table_column(&table, 0..=1, -1, cx);
+        assert_eq!(table_cells(&table, cx)[0], ["B", "C", "A", "D"]);
+
+        editor.delete_table_columns(&table, 0..=1, cx);
+        assert_eq!(
+            table_cells(&table, cx),
+            vec![vec!["A", "D"], vec!["1", "4"]]
+        );
+        assert_eq!(
+            editor.table_axis_selection,
+            Some(super::TableAxisSelection::single(id, Column, 0))
+        );
+
+        // Deleting every column removes the table.
+        editor.delete_table_columns(&table, 0..=1, cx);
+        assert!(editor.document.find_block_location(id).is_none());
+    });
+}
+
+#[gpui::test]
+async fn row_range_commands_apply_to_every_selected_row(cx: &mut TestAppContext) {
+    use crate::components::TableAxisKind::Row;
+    let markdown = ["| H |", "| --- |", "| 1 |", "| 2 |", "| 3 |", "| 4 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+        let id = table.entity_id();
+        let column = |table: &gpui::Entity<crate::components::Block>, cx: &gpui::App| {
+            table_cells(table, cx)
+                .into_iter()
+                .map(|row| row[0].clone())
+                .collect::<Vec<_>>()
+        };
+
+        // Rows "2" and "3" (visual 2..=3) move down past "4", then up again.
+        editor.move_table_row(&table, 2..=3, 1, cx);
+        assert_eq!(column(&table, cx), ["H", "1", "4", "2", "3"]);
+        assert_eq!(
+            editor.table_axis_selection,
+            Some(super::TableAxisSelection::spanning(id, Row, 3, 4))
+        );
+        editor.move_table_row(&table, 3..=4, 1, cx);
+        assert_eq!(
+            column(&table, cx),
+            ["H", "1", "4", "2", "3"],
+            "already last"
+        );
+        editor.move_table_row(&table, 3..=4, -1, cx);
+        assert_eq!(column(&table, cx), ["H", "1", "2", "3", "4"]);
+
+        editor.delete_table_rows(&table, 2..=3, cx);
+        assert_eq!(column(&table, cx), ["H", "1", "4"]);
+
+        // Including the header: the first row left becomes the header.
+        editor.delete_table_rows(&table, 0..=1, cx);
+        assert_eq!(column(&table, cx), ["4"]);
+
+        editor.delete_table_rows(&table, 0..=0, cx);
+        assert!(editor.document.find_block_location(id).is_none());
+    });
+}
+
+#[gpui::test]
+async fn deleting_a_row_range_is_one_undo_step(cx: &mut TestAppContext) {
+    let markdown = ["| H |", "| --- |", "| 1 |", "| 2 |", "| 3 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown.clone(), None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+        let before = editor.serialized_document_text(cx);
+        editor.delete_table_rows(&table, 1..=3, cx);
+        assert_ne!(editor.serialized_document_text(cx), before);
+        editor.undo_document(cx);
+        assert_eq!(editor.serialized_document_text(cx), before);
+    });
+}
+
 #[gpui::test]
 async fn deleting_table_column_moves_selection_to_nearest_survivor(cx: &mut TestAppContext) {
     let markdown = ["| A | B | C |", "| --- | --- | --- |", "| 1 | 2 | 3 |"].join("\n");
@@ -1634,11 +1840,11 @@ async fn deleting_table_column_moves_selection_to_nearest_survivor(cx: &mut Test
         assert_eq!(record.header.len(), 2);
         assert_eq!(
             editor.table_axis_selection,
-            Some(super::TableAxisSelection {
-                table_block_id: table.entity_id(),
-                kind: crate::components::TableAxisKind::Column,
-                index: 1,
-            })
+            Some(super::TableAxisSelection::single(
+                table.entity_id(),
+                crate::components::TableAxisKind::Column,
+                1
+            ))
         );
     });
 }

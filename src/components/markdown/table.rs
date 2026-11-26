@@ -39,8 +39,26 @@ pub enum TableAxisKind {
 pub struct TableAxisMarker {
     /// Whether the marker addresses a row or column.
     pub kind: TableAxisKind,
-    /// Zero-based axis index; row zero denotes the header.
+    /// First zero-based axis index; row zero denotes the header.
     pub index: usize,
+    /// Last axis index (inclusive); equal to `index` for a single axis.
+    pub end: usize,
+}
+
+impl TableAxisMarker {
+    /// Marker for one row or column.
+    pub fn single(kind: TableAxisKind, index: usize) -> Self {
+        Self {
+            kind,
+            index,
+            end: index,
+        }
+    }
+
+    /// Whether this marker includes the given row or column.
+    pub fn covers(&self, kind: TableAxisKind, index: usize) -> bool {
+        self.kind == kind && (self.index..=self.end).contains(&index)
+    }
 }
 
 /// Visual emphasis level used when previewing or selecting table axes.

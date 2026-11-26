@@ -1,5 +1,7 @@
 //! Native table runtime installation and table-editing operations.
 
+use std::ops::RangeInclusive;
+
 use super::*;
 
 impl Editor {
@@ -309,11 +311,7 @@ impl Editor {
         hovered: bool,
         cx: &mut Context<Self>,
     ) {
-        let marker = TableAxisSelection {
-            table_block_id,
-            kind,
-            index,
-        };
+        let marker = TableAxisSelection::single(table_block_id, kind, index);
         if hovered {
             self.table_axis_preview_hovers = if self.table_axis_preview == Some(marker) {
                 self.table_axis_preview_hovers + 1
@@ -344,12 +342,35 @@ impl Editor {
         index: usize,
         cx: &mut Context<Self>,
     ) {
-        let selection = TableAxisSelection {
-            table_block_id,
-            kind,
-            index,
-        };
+        let selection = TableAxisSelection::single(table_block_id, kind, index);
         self.set_table_axis_preview(Some(selection), cx);
+        self.set_table_axis_selection(Some(selection), cx);
+    }
+
+    /// Grows the selection from its anchor to `index` while the pointer is
+    /// dragged over the handles, or on Shift-click. A Shift-click without a
+    /// selection of this table and kind selects `index`; a drag without one
+    /// does nothing (it started on a cell, not on a handle).
+    pub(super) fn extend_table_axis(
+        &mut self,
+        table_block_id: EntityId,
+        kind: TableAxisKind,
+        index: usize,
+        dragging: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let current = self.table_axis_selection.filter(|selection| {
+            selection.table_block_id == table_block_id && selection.kind == kind
+        });
+        if current.is_none() && dragging {
+            return;
+        }
+        let anchor = current.map(|selection| selection.anchor).unwrap_or(index);
+        let selection = TableAxisSelection::spanning(table_block_id, kind, anchor, index);
+        self.set_table_axis_preview(
+            Some(TableAxisSelection::single(table_block_id, kind, index)),
+            cx,
+        );
         self.set_table_axis_selection(Some(selection), cx);
     }
 
@@ -362,17 +383,27 @@ impl Editor {
         position: Point<Pixels>,
         cx: &mut Context<Self>,
     ) {
-        self.select_table_axis(table_block_id, kind, index, cx);
+        // A right-click inside a selected range keeps the range, so its
+        // commands apply to all selected rows or columns.
+        let keeps_range = self.table_axis_selection.is_some_and(|selection| {
+            selection.table_block_id == table_block_id
+                && selection.kind == kind
+                && selection.contains(index)
+        });
+        if !keeps_range {
+            self.select_table_axis(table_block_id, kind, index, cx);
+        }
         if let Some(selection) = self.table_axis_selection {
             self.open_table_axis_context_menu(position, selection, cx);
         }
     }
 
-    /// Sets a column's alignment and keeps its header selected and focused.
+    /// Sets the alignment of `columns` and keeps them selected, focusing the
+    /// first one's header cell.
     pub(super) fn set_table_column_alignment(
         &mut self,
         table_block: &Entity<Block>,
-        column: usize,
+        columns: RangeInclusive<usize>,
         alignment: TableColumnAlignment,
         cx: &mut Context<Self>,
     ) {
@@ -386,18 +417,29 @@ impl Editor {
         } else {
             false
         };
-        table.set_column_alignment(column, alignment);
+        let (first, last) = (*columns.start(), *columns.end());
+        for column in columns {
+            table.set_column_alignment(column, alignment);
+        }
         table_block.update(cx, move |block, _cx| {
             block.record.table = Some(table.clone());
         });
         self.rebuild_table_runtimes(cx);
-        let selection = TableAxisSelection {
-            table_block_id: table_block.entity_id(),
-            kind: TableAxisKind::Column,
-            index: column,
-        };
+        let selection = TableAxisSelection::spanning(
+            table_block.entity_id(),
+            TableAxisKind::Column,
+            first,
+            last,
+        );
         self.set_table_axis_selection(Some(selection), cx);
-        self.focus_table_cell_position(table_block, TableCellPosition { row: 0, column }, cx);
+        self.focus_table_cell_position(
+            table_block,
+            TableCellPosition {
+                row: 0,
+                column: first,
+            },
+            cx,
+        );
         self.mark_dirty(cx);
         self.request_active_block_scroll_into_view(cx);
         if started_local_capture {
@@ -406,11 +448,12 @@ impl Editor {
         cx.notify();
     }
 
-    /// Swaps visual rows, where row zero is the header, and follows the moved row.
+    /// Moves the visual rows `rows` (row zero is the header) one step up
+    /// (`delta < 0`) or down, keeping them selected.
     pub(super) fn move_table_row(
         &mut self,
         table_block: &Entity<Block>,
-        visual_row: usize,
+        rows: RangeInclusive<usize>,
         delta: i32,
         cx: &mut Context<Self>,
     ) {
@@ -418,17 +461,11 @@ impl Editor {
         let Some(mut table) = table_block.read(cx).record.table.clone() else {
             return;
         };
-        let next_row = if delta < 0 {
-            visual_row.checked_sub(delta.unsigned_abs() as usize)
-        } else {
-            visual_row.checked_add(delta as usize)
-        };
-        let Some(next_row) = next_row else {
-            return;
-        };
+        let (first, last) = (*rows.start(), *rows.end());
         // Visual rows are the header (0) plus every body row, so the last valid
         // index is `rows.len()`.
-        if next_row > table.rows.len() {
+        let moves_up = delta < 0;
+        if (moves_up && first == 0) || (!moves_up && last >= table.rows.len()) {
             return;
         }
         let started_local_capture = if self.pending_undo_capture.is_none() {
@@ -437,21 +474,32 @@ impl Editor {
         } else {
             false
         };
-        table.swap_visual_rows(visual_row, next_row);
+        // Moving the block by one is the neighbour walking across it.
+        if moves_up {
+            for row in first..=last {
+                table.swap_visual_rows(row - 1, row);
+            }
+        } else {
+            for row in (first..=last).rev() {
+                table.swap_visual_rows(row, row + 1);
+            }
+        }
+        let (first, last) = if moves_up {
+            (first - 1, last - 1)
+        } else {
+            (first + 1, last + 1)
+        };
         table_block.update(cx, move |block, _cx| {
             block.record.table = Some(table.clone());
         });
         self.rebuild_table_runtimes(cx);
-        let selection = TableAxisSelection {
-            table_block_id: table_block.entity_id(),
-            kind: TableAxisKind::Row,
-            index: next_row,
-        };
+        let selection =
+            TableAxisSelection::spanning(table_block.entity_id(), TableAxisKind::Row, first, last);
         self.set_table_axis_selection(Some(selection), cx);
         self.focus_table_cell_position(
             table_block,
             TableCellPosition {
-                row: next_row,
+                row: first,
                 column: 0,
             },
             cx,
@@ -464,11 +512,12 @@ impl Editor {
         cx.notify();
     }
 
-    /// Swaps columns and follows the moved column's header cell.
+    /// Moves `columns` one step left (`delta < 0`) or right, keeping them
+    /// selected and following the first one's header cell.
     pub(super) fn move_table_column(
         &mut self,
         table_block: &Entity<Block>,
-        column: usize,
+        columns: RangeInclusive<usize>,
         delta: i32,
         cx: &mut Context<Self>,
     ) {
@@ -476,15 +525,9 @@ impl Editor {
         let Some(mut table) = table_block.read(cx).record.table.clone() else {
             return;
         };
-        let next_column = if delta < 0 {
-            column.checked_sub(delta.unsigned_abs() as usize)
-        } else {
-            column.checked_add(delta as usize)
-        };
-        let Some(next_column) = next_column else {
-            return;
-        };
-        if next_column >= table.column_count() {
+        let (first, last) = (*columns.start(), *columns.end());
+        let moves_left = delta < 0;
+        if (moves_left && first == 0) || (!moves_left && last + 1 >= table.column_count()) {
             return;
         }
         let started_local_capture = if self.pending_undo_capture.is_none() {
@@ -493,22 +536,36 @@ impl Editor {
         } else {
             false
         };
-        table.swap_columns(column, next_column);
+        if moves_left {
+            for column in first..=last {
+                table.swap_columns(column - 1, column);
+            }
+        } else {
+            for column in (first..=last).rev() {
+                table.swap_columns(column, column + 1);
+            }
+        }
+        let (first, last) = if moves_left {
+            (first - 1, last - 1)
+        } else {
+            (first + 1, last + 1)
+        };
         table_block.update(cx, move |block, _cx| {
             block.record.table = Some(table.clone());
         });
         self.rebuild_table_runtimes(cx);
-        let selection = TableAxisSelection {
-            table_block_id: table_block.entity_id(),
-            kind: TableAxisKind::Column,
-            index: next_column,
-        };
+        let selection = TableAxisSelection::spanning(
+            table_block.entity_id(),
+            TableAxisKind::Column,
+            first,
+            last,
+        );
         self.set_table_axis_selection(Some(selection), cx);
         self.focus_table_cell_position(
             table_block,
             TableCellPosition {
                 row: 0,
-                column: next_column,
+                column: first,
             },
             cx,
         );
@@ -558,11 +615,11 @@ impl Editor {
             self.clear_table_axis_selection(cx);
         } else {
             self.set_table_axis_selection(
-                Some(TableAxisSelection {
-                    table_block_id: table_block.entity_id(),
-                    kind: TableAxisKind::Row,
-                    index: focus_visual_row,
-                }),
+                Some(TableAxisSelection::single(
+                    table_block.entity_id(),
+                    TableAxisKind::Row,
+                    focus_visual_row,
+                )),
                 cx,
             );
         }
@@ -644,11 +701,11 @@ impl Editor {
             block.record.table = Some(table.clone());
         });
         self.rebuild_table_runtimes(cx);
-        let selection = TableAxisSelection {
-            table_block_id: table_block.entity_id(),
-            kind: TableAxisKind::Column,
-            index: focus_column,
-        };
+        let selection = TableAxisSelection::single(
+            table_block.entity_id(),
+            TableAxisKind::Column,
+            focus_column,
+        );
         self.set_table_axis_selection(Some(selection), cx);
         self.focus_table_cell_position(
             table_block,
@@ -664,6 +721,84 @@ impl Editor {
             self.finalize_pending_undo_capture(cx);
         }
         cx.notify();
+    }
+
+    /// Deletes the columns `columns`, or the whole table when they are all
+    /// of its columns, and selects the column that takes their place.
+    pub(super) fn delete_table_columns(
+        &mut self,
+        table_block: &Entity<Block>,
+        columns: RangeInclusive<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        let column_count = table_block
+            .read(cx)
+            .record
+            .table
+            .as_ref()
+            .map_or(0, |table| table.column_count());
+        let (first, last) = (*columns.start(), *columns.end());
+        if last >= column_count {
+            return;
+        }
+        if first == 0 && last + 1 == column_count {
+            self.remove_table_block(table_block, cx);
+            return;
+        }
+        let started_local_capture = if self.pending_undo_capture.is_none() {
+            self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+            true
+        } else {
+            false
+        };
+        for column in (first..=last).rev() {
+            self.delete_table_column(table_block, column, cx);
+        }
+        if started_local_capture {
+            self.finalize_pending_undo_capture(cx);
+        }
+    }
+
+    /// Deletes the visual rows `rows` (row zero is the header, whose place the
+    /// first remaining body row takes), or the whole table when they are all
+    /// of its rows.
+    pub(super) fn delete_table_rows(
+        &mut self,
+        table_block: &Entity<Block>,
+        rows: RangeInclusive<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        let body_rows = table_block
+            .read(cx)
+            .record
+            .table
+            .as_ref()
+            .map_or(0, |table| table.rows.len());
+        let (first, last) = (*rows.start(), *rows.end());
+        if last > body_rows {
+            return;
+        }
+        if first == 0 && last == body_rows {
+            self.remove_table_block(table_block, cx);
+            return;
+        }
+        let started_local_capture = if self.pending_undo_capture.is_none() {
+            self.prepare_undo_capture(UndoCaptureKind::NonCoalescible, cx);
+            true
+        } else {
+            false
+        };
+        // Body rows from the bottom up keep the remaining indices valid; the
+        // header goes last, once a body row is left to replace it.
+        for row in (first.max(1)..=last).rev() {
+            self.delete_table_row(table_block, row - 1, cx);
+        }
+        if first == 0 {
+            self.delete_table_header_row(table_block, cx);
+        }
+        if started_local_capture {
+            self.finalize_pending_undo_capture(cx);
+        }
     }
 
     /// Removes the table block entirely, leaving an empty paragraph in its place
@@ -712,6 +847,7 @@ impl Editor {
         TableAxisMarker {
             kind: selection.kind,
             index: selection.index,
+            end: selection.end,
         }
     }
 
@@ -766,9 +902,9 @@ impl Editor {
             return false;
         };
         match selection.kind {
-            TableAxisKind::Column => selection.index < runtime.header.len(),
+            TableAxisKind::Column => selection.end < runtime.header.len(),
             // Visual row index: `0` is the header, `1..=rows.len()` the body.
-            TableAxisKind::Row => selection.index <= runtime.rows.len(),
+            TableAxisKind::Row => selection.end <= runtime.rows.len(),
         }
     }
 
@@ -829,13 +965,13 @@ impl Editor {
             // follow at `1..`, matching how row selections are addressed.
             let mut apply_highlight = |cell: &Entity<Block>, row: usize, column: usize| {
                 let highlight = if selected.is_some_and(|selection| match selection.kind {
-                    TableAxisKind::Column => selection.index == column,
-                    TableAxisKind::Row => selection.index == row,
+                    TableAxisKind::Column => selection.contains(column),
+                    TableAxisKind::Row => selection.contains(row),
                 }) {
                     TableAxisHighlight::Selected
                 } else if preview.is_some_and(|selection| match selection.kind {
-                    TableAxisKind::Column => selection.index == column,
-                    TableAxisKind::Row => selection.index == row,
+                    TableAxisKind::Column => selection.contains(column),
+                    TableAxisKind::Row => selection.contains(row),
                 }) {
                     TableAxisHighlight::Preview
                 } else {
