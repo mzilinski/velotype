@@ -1,4 +1,4 @@
-# Velotype – Handoff (Stand 2026-10-30)
+# Velotype – Handoff (Stand 2026-11-26)
 
 Ziel: Velotype (Rust/GPUI-Markdown-Editor) an Typora heranführen, seit dem 27.10. auch Obsidian-Funktionen
 (Links, Tags, Tagesnotizen, Vorlagen, Abfragen, Graph). Gearbeitet wird im Fork
@@ -8,8 +8,8 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 ## Arbeitsweise
 
 - Jedes Feature kommt auf einen eigenen Branch, abgezweigt von `integration`. `integration` führt alle zusammen und ist der Stand zum Testen;
-  `main` wird per Fast-Forward auf `integration` nachgezogen (Stand 2026-10-29: beide auf e3dbd8c). `dev` gibt es nicht mehr.
-- Gemergte Branches werden lokal und auf origin gelöscht (Aufräumen am 2026-10-29: übrig sind nur `main`, `integration`, `handoff`).
+  `main` wird per Fast-Forward auf `integration` nachgezogen (Stand 2026-11-25: beide auf fedb93f). `dev` gibt es nicht mehr.
+- Gemergte Branches werden lokal und auf origin gelöscht (Aufräumen am 2026-11-26: übrig sind `main`, `integration`, `handoff` und `fix/selection-char-boundaries` für den Upstream-PR #144).
   Die Branch-Namen in der Tabelle „Erledigt“ sind deshalb nur noch Bezeichnungen, der Code steckt in `integration`.
 - **Push nur nach expliziter Freigabe** durch Malte.
 - Jede Commit-Message endet mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -26,13 +26,14 @@ PRs dorthin nur auf ausdrücklichen Wunsch.
 
 ## Aktueller Stand
 
-Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8. CI auf `integration` und `main` grün
-(Linux, macOS, Windows; Lauf 40675401479). Seit dem 13.10. dazugekommen (Details in der Tabelle „Erledigt“):
+Alles ist gepusht (2026-11-25). `main` = `integration` = fedb93f, Version 0.7.8. CI auf `integration` und `main` grün
+(Linux, macOS, Windows; Läufe 45577999771 und 45578641349). Mac: App aus fedb93f in `/Applications` installiert,
+vorige Fassung als `~/Developer/Velotype-c11ddda-backup.app`. Seit dem 13.10. dazugekommen (Details in der Tabelle „Erledigt“):
 - **Obsidian-Funktionen** (2026-10-27): Links-Reiter mit Backlinks, ausgehenden Links, unverlinkten Erwähnungen und Tags; `[[`-Vervollständigung;
   Links beim Umbenennen/Verschieben anpassen; Front Matter als Eigenschaften-Tabelle; Tagesnotiz; Vorlagen; Dataview-Abfragen; Graph.
 - **Upstream gemergt** (2026-10-28, `upstream/main`): Umstieg auf `gpui-pre` 0.3.9, PicGo-Server-Upload, .md-Dateizuordnung, optionaler Updater.
 - Fixes: Einstellungen bleiben im Datei-Menü an ihrem Platz; ein Panel-/Overlay-Kürzel schließt beim zweiten Drücken.
-- Mac: App 0.7.8 aus e3dbd8c in `/Applications` installiert (`scripts/create_macos_app_dist.sh`, dann `ditto` nach `/Applications/Velotype.app`).
+- Mac (Stand 2026-10-28): App 0.7.8 aus e3dbd8c in `/Applications` installiert (`scripts/create_macos_app_dist.sh`, dann `ditto` nach `/Applications/Velotype.app`).
   Demo-Vault `~/Documents/Velotype-Demo` (17 Notizen, `Start.md` = Tour mit Kürzeln, `Übersicht.md` = Abfragen, `.obsidian/daily-notes.json`
   und `templates.json`). Monats-/Wochentagsnamen in Vorlagen sind englisch (Moment-Format), deshalb `{{date:DD.MM.YYYY}}`.
 - **Upstream-Issue** zu den Fork-Funktionen: https://github.com/manyougz/velotype/issues/134 (2026-10-28). Antwort abwarten; je nach
@@ -47,10 +48,10 @@ Alles ist gepusht (2026-10-28). `main` = `integration` = e3dbd8c, Version 0.7.8.
 - **2026-11-24 (Mac): `fix/inline-style-rendering`**, in `integration` gemergt (c11ddda) und gepusht: `==markiert==` hatte nie einen Hintergrund;
   Absätze mit Hoch-/Tiefstellung oder Formel zeigten kursiv, durchgestrichen und markiert nicht. Demo-Vault `~/Documents/Velotype-Showcase`
   (7 Akte, `Start.md`).
-- **2026-11-24 (Mac), lokal in `integration`, nicht gepusht:** `fix/final-newline-after-edit` (Zeilenumbruch am Dateiende blieb beim Bearbeiten des
+- **2026-11-25 (Mac), gemergt und gepusht (fedb93f):** `fix/final-newline-after-edit` (Zeilenumbruch am Dateiende blieb beim Bearbeiten des
   letzten Blocks nicht erhalten) und `perf/large-document-render` (je Bild wurde das ganze Dokument serialisiert und zugeordnet: 24 + 18 ms bei
   3151 Blöcken, jetzt 1,7 + 1,5 ms). `InlineTextTree` merkt sich sein Markdown; `fragments` nur in `inline.rs` ändern und danach
-  `normalize_fragments` aufrufen (Tests prüfen jeden Treffer gegen frisch berechneten Text).
+  `normalize_fragments` aufrufen (Tests prüfen jeden Treffer gegen frisch berechneten Text). Nur in Tests gemessen, in der App noch nicht von Hand geprüft.
 - Bekannt: Clippy-Fehler `text_offsets.rs:116` (`reversed_empty_ranges` in einem Test) und einige Warnungen sind vorbestehend/upstream.
 
 Die neuen Funktionen sind nur per Unit-/gpui-Tests geprüft, nicht von Hand in der App.
