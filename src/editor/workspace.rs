@@ -355,6 +355,9 @@ impl Editor {
         folder: Option<PathBuf>,
         cx: &mut Context<Self>,
     ) {
+        // Finder and `open` hand over folder URLs with a trailing slash; the
+        // tree's node ids are built without one, so the root would not unfold.
+        let folder = folder.map(|folder| folder.components().collect::<PathBuf>());
         let _ = crate::config::write_last_workspace_folder(folder.as_deref());
         if let Some(host) = self.tab_host.as_ref().and_then(WeakEntity::upgrade) {
             // The host updates this editor too; defer so it is not borrowed.
