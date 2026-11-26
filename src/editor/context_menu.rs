@@ -751,12 +751,21 @@ impl Editor {
                     return None;
                 };
                 let table = table_block.read(cx).record.table.clone()?;
+                // Several selected rows or columns read in the plural; insert
+                // adds one either way and keeps its singular label.
+                let several = selection.end > selection.index;
+                let label = |one: &String, many: &String| {
+                    if several { many.clone() } else { one.clone() }
+                };
                 let items = match selection.kind {
                     TableAxisKind::Column => vec![
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-align-column-left",
-                            s.table_axis_align_column_left.clone(),
+                            label(
+                                &s.table_axis_align_column_left,
+                                &s.table_axis_align_columns_left,
+                            ),
                             true,
                             false,
                             Self::on_align_table_column_left,
@@ -765,7 +774,10 @@ impl Editor {
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-align-column-center",
-                            s.table_axis_align_column_center.clone(),
+                            label(
+                                &s.table_axis_align_column_center,
+                                &s.table_axis_align_columns_center,
+                            ),
                             true,
                             false,
                             Self::on_align_table_column_center,
@@ -774,7 +786,10 @@ impl Editor {
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-align-column-right",
-                            s.table_axis_align_column_right.clone(),
+                            label(
+                                &s.table_axis_align_column_right,
+                                &s.table_axis_align_columns_right,
+                            ),
                             true,
                             false,
                             Self::on_align_table_column_right,
@@ -807,7 +822,10 @@ impl Editor {
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-move-column-left",
-                            s.table_axis_move_column_left.clone(),
+                            label(
+                                &s.table_axis_move_column_left,
+                                &s.table_axis_move_columns_left,
+                            ),
                             selection.index > 0,
                             false,
                             Self::on_move_table_column_left,
@@ -816,7 +834,10 @@ impl Editor {
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-move-column-right",
-                            s.table_axis_move_column_right.clone(),
+                            label(
+                                &s.table_axis_move_column_right,
+                                &s.table_axis_move_columns_right,
+                            ),
                             selection.end + 1 < table.column_count(),
                             false,
                             Self::on_move_table_column_right,
@@ -831,7 +852,7 @@ impl Editor {
                         Self::render_axis_menu_item(
                             theme,
                             "table-axis-delete-column",
-                            s.table_axis_delete_column.clone(),
+                            label(&s.table_axis_delete_column, &s.table_axis_delete_columns),
                             // Always enabled: deleting the last column removes the
                             // whole table.
                             true,
@@ -898,7 +919,7 @@ impl Editor {
                         items.push(Self::render_axis_menu_item(
                             theme,
                             "table-axis-move-row-up",
-                            s.table_axis_move_row_up.clone(),
+                            label(&s.table_axis_move_row_up, &s.table_axis_move_rows_up),
                             selection.index > 0,
                             false,
                             Self::on_move_table_row_up,
@@ -907,7 +928,7 @@ impl Editor {
                         items.push(Self::render_axis_menu_item(
                             theme,
                             "table-axis-move-row-down",
-                            s.table_axis_move_row_down.clone(),
+                            label(&s.table_axis_move_row_down, &s.table_axis_move_rows_down),
                             selection.end < table.rows.len(),
                             false,
                             Self::on_move_table_row_down,
@@ -927,7 +948,7 @@ impl Editor {
                         items.push(Self::render_axis_menu_item(
                             theme,
                             "table-axis-delete-row",
-                            s.table_axis_delete_row.clone(),
+                            label(&s.table_axis_delete_row, &s.table_axis_delete_rows),
                             true,
                             true,
                             Self::on_delete_table_row,
