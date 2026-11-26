@@ -2,7 +2,8 @@
 //!
 //! A tab-hosted editor asks its window to open every dropped Markdown file in a
 //! tab. A standalone editor replaces its document, prompting first when it has
-//! unsaved changes. Dropped image files are inserted as image blocks.
+//! unsaved changes. Dropped image files are inserted as image blocks, and a
+//! dropped folder becomes the workspace folder.
 
 use std::path::{Path, PathBuf};
 
@@ -41,6 +42,18 @@ impl Editor {
             .cloned()
             .collect();
 
+        // A dropped folder becomes the workspace folder, like "Open Folder…".
+        let folder = paths
+            .paths()
+            .iter()
+            .rev()
+            .find(|path| path.is_dir())
+            .cloned();
+        let opened_folder = folder.is_some();
+        if opened_folder {
+            self.apply_workspace_folder(folder, cx);
+        }
+
         if self.is_tab_hosted() {
             let markdown_paths: Vec<PathBuf> = paths
                 .paths()
@@ -52,7 +65,7 @@ impl Editor {
                 self.insert_dropped_images(&image_paths, window, cx);
             }
             if markdown_paths.is_empty() {
-                if !image_paths.is_empty() {
+                if !image_paths.is_empty() || opened_folder {
                     return;
                 }
                 let strings = cx.global::<I18nManager>().strings().clone();
@@ -75,6 +88,9 @@ impl Editor {
         let Some(path) = Self::first_dropped_markdown_path(paths.paths()) else {
             if !image_paths.is_empty() {
                 self.insert_dropped_images(&image_paths, window, cx);
+                return;
+            }
+            if opened_folder {
                 return;
             }
             let strings = cx.global::<I18nManager>().strings().clone();

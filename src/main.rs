@@ -177,7 +177,7 @@ fn main() {
                 println!();
                 println!("FILES:");
                 println!("    One or more markdown files to open. If no files are specified,");
-                println!("    opens an empty document.");
+                println!("    opens an empty document. A folder is opened as the workspace folder.");
                 return;
             }
             "--detach" | "-d" => {
@@ -299,6 +299,7 @@ fn main() {
 
         let mut startup_window: Option<WindowHandle<editor::EditorWindow>> = None;
         let mut imports = Vec::new();
+        let mut folder = None;
         for path in &input_paths {
             let absolute_path = if path.is_absolute() {
                 path.clone()
@@ -309,6 +310,12 @@ fn main() {
                 }
             };
 
+            // A folder becomes the workspace folder of the window, the last
+            // one wins.
+            if absolute_path.is_dir() {
+                folder = Some(absolute_path);
+                continue;
+            }
             if text_file::is_import_document(&absolute_path) {
                 imports.push(absolute_path);
                 continue;
@@ -350,6 +357,9 @@ fn main() {
         }
         if startup_window.is_none() {
             open_editor_window(cx, String::new(), None);
+        }
+        if let Some(folder) = folder {
+            app_menu::open_folder_in_current_window(cx, folder);
         }
         for path in imports {
             app_menu::import_document_in_tab(cx, path);
