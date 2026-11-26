@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn vault_root_is_the_nearest_marked_folder_below_home() {
-        let home = std::env::temp_dir().join(format!("velotype-home-{}", uuid::Uuid::new_v4()));
+        let home = std::env::temp_dir().join(format!("velin-home-{}", uuid::Uuid::new_v4()));
         let vault = home.join("notes");
         let deep = vault.join("people").join("team");
         std::fs::create_dir_all(&deep).unwrap();

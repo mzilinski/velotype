@@ -25,7 +25,7 @@ use crate::window_chrome::{custom_titlebar_height, render_custom_titlebar};
 /// Project URL used by the About dialog and its link action.
 /// This fork's repository.
 pub(crate) const ABOUT_GITHUB_URL: &str = "https://github.com/mzilinski/velotype";
-/// The original Velotype this fork is based on (Apache License 2.0).
+/// The original Velin this fork is based on (Apache License 2.0).
 pub(crate) const ABOUT_ORIGIN_URL: &str = "https://github.com/manyougz/velotype";
 
 /// Rows within this many pixels of the viewport stay mounted, so a fast flick
@@ -1420,7 +1420,7 @@ impl Editor {
     /// Builds the About dialog's version, project link, and supporting lines.
     pub(crate) fn about_dialog_body_lines(strings: &I18nStrings) -> Vec<String> {
         vec![
-            format!("Velotype {}", env!("CARGO_PKG_VERSION")),
+            format!("Velin {}", env!("CARGO_PKG_VERSION")),
             strings.help_about_message.clone(),
             format!("{}: {}", strings.help_about_github_label, ABOUT_GITHUB_URL),
             format!("{}: {}", strings.help_about_origin, ABOUT_ORIGIN_URL),
@@ -1470,7 +1470,7 @@ impl Editor {
                 .flex()
                 .flex_col()
                 .gap(px(d.dialog_gap * 0.5))
-                .child(body_style(div()).child(format!("Velotype {}", env!("CARGO_PKG_VERSION"))))
+                .child(body_style(div()).child(format!("Velin {}", env!("CARGO_PKG_VERSION"))))
                 .child(body_style(div()).child(strings.help_about_message.clone()))
                 .child(
                     body_style(div())
@@ -2770,7 +2770,7 @@ mod tests {
     #[test]
     fn import_menu_split_detects_theme_and_language_import_tails() {
         let theme_items = vec![
-            disabled_menu_action("Velotype"),
+            disabled_menu_action("Velin"),
             OwnedMenuItem::Separator,
             add_theme_menu_action(),
         ];
@@ -2784,8 +2784,7 @@ mod tests {
             OwnedMenuItem::Separator,
             disabled_menu_action("Save"),
         ];
-        let malformed_import_items =
-            vec![disabled_menu_action("Velotype"), add_theme_menu_action()];
+        let malformed_import_items = vec![disabled_menu_action("Velin"), add_theme_menu_action()];
 
         assert_eq!(import_menu_split_index(&theme_items), Some(1));
         assert_eq!(import_menu_split_index(&language_items), Some(1));

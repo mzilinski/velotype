@@ -22,25 +22,39 @@ pub(crate) use preferences::{
 /// Maximum number of paths retained in recent-file history.
 pub(crate) const RECENT_FILES_LIMIT: usize = 20;
 
-/// Cross-platform configuration directories owned by Velotype.
+/// Cross-platform configuration directories owned by Velin.
 #[derive(Debug, Clone)]
-pub(crate) struct VelotypeConfigDirs {
+pub(crate) struct VelinConfigDirs {
     /// Platform-specific root containing preferences, history, and imported packs.
     root: PathBuf,
 }
 
-impl VelotypeConfigDirs {
+impl VelinConfigDirs {
     /// Resolves the platform-specific app config directory.
     ///
     /// GPUI does not currently expose an app config path, so user-imported
     /// language and theme packs are stored under the OS location returned by
     /// `directories::ProjectDirs`.
     pub(crate) fn from_system() -> anyhow::Result<Self> {
-        let dirs = ProjectDirs::from("com", "manyougz", "Velotype")
-            .context("failed to resolve the Velotype config directory")?;
-        Ok(Self {
-            root: dirs.config_dir().to_path_buf(),
-        })
+        // Tests get a private folder: they open files (recent history), write
+        // drafts and logs, and must never touch the user's settings.
+        if cfg!(test) {
+            return Ok(Self {
+                root: std::env::temp_dir()
+                    .join(format!("velin-test-config-{}", std::process::id())),
+            });
+        }
+        let dirs = ProjectDirs::from("eu", "zilinski", "Velin")
+            .context("failed to resolve the Velin config directory")?;
+        let root = dirs.config_dir().to_path_buf();
+        // Settings of the Velotype era move over once, on the first start
+        // that finds no Velin settings yet.
+        if let Some(legacy) = ProjectDirs::from("com", "manyougz", "Velotype")
+            && let Err(err) = migrate_legacy_config_dir(legacy.config_dir(), &root)
+        {
+            eprintln!("failed to take over the Velotype settings: {err:#}");
+        }
+        Ok(Self { root })
     }
 
     /// Creates a directory set from a caller-provided root for tests.
@@ -102,10 +116,10 @@ pub(crate) fn read_last_workspace_folder() -> Option<PathBuf> {
     if cfg!(test) {
         return None;
     }
-    read_last_workspace_folder_with_dirs(&VelotypeConfigDirs::from_system().ok()?)
+    read_last_workspace_folder_with_dirs(&VelinConfigDirs::from_system().ok()?)
 }
 
-pub(crate) fn read_last_workspace_folder_with_dirs(dirs: &VelotypeConfigDirs) -> Option<PathBuf> {
+pub(crate) fn read_last_workspace_folder_with_dirs(dirs: &VelinConfigDirs) -> Option<PathBuf> {
     let text = std::fs::read_to_string(dirs.workspace_folder_file()).ok()?;
     let path = PathBuf::from(text.trim());
     (!text.trim().is_empty() && path.is_dir()).then_some(path)
@@ -116,12 +130,12 @@ pub(crate) fn write_last_workspace_folder(folder: Option<&Path>) -> anyhow::Resu
     if cfg!(test) {
         return Ok(());
     }
-    write_last_workspace_folder_with_dirs(folder, &VelotypeConfigDirs::from_system()?)
+    write_last_workspace_folder_with_dirs(folder, &VelinConfigDirs::from_system()?)
 }
 
 pub(crate) fn write_last_workspace_folder_with_dirs(
     folder: Option<&Path>,
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<()> {
     let file = dirs.workspace_folder_file();
     match folder {
@@ -141,27 +155,27 @@ pub(crate) fn write_last_workspace_folder_with_dirs(
 
 /// Reads normalized recent-file history from the system configuration directory.
 pub(crate) fn read_recent_files() -> anyhow::Result<Vec<PathBuf>> {
-    read_recent_files_with_dirs(&VelotypeConfigDirs::from_system()?)
+    read_recent_files_with_dirs(&VelinConfigDirs::from_system()?)
 }
 
 /// Moves a recordable path to the front of persisted recent-file history.
 pub(crate) fn record_recent_file(path: &Path) -> anyhow::Result<Vec<PathBuf>> {
-    record_recent_file_with_dirs(path, &VelotypeConfigDirs::from_system()?)
+    record_recent_file_with_dirs(path, &VelinConfigDirs::from_system()?)
 }
 
 /// Forgets every recent file (File > Open Recent > Clear Items).
 pub(crate) fn clear_recent_files() -> anyhow::Result<()> {
-    write_recent_files_with_dirs(&[], &VelotypeConfigDirs::from_system()?)
+    write_recent_files_with_dirs(&[], &VelinConfigDirs::from_system()?)
 }
 
 /// Removes a path from persisted history and returns the remaining entries.
 pub(crate) fn remove_recent_file(path: &Path) -> anyhow::Result<Vec<PathBuf>> {
-    remove_recent_file_with_dirs(path, &VelotypeConfigDirs::from_system()?)
+    remove_recent_file_with_dirs(path, &VelinConfigDirs::from_system()?)
 }
 
 /// Reads history from the supplied directories; a missing file yields no entries.
 pub(crate) fn read_recent_files_with_dirs(
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<Vec<PathBuf>> {
     let path = dirs.history_file();
     let text = match std::fs::read_to_string(&path) {
@@ -178,7 +192,7 @@ pub(crate) fn read_recent_files_with_dirs(
 /// Records a nonblank path, excluding app drop fixtures in the system temp directory.
 pub(crate) fn record_recent_file_with_dirs(
     path: &Path,
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<Vec<PathBuf>> {
     if path.to_string_lossy().trim().is_empty() {
         bail!("recent file path cannot be empty");
@@ -199,7 +213,7 @@ pub(crate) fn record_recent_file_with_dirs(
 /// Removes matching history entries using platform-specific path comparison.
 pub(crate) fn remove_recent_file_with_dirs(
     path: &Path,
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<Vec<PathBuf>> {
     let mut paths = read_recent_files_with_dirs(dirs)?;
     paths.retain(|existing| !same_recent_path(existing, path));
@@ -210,7 +224,7 @@ pub(crate) fn remove_recent_file_with_dirs(
 /// Writes normalized history, deleting the history file when no entries remain.
 fn write_recent_files_with_dirs(
     paths: &[PathBuf],
-    dirs: &VelotypeConfigDirs,
+    dirs: &VelinConfigDirs,
 ) -> anyhow::Result<()> {
     let history_file = dirs.history_file();
     let normalized = normalize_recent_files(paths.iter().cloned());
@@ -273,7 +287,7 @@ fn is_recordable_recent_file_path(path: &Path) -> bool {
         return false;
     }
 
-    !(is_inside_system_temp_dir(path) && has_velotype_temp_fixture_name(path))
+    !(is_inside_system_temp_dir(path) && has_velin_temp_fixture_name(path))
 }
 
 /// Checks lexical containment in the system temp directory without resolving symlinks.
@@ -299,13 +313,56 @@ fn normalize_windows_path_text(path: &Path) -> String {
         .to_ascii_lowercase()
 }
 
-/// Recognizes current and legacy misspelled drop-fixture filename prefixes.
-fn has_velotype_temp_fixture_name(path: &Path) -> bool {
+/// Takes over the settings folder of the Velotype era into `new` until Velin
+/// has its own settings (`config.toml`); returns whether it copied. Files
+/// Velin already wrote (logs, for example) are kept, `config.toml` comes last
+/// so an interrupted copy is repeated on the next start, and the old folder
+/// stays as it was, so the original app keeps working.
+pub(crate) fn migrate_legacy_config_dir(legacy: &Path, new: &Path) -> anyhow::Result<bool> {
+    const CONFIG: &str = "config.toml";
+    if new.join(CONFIG).exists() || !legacy.join(CONFIG).is_file() {
+        return Ok(false);
+    }
+    copy_missing_recursive(legacy, new, Some(CONFIG))?;
+    std::fs::copy(legacy.join(CONFIG), new.join(CONFIG))
+        .with_context(|| format!("failed to copy '{}'", legacy.join(CONFIG).display()))?;
+    Ok(true)
+}
+
+/// Copies files from `from` that do not exist in `to`, skipping `except` at
+/// the top level.
+fn copy_missing_recursive(from: &Path, to: &Path, except: Option<&str>) -> anyhow::Result<()> {
+    std::fs::create_dir_all(to).with_context(|| format!("failed to create '{}'", to.display()))?;
+    let entries =
+        std::fs::read_dir(from).with_context(|| format!("failed to read '{}'", from.display()))?;
+    for entry in entries {
+        let entry = entry?;
+        if except.is_some_and(|name| entry.file_name() == name) {
+            continue;
+        }
+        let target = to.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            copy_missing_recursive(&entry.path(), &target, None)?;
+        } else if file_type.is_file() && !target.exists() {
+            std::fs::copy(entry.path(), &target)
+                .with_context(|| format!("failed to copy '{}'", entry.path().display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Recognizes test-fixture filenames (current, Velotype-era and misspelled).
+fn has_velin_temp_fixture_name(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .map(|name| {
             let name = name.to_ascii_lowercase();
-            name.starts_with("velotype-drop-") || name.starts_with("velotypre-drop-")
+            // Test fixtures are named after the app; older test runs wrote
+            // them into the real history before tests got their own folder.
+            ["velin-", "velotype-", "velotypre-"]
+                .iter()
+                .any(|prefix| name.starts_with(prefix))
         })
         .unwrap_or(false)
 }
@@ -513,7 +570,7 @@ fn is_empty_json_value(value: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        RECENT_FILES_LIMIT, VelotypeConfigDirs, parse_jsonc_value, prune_empty_json_values,
+        RECENT_FILES_LIMIT, VelinConfigDirs, parse_jsonc_value, prune_empty_json_values,
         read_recent_files_with_dirs, record_recent_file_with_dirs, remove_recent_file_with_dirs,
         sanitize_config_file_stem, strip_jsonc_comments,
     };
@@ -523,8 +580,8 @@ mod tests {
     #[test]
     fn last_workspace_folder_round_trips_and_is_forgotten() {
         let root =
-            std::env::temp_dir().join(format!("velotype-ws-folder-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(root.join("config"));
+            std::env::temp_dir().join(format!("velin-ws-folder-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(root.join("config"));
         let folder = root.join("notes");
         std::fs::create_dir_all(&folder).unwrap();
 
@@ -589,8 +646,8 @@ mod tests {
 
     #[test]
     fn missing_recent_history_file_returns_empty_list() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
 
         assert!(read_recent_files_with_dirs(&dirs).unwrap().is_empty());
         assert!(!dirs.history_file().exists());
@@ -600,8 +657,8 @@ mod tests {
 
     #[test]
     fn empty_recent_history_write_does_not_create_file() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
 
         super::write_recent_files_with_dirs(&[], &dirs).unwrap();
 
@@ -612,8 +669,8 @@ mod tests {
 
     #[test]
     fn blank_recent_file_path_is_rejected() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
 
         assert!(record_recent_file_with_dirs(Path::new("   "), &dirs).is_err());
         assert!(!dirs.history_file().exists());
@@ -623,8 +680,8 @@ mod tests {
 
     #[test]
     fn recent_history_filters_empty_lines_and_deduplicates() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(
             dirs.history_file(),
@@ -642,9 +699,9 @@ mod tests {
     }
 
     #[test]
-    fn recent_history_filters_legacy_velotype_temp_fixture_paths() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+    fn recent_history_filters_legacy_velin_temp_fixture_paths() {
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let fixture_path = std::env::temp_dir().join(format!(
             "velotype-drop-save-replace-{}-123.md",
             std::process::id()
@@ -664,9 +721,9 @@ mod tests {
     }
 
     #[test]
-    fn recording_velotype_temp_fixture_path_is_noop() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+    fn recording_velin_temp_fixture_path_is_noop() {
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let fixture_path = std::env::temp_dir().join(format!(
             "velotype-drop-dirty-discard-{}-123.md",
             std::process::id()
@@ -684,8 +741,8 @@ mod tests {
 
     #[test]
     fn ordinary_temp_markdown_file_can_still_be_recorded() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let path = std::env::temp_dir().join(format!("manual-note-{}.md", std::process::id()));
 
         let paths = record_recent_file_with_dirs(&path, &dirs).unwrap();
@@ -698,8 +755,8 @@ mod tests {
 
     #[test]
     fn recording_recent_file_moves_it_to_front_and_truncates() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
 
         for index in 0..(RECENT_FILES_LIMIT + 2) {
             record_recent_file_with_dirs(&PathBuf::from(format!("file-{index}.md")), &dirs)
@@ -723,8 +780,8 @@ mod tests {
 
     #[test]
     fn removing_recent_file_persists_history_without_it() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         record_recent_file_with_dirs(&PathBuf::from("one.md"), &dirs).unwrap();
         record_recent_file_with_dirs(&PathBuf::from("two.md"), &dirs).unwrap();
 
@@ -741,8 +798,8 @@ mod tests {
 
     #[test]
     fn removing_last_recent_file_deletes_history_file() {
-        let root = std::env::temp_dir().join(format!("velotype-config-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-config-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         let path = PathBuf::from("only.md");
         record_recent_file_with_dirs(&path, &dirs).unwrap();
         assert!(dirs.history_file().exists());
@@ -755,4 +812,46 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(root);
     }
+
+    #[test]
+    fn velotype_settings_move_over_once_and_stay_in_place() {
+        let root = std::env::temp_dir().join(format!("velin-migrate-{}", uuid::Uuid::new_v4()));
+        let legacy = root.join("com.manyougz.Velotype");
+        let new = root.join("eu.zilinski.Velin");
+        std::fs::create_dir_all(legacy.join("themes")).unwrap();
+        std::fs::write(legacy.join("config.toml"), "[theme]\ndefault_theme_id = \"velotype-light\"\n").unwrap();
+        std::fs::write(legacy.join("themes").join("mine.json"), "{}").unwrap();
+
+        assert!(super::migrate_legacy_config_dir(&legacy, &new).unwrap());
+        assert_eq!(
+            std::fs::read_to_string(new.join("config.toml")).unwrap(),
+            std::fs::read_to_string(legacy.join("config.toml")).unwrap()
+        );
+        assert!(new.join("themes").join("mine.json").is_file());
+        assert!(legacy.join("config.toml").is_file(), "the old folder stays");
+
+        // Once Velin has settings, they are never overwritten again.
+        std::fs::write(new.join("config.toml"), "changed").unwrap();
+        assert!(!super::migrate_legacy_config_dir(&legacy, &new).unwrap());
+        assert_eq!(std::fs::read_to_string(new.join("config.toml")).unwrap(), "changed");
+
+        // A folder Velin created before (only logs, say) does not stop it,
+        // and what Velin wrote there is kept.
+        let early = root.join("early");
+        std::fs::create_dir_all(early.join("logs")).unwrap();
+        std::fs::write(early.join("logs").join("perf.log"), "velin").unwrap();
+        std::fs::create_dir_all(legacy.join("logs")).unwrap();
+        std::fs::write(legacy.join("logs").join("perf.log"), "velotype").unwrap();
+        assert!(super::migrate_legacy_config_dir(&legacy, &early).unwrap());
+        assert!(early.join("config.toml").is_file());
+        assert!(early.join("themes").join("mine.json").is_file());
+        assert_eq!(std::fs::read_to_string(early.join("logs").join("perf.log")).unwrap(), "velin");
+
+        // Nothing to move without an old folder.
+        let empty = root.join("fresh");
+        assert!(!super::migrate_legacy_config_dir(&root.join("missing"), &empty).unwrap());
+        assert!(!empty.exists());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
 }

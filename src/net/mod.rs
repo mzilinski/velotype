@@ -55,7 +55,7 @@ impl ReqwestTransportHttpClient {
         let default_headers = default_image_request_headers(user_agent)?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
-            .thread_name("velotype-images")
+            .thread_name("velin-images")
             .enable_all()
             .build()?;
         let client = reqwest::Client::builder()
@@ -184,7 +184,7 @@ mod tests {
         HeaderMap, HeaderValue, PRAGMA, USER_AGENT,
     };
 
-    const TEST_USER_AGENT: &str = "VelotypeTest/1.0";
+    const TEST_USER_AGENT: &str = "VelinTest/1.0";
 
     #[test]
     fn image_http_bridge_decodes_gzip_responses() {

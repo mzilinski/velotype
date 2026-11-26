@@ -1187,7 +1187,7 @@ mod tests {
 
     #[test]
     fn replace_in_files_writes_and_skips() {
-        let root = std::env::temp_dir().join(format!("velotype-rep-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-rep-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).unwrap();
         fs::write(root.join("a.md"), "foo foo\n").unwrap();
         fs::write(root.join("b.md"), "foo\n").unwrap();
@@ -1213,7 +1213,7 @@ mod tests {
 
     #[test]
     fn collects_and_searches_markdown_files() {
-        let root = std::env::temp_dir().join(format!("velotype-ws-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-ws-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(root.join("sub")).unwrap();
         fs::create_dir_all(root.join("node_modules")).unwrap();
         fs::write(root.join("a.md"), "# Title\n  Some Straße here\n").unwrap();

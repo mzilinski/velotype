@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Create a macOS .app for Velotype
+# Create a macOS .app for Velin
 # Usage: ./scripts/create_app_dist.sh
 set -euo pipefail
 
-BINARY_NAME="velotype"
-APP_NAME="Velotype"
+BINARY_NAME="velin"
+APP_NAME="Velin"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$PROJECT_ROOT/dist"

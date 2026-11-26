@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn articles_are_listed_newest_first() {
-        let dir = std::env::temp_dir().join(format!("velotype-articles-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-articles-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         std::fs::write(dir.join("old.md"), "# Old\n\nfirst").unwrap();
         let old = std::fs::File::options()

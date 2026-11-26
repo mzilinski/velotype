@@ -6,15 +6,15 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>Velotype</string>
+  <string>Velin</string>
   <key>CFBundleExecutable</key>
-  <string>velotype</string>
+  <string>velin</string>
   <key>CFBundleIconFile</key>
-  <string>velotype</string>
+  <string>velin</string>
   <key>CFBundleIdentifier</key>
-  <string>com.manyougz.Velotype</string>
+  <string>eu.zilinski.Velin</string>
   <key>CFBundleName</key>
-  <string>Velotype</string>
+  <string>Velin</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

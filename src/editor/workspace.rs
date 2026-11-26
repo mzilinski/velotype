@@ -1308,7 +1308,7 @@ mod tests {
     #[test]
     fn workspace_scan_keeps_dirs_and_md_files_only() {
         let root =
-            std::env::temp_dir().join(format!("velotype-workspace-test-{}", uuid::Uuid::new_v4()));
+            std::env::temp_dir().join(format!("velin-workspace-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(root.join("nested")).expect("create dirs");
         fs::write(root.join("a.md"), "a").expect("write md");
         fs::write(root.join("a.txt"), "ignored").expect("write txt");
@@ -1342,7 +1342,7 @@ mod tests {
     #[test]
     fn workspace_scan_stops_at_its_budget() {
         let root =
-            std::env::temp_dir().join(format!("velotype-workspace-test-{}", uuid::Uuid::new_v4()));
+            std::env::temp_dir().join(format!("velin-workspace-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).expect("create dir");
         for index in 0..5 {
             fs::write(root.join(format!("{index}.md")), "x").expect("write md");

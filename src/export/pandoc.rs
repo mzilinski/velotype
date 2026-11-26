@@ -70,7 +70,7 @@ pub(crate) fn export_format(id: &str) -> Option<PandocFormat> {
 /// Where Pandoc's download page is, for the "not installed" prompt.
 pub(crate) const INSTALL_URL: &str = "https://pandoc.org/installing.html";
 
-/// Velotype's Markdown as Pandoc reads it: Pandoc Markdown with bare URLs
+/// Velin's Markdown as Pandoc reads it: Pandoc Markdown with bare URLs
 /// turned into links (GitHub style).
 const MARKDOWN_READER: &str = "markdown+autolink_bare_uris";
 
@@ -149,7 +149,7 @@ pub(crate) fn export_args(
     args
 }
 
-/// GitHub Markdown with `$…$` / `$$…$$` math as Velotype writes it.
+/// GitHub Markdown with `$…$` / `$$…$$` math as Velin writes it.
 const MARKDOWN_WRITER: &str = "gfm-tex_math_gfm+tex_math_dollars";
 /// For Pandoc versions before `tex_math_gfm` existed (math then comes out
 /// in GitHub's `` $`…`$ `` form).
@@ -269,7 +269,7 @@ mod tests {
             return;
         };
         eprintln!("using {}", pandoc.display());
-        let dir = std::env::temp_dir().join(format!("velotype-pandoc-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-pandoc-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let output = dir.join("doc.docx");
         export(
@@ -297,7 +297,7 @@ mod tests {
             return;
         };
         let dir = std::env::temp_dir()
-            .join(format!("velotype pandoc {}", uuid::Uuid::new_v4()))
+            .join(format!("velin pandoc {}", uuid::Uuid::new_v4()))
             .join("Ordner mit Ümlaut");
         std::fs::create_dir_all(dir.join("img")).unwrap();
         // A 1x1 PNG.

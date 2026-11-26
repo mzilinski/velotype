@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-    <title>Velotype</title>
-    <welcome>Velotype is a block-based Markdown editor built with Rust and GPUI.</welcome>
+    <title>Velin</title>
+    <welcome>Velin is a block-based Markdown editor built with Rust and GPUI.</welcome>
     <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
     <volume-check>
         <allowed-os-versions>
@@ -10,12 +10,12 @@
     </volume-check>
     <choices-outline>
         <line choice="default">
-            <line choice="Velotype"/>
+            <line choice="Velin"/>
         </line>
     </choices-outline>
     <choice id="default"/>
-    <choice id="Velotype" title="Install Velotype" description="Install Velotype to /Applications">
-        <pkg-ref id="com.manyougz.Velotype"/>
+    <choice id="Velin" title="Install Velin" description="Install Velin to /Applications">
+        <pkg-ref id="eu.zilinski.Velin"/>
     </choice>
-    <pkg-ref id="com.manyougz.Velotype" version="__VELOTYPE_VERSION__" onConclusion="none">#Velotype-component.pkg</pkg-ref>
+    <pkg-ref id="eu.zilinski.Velin" version="__VELIN_VERSION__" onConclusion="none">#Velin-component.pkg</pkg-ref>
 </installer-gui-script>

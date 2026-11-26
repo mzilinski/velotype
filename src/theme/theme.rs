@@ -13,7 +13,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 
 use crate::config::{
-    VelotypeConfigDirs, merge_non_empty_json_values, object_without_empty_values,
+    VelinConfigDirs, merge_non_empty_json_values, object_without_empty_values,
     prune_empty_json_values, read_json_or_jsonc, sanitize_config_file_stem,
 };
 
@@ -1369,7 +1369,7 @@ impl Theme {
     /// Returns the built-in fallback theme used when no custom theme is loaded.
     pub fn default_theme() -> Self {
         Self {
-            name: "Velotype".into(),
+            name: "Velin".into(),
             colors: ThemeColors {
                 editor_background: Hsla::from(rgba(0x191919ff)),
                 source_mode_block_bg: Hsla::from(rgba(0x313131ff)),
@@ -1617,7 +1617,7 @@ impl Theme {
     pub fn light_theme() -> Self {
         let base = Self::default_theme();
         Self {
-            name: BUILTIN_THEME_VELOTYPE_LIGHT_NAME.into(),
+            name: BUILTIN_THEME_VELIN_LIGHT_NAME.into(),
             colors: ThemeColors {
                 editor_background: Hsla::from(rgba(0xf7f8fbff)),
                 source_mode_block_bg: Hsla::from(rgba(0xeef2f7ff)),
@@ -2036,13 +2036,23 @@ pub struct ThemeCatalogEntry {
 }
 
 /// Persisted identifier of the built-in dark theme.
-const BUILTIN_THEME_VELOTYPE_ID: &str = "velotype";
+const BUILTIN_THEME_VELIN_ID: &str = "velin";
+
+/// Maps the built-in theme IDs of the Velotype era, which settings files
+/// still hold, to their Velin names; other IDs pass through.
+pub fn canonical_theme_id(theme_id: &str) -> &str {
+    match theme_id {
+        "velotype" => BUILTIN_THEME_VELIN_ID,
+        "velotype-light" => BUILTIN_THEME_VELIN_LIGHT_ID,
+        other => other,
+    }
+}
 /// Display name used to recognize a directly loaded dark theme.
-const BUILTIN_THEME_VELOTYPE_NAME: &str = "Velotype";
+const BUILTIN_THEME_VELIN_NAME: &str = "Velin";
 /// Persisted identifier of the built-in light theme.
-const BUILTIN_THEME_VELOTYPE_LIGHT_ID: &str = "velotype-light";
+const BUILTIN_THEME_VELIN_LIGHT_ID: &str = "velin-light";
 /// Display name used to recognize a directly loaded light theme.
-const BUILTIN_THEME_VELOTYPE_LIGHT_NAME: &str = "Velotype Light";
+const BUILTIN_THEME_VELIN_LIGHT_NAME: &str = "Velin Light";
 const BUILTIN_THEME_GITHUB_ID: &str = "github";
 const BUILTIN_THEME_GITHUB_NAME: &str = "GitHub";
 const BUILTIN_THEME_NIGHT_ID: &str = "night";
@@ -2055,9 +2065,9 @@ const BUILTIN_THEME_WHITEY_NAME: &str = "Whitey";
 const CUSTOM_THEME_ID: &str = "custom";
 
 /// Default theme used for the light appearance when following the system.
-pub const DEFAULT_LIGHT_THEME_ID: &str = BUILTIN_THEME_VELOTYPE_LIGHT_ID;
+pub const DEFAULT_LIGHT_THEME_ID: &str = BUILTIN_THEME_VELIN_LIGHT_ID;
 /// Default theme used for the dark appearance when following the system.
-pub const DEFAULT_DARK_THEME_ID: &str = BUILTIN_THEME_VELOTYPE_ID;
+pub const DEFAULT_DARK_THEME_ID: &str = BUILTIN_THEME_VELIN_ID;
 
 /// A theme compiled into the binary.
 struct BuiltinTheme {
@@ -2069,13 +2079,13 @@ struct BuiltinTheme {
 /// Built-in themes in menu order.
 const BUILTIN_THEMES: &[BuiltinTheme] = &[
     BuiltinTheme {
-        id: BUILTIN_THEME_VELOTYPE_ID,
-        name: BUILTIN_THEME_VELOTYPE_NAME,
+        id: BUILTIN_THEME_VELIN_ID,
+        name: BUILTIN_THEME_VELIN_NAME,
         build: Theme::default_theme,
     },
     BuiltinTheme {
-        id: BUILTIN_THEME_VELOTYPE_LIGHT_ID,
-        name: BUILTIN_THEME_VELOTYPE_LIGHT_NAME,
+        id: BUILTIN_THEME_VELIN_LIGHT_ID,
+        name: BUILTIN_THEME_VELIN_LIGHT_NAME,
         build: Theme::light_theme,
     },
     BuiltinTheme {
@@ -2221,7 +2231,7 @@ impl Default for ThemeManager {
             current: Arc::new(Theme::default_theme()),
             unzoomed: Arc::new(Theme::default_theme()),
             zoom: 1.0,
-            current_theme_id: BUILTIN_THEME_VELOTYPE_ID.into(),
+            current_theme_id: BUILTIN_THEME_VELIN_ID.into(),
             custom_themes: Vec::new(),
             theme_catalog: builtin_theme_catalog(),
             appearance: AppearanceThemes::default(),
@@ -2235,7 +2245,7 @@ impl ThemeManager {
     pub fn init(cx: &mut App) {
         let theme_id = crate::config::read_app_preferences()
             .map(|preferences| preferences.default_theme_id)
-            .unwrap_or_else(|_| BUILTIN_THEME_VELOTYPE_ID.into());
+            .unwrap_or_else(|_| BUILTIN_THEME_VELIN_ID.into());
         Self::init_with_theme_id(cx, &theme_id);
     }
 
@@ -2243,7 +2253,7 @@ impl ThemeManager {
     /// Unknown IDs leave the dark default selected; pack-loading errors are logged.
     pub fn init_with_theme_id(cx: &mut App, theme_id: &str) {
         let mut manager = Self::default();
-        if let Ok(dirs) = VelotypeConfigDirs::from_system()
+        if let Ok(dirs) = VelinConfigDirs::from_system()
             && let Err(err) = manager.load_custom_themes_from_dirs(&dirs)
         {
             eprintln!("failed to load custom themes: {err}");
@@ -2318,12 +2328,13 @@ impl ThemeManager {
     /// Restores the built-in default theme.
     pub fn reset(&mut self) {
         self.activate(Theme::default_theme());
-        self.current_theme_id = BUILTIN_THEME_VELOTYPE_ID.into();
+        self.current_theme_id = BUILTIN_THEME_VELIN_ID.into();
     }
 
     /// Activates a recognized theme ID and returns `true`, even if already selected.
     /// Unknown IDs return `false` and leave the active theme unchanged.
     pub fn set_theme_by_id(&mut self, theme_id: &str) -> bool {
+        let theme_id = canonical_theme_id(theme_id);
         if let Some(theme) = Theme::builtin(theme_id) {
             self.activate(theme);
             self.current_theme_id = theme_id.into();
@@ -2384,7 +2395,7 @@ impl ThemeManager {
 
     /// Imports a user theme pack, persists a normalized copy, and activates it.
     pub fn import_theme_config(&mut self, path: impl AsRef<Path>) -> anyhow::Result<String> {
-        let dirs = VelotypeConfigDirs::from_system()?;
+        let dirs = VelinConfigDirs::from_system()?;
         self.import_theme_config_with_dirs(path, &dirs)
     }
 
@@ -2392,7 +2403,7 @@ impl ThemeManager {
     fn import_theme_config_with_dirs(
         &mut self,
         path: impl AsRef<Path>,
-        dirs: &VelotypeConfigDirs,
+        dirs: &VelinConfigDirs,
     ) -> anyhow::Result<String> {
         if is_css_theme_path(path.as_ref()) {
             // Typora themes are copied as they are and read like on startup.
@@ -2436,14 +2447,14 @@ impl ThemeManager {
     #[cfg(test)]
     pub(crate) fn load_custom_themes_from_dirs_for_test(
         &mut self,
-        dirs: &VelotypeConfigDirs,
+        dirs: &VelinConfigDirs,
     ) -> anyhow::Result<()> {
         self.load_custom_themes_from_dirs(dirs)
     }
 
     /// Loads packs sorted by name/creator, logging invalid files and skipping them.
     /// Packs without a valid base use the dark theme during directory loading.
-    fn load_custom_themes_from_dirs(&mut self, dirs: &VelotypeConfigDirs) -> anyhow::Result<()> {
+    fn load_custom_themes_from_dirs(&mut self, dirs: &VelinConfigDirs) -> anyhow::Result<()> {
         let themes_dir = dirs.themes_dir();
         if !themes_dir.exists() {
             return Ok(());
@@ -2522,14 +2533,14 @@ impl ThemeManager {
                 .iter()
                 .find(|entry| entry.id == id)
                 .map(|entry| entry.base_theme_id.clone())
-                .unwrap_or_else(|| BUILTIN_THEME_VELOTYPE_ID.into()),
+                .unwrap_or_else(|| BUILTIN_THEME_VELIN_ID.into()),
         }
     }
 }
 
 /// Resolves a pack and normalized JSON using dark as the fallback base.
 fn custom_theme_from_value(value: Value) -> anyhow::Result<(CustomThemeEntry, Value)> {
-    custom_theme_from_value_with_default_base(value, BUILTIN_THEME_VELOTYPE_ID)
+    custom_theme_from_value_with_default_base(value, BUILTIN_THEME_VELIN_ID)
 }
 
 /// Validates pack metadata and merges known nonempty tokens over a built-in base.
@@ -2618,7 +2629,7 @@ fn resolved_custom_theme_base_id<'a>(
             if is_builtin_theme_id(default_base_theme_id) {
                 default_base_theme_id
             } else {
-                BUILTIN_THEME_VELOTYPE_ID
+                BUILTIN_THEME_VELIN_ID
             }
         })
 }
@@ -2666,11 +2677,21 @@ fn required_string(object: &Map<String, Value>, key: &str) -> anyhow::Result<Str
 }
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn velotype_theme_ids_from_old_settings_select_the_velin_themes() {
+        let mut manager = ThemeManager::default();
+        assert!(manager.set_theme_by_id("velotype-light"));
+        assert_eq!(manager.current_theme_id(), "velin-light");
+        assert!(manager.set_theme_by_id("velotype"));
+        assert_eq!(manager.current_theme_id(), "velin");
+        assert!(!manager.set_theme_by_id("no-such-theme"));
+    }
     use super::{
         AppearanceThemes, DEFAULT_DARK_THEME_ID, DEFAULT_LIGHT_THEME_ID, Theme, ThemeManager,
         builtin_theme_catalog, custom_theme_from_value, is_builtin_theme_id,
     };
-    use crate::config::VelotypeConfigDirs;
+    use crate::config::VelinConfigDirs;
     use gpui::{Hsla, Rgba, rgba};
 
     #[test]
@@ -2949,7 +2970,7 @@ mod tests {
         let dark = Theme::default_theme();
         let light = Theme::light_theme();
 
-        assert_eq!(light.name, "Velotype Light");
+        assert_eq!(light.name, "Velin Light");
         assert_eq!(light.colors.editor_background, rgba(0xf7f8fbff).into());
         assert_eq!(light.colors.text_default, rgba(0x1f2937ff).into());
         assert_eq!(light.colors.text_link, rgba(0x2563ebff).into());
@@ -3002,7 +3023,7 @@ mod tests {
 
     #[test]
     fn imports_partial_jsonc_theme_and_persists_normalized_json() {
-        let root = std::env::temp_dir().join(format!("velotype-theme-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-theme-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("temp root should be created");
         let source = root.join("theme.jsonc");
         std::fs::write(
@@ -3025,7 +3046,7 @@ mod tests {
         )
         .expect("theme config should be written");
 
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         let mut manager = ThemeManager::default();
         let imported_id = manager
             .import_theme_config_with_dirs(&source, &dirs)
@@ -3050,7 +3071,7 @@ mod tests {
             .expect("normalized theme config should exist");
         assert!(normalized.contains("\"name\": \"Night Writer\""));
         assert!(normalized.contains("\"creator\": \"Ada\""));
-        assert!(normalized.contains("\"base_theme_id\": \"velotype\""));
+        assert!(normalized.contains("\"base_theme_id\": \"velin\""));
         assert!(normalized.contains("\"block_gap\": 12.0"));
         assert!(!normalized.contains("menu_text_size"));
         assert!(!normalized.contains("empty_editing"));
@@ -3064,7 +3085,7 @@ mod tests {
         let value = serde_json::json!({
             "name": "Day Writer",
             "creator": "Ada",
-            "base_theme_id": "velotype-light",
+            "base_theme_id": "velin-light",
             "theme": {
                 "dimensions": {
                     "menu_panel_radius": 12.0
@@ -3079,7 +3100,7 @@ mod tests {
             super::custom_theme_from_value(value).expect("theme should import");
         let light = Theme::light_theme();
 
-        assert_eq!(entry.base_theme_id, "velotype-light");
+        assert_eq!(entry.base_theme_id, "velin-light");
         assert_eq!(
             entry.theme.colors.editor_background,
             light.colors.editor_background
@@ -3091,7 +3112,7 @@ mod tests {
             normalized
                 .get("base_theme_id")
                 .and_then(|value| value.as_str()),
-            Some("velotype-light")
+            Some("velin-light")
         );
         assert!(
             normalized
@@ -3118,7 +3139,7 @@ mod tests {
         let (entry, normalized) =
             super::custom_theme_from_value(value).expect("invalid base should not fail import");
 
-        assert_eq!(entry.base_theme_id, "velotype");
+        assert_eq!(entry.base_theme_id, "velin");
         assert_eq!(
             entry.theme.colors.editor_background,
             Theme::default_theme().colors.editor_background
@@ -3127,14 +3148,13 @@ mod tests {
             normalized
                 .get("base_theme_id")
                 .and_then(|value| value.as_str()),
-            Some("velotype")
+            Some("velin")
         );
     }
 
     #[test]
     fn importing_without_base_uses_current_builtin_theme_as_base() {
-        let root =
-            std::env::temp_dir().join(format!("velotype-light-theme-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-light-theme-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("temp root should be created");
         let source = root.join("theme.jsonc");
         std::fs::write(
@@ -3151,9 +3171,9 @@ mod tests {
         )
         .expect("theme config should be written");
 
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let dirs = VelinConfigDirs::from_root(&root);
         let mut manager = ThemeManager::default();
-        assert!(manager.set_theme_by_id("velotype-light"));
+        assert!(manager.set_theme_by_id("velin-light"));
         let imported_id = manager
             .import_theme_config_with_dirs(&source, &dirs)
             .expect("theme config should import");
@@ -3167,7 +3187,7 @@ mod tests {
 
         let normalized = std::fs::read_to_string(dirs.themes_dir().join("Light_Radius_Ada.json"))
             .expect("normalized theme config should exist");
-        assert!(normalized.contains("\"base_theme_id\": \"velotype-light\""));
+        assert!(normalized.contains("\"base_theme_id\": \"velin-light\""));
 
         let mut reloaded = ThemeManager::default();
         reloaded
@@ -3185,8 +3205,8 @@ mod tests {
     #[test]
     fn theme_manager_switches_builtin_themes() {
         let mut manager = ThemeManager::default();
-        assert_eq!(manager.current_theme_id(), "velotype");
-        assert_eq!(manager.current().name, "Velotype");
+        assert_eq!(manager.current_theme_id(), "velin");
+        assert_eq!(manager.current().name, "Velin");
         assert_eq!(
             manager
                 .available_themes()
@@ -3194,8 +3214,8 @@ mod tests {
                 .map(|entry| entry.name.as_str())
                 .collect::<Vec<_>>(),
             vec![
-                "Velotype",
-                "Velotype Light",
+                "Velin",
+                "Velin Light",
                 "GitHub",
                 "Newsprint",
                 "Night",
@@ -3203,17 +3223,17 @@ mod tests {
             ]
         );
 
-        assert!(manager.set_theme_by_id("velotype-light"));
-        assert_eq!(manager.current_theme_id(), "velotype-light");
-        assert_eq!(manager.current().name, "Velotype Light");
+        assert!(manager.set_theme_by_id("velin-light"));
+        assert_eq!(manager.current_theme_id(), "velin-light");
+        assert_eq!(manager.current().name, "Velin Light");
         assert_eq!(
             manager.current().colors.editor_background,
             rgba(0xf7f8fbff).into()
         );
 
-        assert!(manager.set_theme_by_id("velotype"));
-        assert_eq!(manager.current_theme_id(), "velotype");
-        assert_eq!(manager.current().name, "Velotype");
+        assert!(manager.set_theme_by_id("velin"));
+        assert_eq!(manager.current_theme_id(), "velin");
+        assert_eq!(manager.current().name, "Velin");
         assert!(!manager.set_theme_by_id("missing"));
     }
 
@@ -3307,7 +3327,7 @@ mod tests {
         let mut manager = ThemeManager::default();
         assert!(!manager.follows_system_appearance());
         assert!(!manager.apply_system_appearance(false));
-        assert_eq!(manager.current_theme_id(), "velotype");
+        assert_eq!(manager.current_theme_id(), "velin");
 
         manager.set_appearance_themes(AppearanceThemes {
             follow_system: true,

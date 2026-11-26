@@ -47,7 +47,7 @@ const DICTIONARY_BASE_URL: &str =
 const PERSONAL_DICTIONARY_FILE: &str = "personal.txt";
 
 pub(crate) fn dictionary_dir() -> Option<PathBuf> {
-    crate::config::VelotypeConfigDirs::from_system()
+    crate::config::VelinConfigDirs::from_system()
         .ok()
         .map(|dirs| dirs.dictionaries_dir())
 }
@@ -77,7 +77,7 @@ pub(crate) fn download(tag: &str) -> anyhow::Result<()> {
     let dir = dictionary_dir().context("no configuration directory")?;
     std::fs::create_dir_all(&dir).with_context(|| format!("failed to create {}", dir.display()))?;
     let client = reqwest::blocking::Client::builder()
-        .user_agent(concat!("Velotype/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Velin/", env!("CARGO_PKG_VERSION")))
         .build()?;
     let (aff_path, dic_path) = dictionary_paths(&dir, tag);
     for (file, path) in [("index.aff", &aff_path), ("index.dic", &dic_path)] {
@@ -250,8 +250,8 @@ mod tests {
     fn ignore_and_add_accept_words() {
         let backend = backend();
         backend.ignore("Hxus");
-        backend.add_to_dictionary("Velotype");
-        assert!(backend.misspelled("Hxus Velotype").is_empty());
+        backend.add_to_dictionary("Velin");
+        assert!(backend.misspelled("Hxus Velin").is_empty());
     }
 
     #[test]

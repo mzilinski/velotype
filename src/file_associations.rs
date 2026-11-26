@@ -56,7 +56,7 @@ mod platform {
         UI::Shell::*,
     };
 
-    const PROG_ID: &str = "Velotype.Markdown";
+    const PROG_ID: &str = "Velin.Markdown";
     const NO_ASSOCIATION: u32 = 0x80070483; // HRESULT_FROM_WIN32(ERROR_NO_ASSOCIATION)
 
     /// Owns a newly opened HKCU key; predefined registry handles are never closed.
@@ -174,7 +174,7 @@ mod platform {
             let Some(prog_id) = association_string(extension, ASSOCSTR_PROGID)? else {
                 return Ok(false);
             };
-            if !is_velotype_prog_id(&prog_id) {
+            if !is_velin_prog_id(&prog_id) {
                 return Ok(false);
             }
             let Some(command) = association_string(extension, ASSOCSTR_COMMAND)? else {
@@ -188,9 +188,9 @@ mod platform {
     }
 
     /// Also recognizes Windows' registration created by choosing the executable in Open With.
-    fn is_velotype_prog_id(prog_id: &str) -> bool {
+    fn is_velin_prog_id(prog_id: &str) -> bool {
         prog_id.eq_ignore_ascii_case(PROG_ID)
-            || prog_id.eq_ignore_ascii_case(r"Applications\velotype.exe")
+            || prog_id.eq_ignore_ascii_case(r"Applications\velin.exe")
     }
 
     /// Uses Windows' argument parser rather than splitting quoted paths or document placeholders.
@@ -257,8 +257,8 @@ mod platform {
             "",
             &format!("\"{shell_path}\",0"),
         )?;
-        let capabilities = "Software\\Velotype\\Capabilities";
-        set_value(capabilities, "ApplicationName", "Velotype")?;
+        let capabilities = "Software\\Velin\\Capabilities";
+        set_value(capabilities, "ApplicationName", "Velin")?;
         set_value(capabilities, "ApplicationDescription", "Markdown editor")?;
         for extension in EXTENSIONS {
             set_value(
@@ -275,7 +275,7 @@ mod platform {
         // Earlier versions advertised .markdown too; keep the Settings page limited to .md.
         remove_value(&format!("{capabilities}\\FileAssociations"), ".markdown")?;
         remove_value(r"Software\Classes\.markdown\OpenWithProgids", PROG_ID)?;
-        set_value("Software\\RegisteredApplications", "Velotype", capabilities)?;
+        set_value("Software\\RegisteredApplications", "Velin", capabilities)?;
         // Notify the shell about registrations, without touching protected UserChoice values.
         unsafe {
             SHChangeNotify(
@@ -285,7 +285,7 @@ mod platform {
                 ptr::null(),
             );
         }
-        Ok(Some("ms-settings:defaultapps?registeredAppUser=Velotype"))
+        Ok(Some("ms-settings:defaultapps?registeredAppUser=Velin"))
     }
 
     #[cfg(test)]
@@ -294,16 +294,16 @@ mod platform {
 
         #[test]
         fn file_association_identity_does_not_require_other_handlers_executables() {
-            assert!(is_velotype_prog_id("Velotype.Markdown"));
-            assert!(is_velotype_prog_id(r"applications\VELOTYPE.EXE"));
+            assert!(is_velin_prog_id("Velin.Markdown"));
+            assert!(is_velin_prog_id(r"applications\VELIN.EXE"));
             for other in ["Typora.md", "AppX-packaged-editor", "Unknown", ""] {
-                assert!(!is_velotype_prog_id(other));
+                assert!(!is_velin_prog_id(other));
             }
         }
 
         #[test]
         fn missing_file_association_does_not_resolve_open_with() {
-            let extension = format!(".velotype-test-{}", uuid::Uuid::new_v4());
+            let extension = format!(".velin-test-{}", uuid::Uuid::new_v4());
             assert_eq!(
                 association_string(&extension, ASSOCSTR_PROGID).unwrap(),
                 None
@@ -315,12 +315,12 @@ mod platform {
 
         #[test]
         fn file_association_command_preserves_quoted_document_paths() {
-            let executable = Path::new(r"\\?\C:\Program Files\中文 App\velotype.exe");
+            let executable = Path::new(r"\\?\C:\Program Files\中文 App\velin.exe");
             let command = windows_open_command(executable).unwrap();
             assert_eq!(
                 command_arguments(&command).unwrap(),
                 [
-                    OsString::from(r"C:\Program Files\中文 App\velotype.exe"),
+                    OsString::from(r"C:\Program Files\中文 App\velin.exe"),
                     OsString::from("--"),
                     OsString::from("%1")
                 ]
@@ -337,12 +337,12 @@ mod platform {
             let root = tempfile::tempdir().unwrap();
             let directory = root.path().join("中文 App With Spaces");
             std::fs::create_dir(&directory).unwrap();
-            let current = directory.join("velotype.exe");
+            let current = directory.join("velin.exe");
             std::fs::write(&current, b"test fixture").unwrap();
             let canonical = current.canonicalize().unwrap();
             let command = windows_open_command(&canonical).unwrap();
             assert!(command_opens_current_executable(&command, &current).unwrap());
-            let other = directory.join("older-velotype.exe");
+            let other = directory.join("older-velin.exe");
             std::fs::write(&other, b"older installation").unwrap();
             assert!(
                 !command_opens_current_executable(&windows_open_command(&other).unwrap(), &current)
@@ -390,10 +390,8 @@ fn desktop_entry(executable: &std::path::Path) -> Result<String> {
     quoted.push('"');
     // Desktop value escaping precedes Exec argument parsing, so backslashes need a second layer.
     let command = format!("Exec={} -- %F", quoted.replace('\\', "\\\\"));
-    Ok(
-        include_str!("../resources/linux/com.manyougz.Velotype.desktop")
-            .replace("Exec=velotype %F", &command),
-    )
+    Ok(include_str!("../resources/linux/eu.zilinski.Velin.desktop")
+        .replace("Exec=velin %F", &command))
 }
 
 #[cfg(target_os = "linux")]
@@ -405,7 +403,7 @@ mod platform {
         time::{Duration, Instant},
     };
     const MIME_TYPES: [&str; 2] = ["text/markdown", "text/x-markdown"];
-    const DESKTOP_ID: &str = "com.manyougz.Velotype.desktop";
+    const DESKTOP_ID: &str = "eu.zilinski.Velin.desktop";
 
     fn xdg_mime(args: &[&str]) -> Result<String> {
         let mut child = Command::new("xdg-mime")
@@ -462,7 +460,7 @@ mod platform {
 #[cfg(target_os = "macos")]
 mod platform {
     use super::*;
-    use crate::app_identity::VELOTYPE_APP_ID;
+    use crate::app_identity::VELIN_APP_ID;
     use std::{ffi::c_void, ptr};
 
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -534,7 +532,7 @@ mod platform {
     }
 
     pub(super) fn is_associated() -> Result<bool> {
-        let application = OwnedCf::string(VELOTYPE_APP_ID)?;
+        let application = OwnedCf::string(VELIN_APP_ID)?;
         for content in markdown_types()? {
             let handler = unsafe { LSCopyDefaultRoleHandlerForContentType(content.0, u32::MAX) };
             if handler.is_null() {
@@ -553,7 +551,7 @@ mod platform {
         let bundle = executable
             .ancestors()
             .find(|path| path.extension().is_some_and(|ext| ext == "app"))
-            .context("run Velotype from its .app bundle to associate Markdown files")?;
+            .context("run Velin from its .app bundle to associate Markdown files")?;
         let path = OwnedCf::string(
             bundle
                 .to_str()
@@ -565,7 +563,7 @@ mod platform {
             unsafe { LSRegisterURL(url.0, 1) } == 0,
             "cannot register the application bundle"
         );
-        let application = OwnedCf::string(VELOTYPE_APP_ID)?;
+        let application = OwnedCf::string(VELIN_APP_ID)?;
         for content in markdown_types()? {
             let status = unsafe {
                 LSSetDefaultRoleHandlerForContentType(content.0, u32::MAX, application.0)
@@ -598,33 +596,31 @@ mod tests {
     fn windows_file_association_paths_use_shell_syntax() {
         use std::path::Path;
         assert_eq!(
-            windows_shell_path(Path::new(r"\\?\C:\中文 App\velotype.exe")).unwrap(),
-            r"C:\中文 App\velotype.exe"
+            windows_shell_path(Path::new(r"\\?\C:\中文 App\velin.exe")).unwrap(),
+            r"C:\中文 App\velin.exe"
         );
         assert_eq!(
-            windows_shell_path(Path::new(r"\\?\UNC\server\share\中文 App\velotype.exe")).unwrap(),
-            r"\\server\share\中文 App\velotype.exe"
+            windows_shell_path(Path::new(r"\\?\UNC\server\share\中文 App\velin.exe")).unwrap(),
+            r"\\server\share\中文 App\velin.exe"
         );
         assert_eq!(
-            windows_shell_path(Path::new(r"\\server\share\velotype.exe")).unwrap(),
-            r"\\server\share\velotype.exe"
+            windows_shell_path(Path::new(r"\\server\share\velin.exe")).unwrap(),
+            r"\\server\share\velin.exe"
         );
-        assert!(windows_shell_path(Path::new(r"\\?\Volume{guid}\velotype.exe")).is_err());
+        assert!(windows_shell_path(Path::new(r"\\?\Volume{guid}\velin.exe")).is_err());
     }
 
     #[test]
     fn association_commands_quote_paths_and_do_not_claim_plain_text() {
-        let path = std::path::Path::new("C:/Program Files/中文 & test/velotype.exe");
+        let path = std::path::Path::new("C:/Program Files/中文 & test/velin.exe");
         assert_eq!(
             windows_open_command(path).unwrap(),
-            "\"C:/Program Files/中文 & test/velotype.exe\" -- \"%1\""
+            "\"C:/Program Files/中文 & test/velin.exe\" -- \"%1\""
         );
         assert!(windows_open_command(std::path::Path::new("bad\"path")).is_err());
-        let entry = desktop_entry(std::path::Path::new(
-            "/home/me/中文 \"$test`100%\\/velotype",
-        ))
-        .unwrap();
-        assert!(entry.contains(r#"Exec="/home/me/中文 \\"\\$test\\`100%%\\\\/velotype" -- %F"#));
+        let entry =
+            desktop_entry(std::path::Path::new("/home/me/中文 \"$test`100%\\/velin")).unwrap();
+        assert!(entry.contains(r#"Exec="/home/me/中文 \\"\\$test\\`100%%\\\\/velin" -- %F"#));
         assert!(entry.contains("MimeType=text/markdown;text/x-markdown;"));
         assert!(!entry.contains("text/plain"));
         assert!(desktop_entry(std::path::Path::new("/bad\nExec=evil")).is_err());

@@ -16,12 +16,12 @@ use std::path::Path;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
-// --- window_title shape: format!("Velotype - {}", lossy().to_string())
-//                        vs format!("Velotype - {}", lossy()) ---
+// --- window_title shape: format!("Velin - {}", lossy().to_string())
+//                        vs format!("Velin - {}", lossy()) ---
 
 fn old_format_title(path: &Path) -> String {
     format!(
-        "Velotype - {}",
+        "Velin - {}",
         path.file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| path.to_string_lossy().to_string())
@@ -30,7 +30,7 @@ fn old_format_title(path: &Path) -> String {
 
 fn new_format_title(path: &Path) -> String {
     format!(
-        "Velotype - {}",
+        "Velin - {}",
         path.file_name()
             .map(|n| n.to_string_lossy())
             .unwrap_or_else(|| path.to_string_lossy())

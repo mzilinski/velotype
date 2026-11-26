@@ -1,6 +1,6 @@
 //! Tags of a document, the way Obsidian reads them: `#tag` in the text and
 //! `tags:` (or `tag:`) in the YAML front matter. Tags may nest with `/`
-//! (`#project/velotype`) and compare case-insensitively.
+//! (`#project/velin`) and compare case-insensitively.
 
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn nested_tags_belong_to_their_parents() {
-        assert!(tag_within("project/velotype", "project"));
+        assert!(tag_within("project/velin", "project"));
         assert!(tag_within("project", "project"));
         assert!(!tag_within("projects", "project"));
     }

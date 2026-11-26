@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=Velotype
+Name=Velin
 Comment=Native Markdown editor built with Rust and GPUI
-Exec=velotype %F
-Icon=com.manyougz.Velotype
+Exec=velin %F
+Icon=eu.zilinski.Velin
 Terminal=false
 Categories=Office;TextEditor;Utility;
 MimeType=text/markdown;text/x-markdown;
 StartupNotify=false
-StartupWMClass=com.manyougz.Velotype
+StartupWMClass=eu.zilinski.Velin

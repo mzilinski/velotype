@@ -1,8 +1,8 @@
 [package]
-name = "velotype"
+name = "velin"
 version = "0.7.8"
 edition = "2024"
-repository = "https://github.com/manyougz/velotype"
+repository = "https://github.com/mzilinski/velotype"
 license = "Apache-2.0"
 
 [lints.clippy]
@@ -213,7 +213,7 @@ harness = false
 # without this, Criterion-specific CLI flags (`--save-baseline`, etc.) trip
 # the libtest stub before Criterion's `main` runs (rust-lang/rust#47241).
 [[bin]]
-name = "velotype"
+name = "velin"
 path = "src/main.rs"
 bench = false
 

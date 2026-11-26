@@ -35,7 +35,7 @@ pub(super) fn is_droppable_image_path(path: &Path) -> bool {
 
 /// Folder receiving pasted bitmaps while the document has never been saved.
 pub(super) fn untitled_image_dir() -> PathBuf {
-    std::env::temp_dir().join("velotype-images")
+    std::env::temp_dir().join("velin-images")
 }
 
 fn clipboard_image_extension(format: ImageFormat) -> &'static str {
@@ -613,7 +613,7 @@ mod tests {
     use crate::components::BlockKind;
 
     fn temp_root(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("velotype-images-{name}-{}", Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-images-{name}-{}", Uuid::new_v4()));
         fs::create_dir_all(&root).expect("create temp root");
         root
     }

@@ -129,7 +129,7 @@ mod tests {
             crate::theme::ThemeManager::init(cx);
             crate::components::init(cx);
         });
-        let root = std::env::temp_dir().join(format!("velotype-filemenu-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-filemenu-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(root.join("sub")).unwrap();
         let path = root.join("sub").join("doc.md");
         fs::write(&path, "first").unwrap();

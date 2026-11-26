@@ -1,6 +1,6 @@
 //! Markdown-to-editor-tree deserialization.
 //!
-//! Raw Markdown is parsed into the subset of native block structures Velotype
+//! Raw Markdown is parsed into the subset of native block structures Velin
 //! can edit safely. Syntax that exceeds the current runtime model is preserved
 //! as raw Markdown blocks so it can round-trip without loss.
 

@@ -810,15 +810,15 @@ mod tests {
             files(&[
                 "Home.md",
                 "people/Anna.md",
-                "projects/velotype/Plan.md",
+                "projects/velin/Plan.md",
                 "projects/other/Plan.md",
                 "Plan.md",
             ]),
         );
-        let source = Path::new("/v/projects/velotype/Notes.md");
+        let source = Path::new("/v/projects/velin/Notes.md");
         let resolve = |target: &str| targets.resolve_wiki(source, target);
         // Next to the source wins over a shorter path.
-        assert_eq!(resolve("Plan"), Some("/v/projects/velotype/Plan.md".into()));
+        assert_eq!(resolve("Plan"), Some("/v/projects/velin/Plan.md".into()));
         // Anywhere by name, ignoring case and anchors.
         assert_eq!(resolve("anna#Kontakt"), Some("/v/people/Anna.md".into()));
         // Paths from the root and partial paths.
@@ -905,7 +905,7 @@ mod tests {
             Path::new("/v"),
             files(&["a.md", "b.md", "c.md"]),
             [
-                ("/v/a.md".into(), "#Project/velotype #idea #idea".into()),
+                ("/v/a.md".into(), "#Project/velin #idea #idea".into()),
                 ("/v/b.md".into(), "---\ntags: [project]\n---\n#IDEA".into()),
                 ("/v/c.md".into(), "no tags".into()),
             ],
@@ -920,7 +920,7 @@ mod tests {
             [
                 ("idea".to_string(), 2),
                 ("project".to_string(), 2),
-                ("Project/velotype".to_string(), 1),
+                ("Project/velin".to_string(), 1),
             ]
         );
         assert_eq!(index.documents_with_tag("#PROJECT").len(), 2);
@@ -929,13 +929,13 @@ mod tests {
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<_>>();
-        assert_eq!(of_a, ["Project/velotype", "idea"]);
+        assert_eq!(of_a, ["Project/velin", "idea"]);
         assert!(index.tags_of(Path::new("/v/c.md")).is_empty());
     }
 
     #[test]
     fn builds_from_disk() {
-        let dir = std::env::temp_dir().join(format!("velotype-links-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-links-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         std::fs::write(dir.join("Target.md"), "# Target").unwrap();
         std::fs::write(dir.join("sub").join("Source.md"), "Links to [[Target]].").unwrap();

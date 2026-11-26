@@ -12,8 +12,8 @@ use sha2::{Digest, Sha256};
 
 use super::download::PreparedUpdate;
 
-pub(crate) const HELPER_FLAG: &str = "--velotype-update-helper";
-pub(crate) const FINISH_FLAG: &str = "--velotype-update-finished";
+pub(crate) const HELPER_FLAG: &str = "--velin-update-helper";
+pub(crate) const FINISH_FLAG: &str = "--velin-update-finished";
 
 /// Canonical destination, with macOS bundles replaced as one unit.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ impl InstallTarget {
             .parent()
             .context("installation has no parent directory")?;
         tempfile::Builder::new()
-            .prefix(".velotype-update-probe-")
+            .prefix(".velin-update-probe-")
             .tempfile_in(parent)
             .with_context(|| {
                 format!(
@@ -205,7 +205,7 @@ fn read_job(directory: &Path, token: &str) -> Result<InstallJob> {
         canonical.parent() == Some(std::env::temp_dir().canonicalize()?.as_path())
             && canonical
                 .file_name()
-                .is_some_and(|name| name.to_string_lossy().starts_with("velotype-update-")),
+                .is_some_and(|name| name.to_string_lossy().starts_with("velin-update-")),
         "invalid update job directory"
     );
     let file = File::open(canonical.join("job.json"))?;
@@ -367,7 +367,7 @@ pub(crate) fn run_helper(directory: &Path, token: &str) -> Result<()> {
     );
     if job.target.bundle {
         ensure!(
-            job.target.executable == job.target.path.join("Contents/MacOS/velotype"),
+            job.target.executable == job.target.path.join("Contents/MacOS/velin"),
             "invalid bundle destination"
         );
     } else {
@@ -383,7 +383,7 @@ pub(crate) fn run_helper(directory: &Path, token: &str) -> Result<()> {
         .parent()
         .context("missing installation directory")?;
     let lock_name = format!(
-        "velotype-install-{}.lock",
+        "velin-install-{}.lock",
         super::hex_digest(Sha256::digest(
             job.target.path.as_os_str().as_encoded_bytes()
         ))
@@ -397,7 +397,7 @@ pub(crate) fn run_helper(directory: &Path, token: &str) -> Result<()> {
     lock.try_lock()
         .context("another updater is installing this application")?;
     let staging = tempfile::Builder::new()
-        .prefix(".velotype-update-stage-")
+        .prefix(".velin-update-stage-")
         .tempdir_in(parent)?;
     let staged = staging.path().join("new");
     copy_payload(&directory.join(&job.payload), &staged)?;
@@ -486,7 +486,7 @@ mod tests {
     #[test]
     fn updater_swaps_special_character_paths_and_rolls_back_failed_launch() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("Velotype ' 中文 & test.exe");
+        let target = dir.path().join("Velin ' 中文 & test.exe");
         let staged = dir.path().join("new");
         let backup = dir.path().join("backup");
         fs::write(&target, b"old").unwrap();
@@ -504,7 +504,7 @@ mod tests {
     #[test]
     fn updater_restores_original_if_staged_payload_is_missing() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("velotype");
+        let target = dir.path().join("velin");
         fs::write(&target, b"old").unwrap();
         assert!(
             replace_and_launch(
@@ -521,7 +521,7 @@ mod tests {
     #[test]
     fn updater_bundle_swap_preserves_resources_and_restores_on_error() {
         let directory = tempfile::tempdir().unwrap();
-        let target = directory.path().join("Velotype.app");
+        let target = directory.path().join("Velin.app");
         let staged = directory.path().join("new.app");
         let backup = directory.path().join("backup.app");
         fs::create_dir_all(target.join("Contents/Resources")).unwrap();

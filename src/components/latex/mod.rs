@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use anyhow::{Context as _, anyhow};
 use gpui::{Hsla, Rgba};
 
-use crate::components::svg_cache::{mark_svg_cache_hit, velotype_cache_root};
+use crate::components::svg_cache::{mark_svg_cache_hit, velin_cache_root};
 
 /// Display-math font multiplier relative to body text.
 const DISPLAY_MATH_SCALE: f32 = 1.25;
@@ -144,7 +144,7 @@ fn strip_display_indent(line: &str) -> Option<&str> {
 
 /// Creates the per-user LaTeX SVG cache, falling back to the temp directory.
 fn latex_cache_dir() -> anyhow::Result<PathBuf> {
-    let dir = velotype_cache_root().join("latex-svg");
+    let dir = velin_cache_root().join("latex-svg");
     fs::create_dir_all(&dir)
         .with_context(|| format!("failed to create LaTeX SVG cache '{}'", dir.display()))?;
     Ok(dir)

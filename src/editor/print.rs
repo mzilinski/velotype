@@ -27,7 +27,7 @@ pub(crate) fn with_print_script(html: &str) -> String {
 }
 
 fn print_dir() -> PathBuf {
-    std::env::temp_dir().join("velotype-print")
+    std::env::temp_dir().join("velin-print")
 }
 
 /// Removes print files left over from earlier runs.

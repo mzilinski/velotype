@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn resolves_relative_and_encoded_paths() {
-        let dir = std::env::temp_dir().join(format!("velotype-upload-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-upload-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("img")).unwrap();
         std::fs::write(dir.join("img").join("my pic.png"), b"png").unwrap();
         assert_eq!(
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn upload_command_output_is_parsed() {
-        let dir = std::env::temp_dir().join(format!("velotype-upload-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-upload-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("a b.png");
         std::fs::write(&file, b"png").unwrap();
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn upload_script_receives_paths_with_spaces() {
         let dir = std::env::temp_dir()
-            .join(format!("velotype upload {}", uuid::Uuid::new_v4()))
+            .join(format!("velin upload {}", uuid::Uuid::new_v4()))
             .join("Bilder Ordner");
         std::fs::create_dir_all(&dir).unwrap();
         let files = [dir.join("erstes bild.png"), dir.join("zweites.png")];

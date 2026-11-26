@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn plans_on_disk_after_a_real_rename() {
-        let dir = std::env::temp_dir().join(format!("velotype-rewrite-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("velin-rewrite-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(dir.join("people")).unwrap();
         std::fs::write(dir.join("people").join("Anna.md"), "# Anna").unwrap();
         std::fs::write(dir.join("Home.md"), "[[Anna]] and [A](people/Anna.md)").unwrap();

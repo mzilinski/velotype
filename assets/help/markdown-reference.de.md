@@ -1,6 +1,6 @@
 # Markdown-Referenz
 
-Jeder Abschnitt zeigt zuerst die Schreibweise und darunter, wie Velotype sie darstellt. Mit **Strg+/** siehst du den Quelltext dieser Seite.
+Jeder Abschnitt zeigt zuerst die Schreibweise und darunter, wie Velin sie darstellt. Mit **Strg+/** siehst du den Quelltext dieser Seite.
 
 [TOC]
 

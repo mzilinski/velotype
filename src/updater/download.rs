@@ -59,7 +59,7 @@ pub(super) fn asset_name(version: &str, os: &str, arch: &str) -> Result<String> 
         "linux" => "tar.gz",
         _ => bail!("unsupported update platform: {os}"),
     };
-    Ok(format!("velotype-v{version}-{os}-{arch}.{extension}"))
+    Ok(format!("velin-v{version}-{os}-{arch}.{extension}"))
 }
 
 /// Requires an exact stable release, asset URL, size, and SHA-256 digest.
@@ -155,7 +155,7 @@ pub(super) fn prepare(version: &str, cancelled: &AtomicBool) -> Result<PreparedU
     let target = InstallTarget::current()?;
     target.check_writable()?;
     let client = reqwest::blocking::Client::builder()
-        .user_agent(concat!("Velotype/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Velin/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(120))
         .redirect(reqwest::redirect::Policy::custom(|attempt| {
@@ -183,16 +183,14 @@ pub(super) fn prepare(version: &str, cancelled: &AtomicBool) -> Result<PreparedU
     response.take(2 * 1024 * 1024).read_to_end(&mut metadata)?;
     let asset = select_asset(serde_json::from_slice(&metadata)?, version, os, arch)?;
     check_cancelled(cancelled)?;
-    let directory = tempfile::Builder::new()
-        .prefix("velotype-update-")
-        .tempdir()?;
+    let directory = tempfile::Builder::new().prefix("velin-update-").tempdir()?;
     let lease = File::options()
         .read(true)
         .write(true)
         .create_new(true)
         .open(directory.path().join(".lease"))?;
     lease.try_lock()?;
-    fs::write(directory.path().join(".velotype-update"), b"v1")?;
+    fs::write(directory.path().join(".velin-update"), b"v1")?;
     let archive = directory.path().join(&asset.name);
     let mut response = client
         .get(&asset.browser_download_url)
@@ -212,19 +210,19 @@ pub(super) fn prepare(version: &str, cancelled: &AtomicBool) -> Result<PreparedU
     extract_archive(&archive, &extracted, os, cancelled)?;
     let payload = if os == "macos" {
         if target.bundle {
-            extracted.join("Velotype.app")
+            extracted.join("Velin.app")
         } else {
-            extracted.join("Velotype.app/Contents/MacOS/velotype")
+            extracted.join("Velin.app/Contents/MacOS/velin")
         }
     } else {
         extracted.join(if os == "windows" {
-            "velotype.exe"
+            "velin.exe"
         } else {
-            "velotype"
+            "velin"
         })
     };
     let executable = if target.bundle {
-        payload.join("Contents/MacOS/velotype")
+        payload.join("Contents/MacOS/velin")
     } else {
         payload.clone()
     };
@@ -255,13 +253,13 @@ pub(super) fn cleanup_stale() {
         if !entry
             .file_name()
             .to_string_lossy()
-            .starts_with("velotype-update-")
+            .starts_with("velin-update-")
             || !entry.file_type().is_ok_and(|kind| kind.is_dir())
         {
             continue;
         }
         let path = entry.path();
-        let marker = path.join(".velotype-update");
+        let marker = path.join(".velin-update");
         if fs::read(&marker).ok().as_deref() != Some(b"v1") {
             continue;
         }
@@ -312,9 +310,9 @@ fn safe_archive_path(name: &str) -> Result<PathBuf> {
 
 fn wanted_path(path: &Path, os: &str) -> bool {
     match os {
-        "macos" => path.starts_with("Velotype.app"),
-        "windows" => path == Path::new("velotype.exe"),
-        _ => path == Path::new("velotype"),
+        "macos" => path.starts_with("Velin.app"),
+        "windows" => path == Path::new("velin.exe"),
+        _ => path == Path::new("velin"),
     }
 }
 
@@ -391,7 +389,7 @@ mod tests {
         for os in ["windows", "linux", "macos"] {
             for arch in ["x86_64", "aarch64"] {
                 let name = asset_name("1.2.3", os, arch).unwrap();
-                assert!(name.starts_with(&format!("velotype-v1.2.3-{os}-{arch}.")));
+                assert!(name.starts_with(&format!("velin-v1.2.3-{os}-{arch}.")));
             }
         }
         assert!(asset_name("1.2.3-rc.1", "windows", "x86_64").is_err());
@@ -416,9 +414,9 @@ mod tests {
     #[test]
     fn rejects_traversal_and_platform_path_escapes() {
         for name in [
-            "../velotype",
-            "/velotype",
-            "C:\\velotype.exe",
+            "../velin",
+            "/velin",
+            "C:\\velin.exe",
             "a/../../x",
             "a\\..\\x",
             "a:stream",
@@ -426,10 +424,7 @@ mod tests {
         ] {
             assert!(safe_archive_path(name).is_err(), "{name}");
         }
-        assert_eq!(
-            safe_archive_path("./velotype").unwrap(),
-            Path::new("velotype")
-        );
+        assert_eq!(safe_archive_path("./velin").unwrap(), Path::new("velin"));
     }
 
     #[test]
@@ -438,9 +433,9 @@ mod tests {
             Release {
             tag_name: "v1.2.3".into(), draft: false, prerelease: false,
             assets: vec![Asset {
-                name: "velotype-v1.2.3-windows-x86_64.zip".into(), size: 10,
+                name: "velin-v1.2.3-windows-x86_64.zip".into(), size: 10,
                 digest: Some(format!("sha256:{}", "a".repeat(64))),
-                browser_download_url: "https://github.com/mzilinski/velotype/releases/download/v1.2.3/velotype-v1.2.3-windows-x86_64.zip".into(),
+                browser_download_url: "https://github.com/mzilinski/velotype/releases/download/v1.2.3/velin-v1.2.3-windows-x86_64.zip".into(),
             }],
         }
         };
@@ -467,18 +462,18 @@ mod tests {
         let cancelled = AtomicBool::new(false);
         let options = zip::write::FileOptions::<()>::default();
         let mut writer = zip::ZipWriter::new(File::create(&archive).unwrap());
-        writer.start_file("velotype.exe", options.clone()).unwrap();
+        writer.start_file("velin.exe", options.clone()).unwrap();
         writer.write_all(b"binary").unwrap();
         writer.start_file("README.md", options.clone()).unwrap();
         writer.write_all(b"ignored").unwrap();
         writer.finish().unwrap();
         extract_archive(&archive, &output, "windows", &cancelled).unwrap();
-        assert_eq!(fs::read(output.join("velotype.exe")).unwrap(), b"binary");
+        assert_eq!(fs::read(output.join("velin.exe")).unwrap(), b"binary");
         assert!(!output.join("README.md").exists());
 
         let mut writer = zip::ZipWriter::new(File::create(&archive).unwrap());
         writer
-            .add_symlink("velotype.exe", "../outside", options.clone())
+            .add_symlink("velin.exe", "../outside", options.clone())
             .unwrap();
         writer.finish().unwrap();
         assert!(extract_archive(&archive, &output, "windows", &cancelled).is_err());
@@ -509,20 +504,20 @@ mod tests {
                 header.set_size(0);
                 header.set_cksum();
                 writer
-                    .append_data(&mut header, "velotype", std::io::empty())
+                    .append_data(&mut header, "velin", std::io::empty())
                     .unwrap();
             } else {
                 header.set_size(6);
                 header.set_cksum();
                 writer
-                    .append_data(&mut header, "./velotype", &b"binary"[..])
+                    .append_data(&mut header, "./velin", &b"binary"[..])
                     .unwrap();
             }
             writer.into_inner().unwrap().finish().unwrap();
         };
         write_archive(false);
         extract_archive(&archive, &output, "linux", &AtomicBool::new(false)).unwrap();
-        assert_eq!(fs::read(output.join("velotype")).unwrap(), b"binary");
+        assert_eq!(fs::read(output.join("velin")).unwrap(), b"binary");
         write_archive(true);
         assert!(extract_archive(&archive, &output, "linux", &AtomicBool::new(false)).is_err());
     }
@@ -535,9 +530,9 @@ mod tests {
         fs::create_dir(&output).unwrap();
         let mut writer = zip::ZipWriter::new(File::create(&archive).unwrap());
         for path in [
-            "Velotype.app/Contents/MacOS/velotype",
-            "Velotype.app/Contents/Info.plist",
-            "Velotype.app/Contents/_CodeSignature/CodeResources",
+            "Velin.app/Contents/MacOS/velin",
+            "Velin.app/Contents/Info.plist",
+            "Velin.app/Contents/_CodeSignature/CodeResources",
         ] {
             writer
                 .start_file(path, zip::write::FileOptions::<()>::default())
@@ -546,14 +541,10 @@ mod tests {
         }
         writer.finish().unwrap();
         extract_archive(&archive, &output, "macos", &AtomicBool::new(false)).unwrap();
-        assert!(
-            output
-                .join("Velotype.app/Contents/MacOS/velotype")
-                .is_file()
-        );
-        assert!(output.join("Velotype.app/Contents/Info.plist").is_file());
+        assert!(output.join("Velin.app/Contents/MacOS/velin").is_file());
+        assert!(output.join("Velin.app/Contents/Info.plist").is_file());
         assert_eq!(
-            fs::read(output.join("Velotype.app/Contents/_CodeSignature/CodeResources")).unwrap(),
+            fs::read(output.join("Velin.app/Contents/_CodeSignature/CodeResources")).unwrap(),
             b"bundle data"
         );
     }

@@ -187,7 +187,7 @@ pub(crate) fn resolve_image_source(source: &str, base_dir: Option<&Path>) -> Ima
 
 /// Resolves a local image destination against the document folder.
 ///
-/// Destinations written by Typora (and by Velotype's own paste/drop) encode
+/// Destinations written by Typora (and by Velin's own paste/drop) encode
 /// spaces as `%20`. When the destination contains a percent escape and the
 /// literal path does not exist, the percent-decoded path is used instead.
 pub(crate) fn resolve_local_image_path(source: &str, base_dir: Option<&Path>) -> PathBuf {
@@ -890,9 +890,8 @@ mod tests {
 
     #[test]
     fn parses_complete_images_and_linked_badges_in_html_containers() {
-        let banner =
-            parse_html_container_image_line("![banner](./assets/icon/velotype-banner.png)")
-                .expect("banner image");
+        let banner = parse_html_container_image_line("![banner](./assets/icon/velin-banner.png)")
+            .expect("banner image");
         assert!(matches!(banner.syntax.target, ImageTarget::Direct { .. }));
         assert_eq!(banner.link_target, None);
 
@@ -1208,7 +1207,7 @@ mod tests {
     #[test]
     fn resolves_percent_encoded_local_sources_when_literal_path_is_missing() {
         let root =
-            std::env::temp_dir().join(format!("velotype-image-decode-{}", uuid::Uuid::new_v4()));
+            std::env::temp_dir().join(format!("velin-image-decode-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(root.join("my shots")).expect("create temp dir");
         std::fs::write(root.join("my shots").join("a b.png"), b"png").expect("write image");
 

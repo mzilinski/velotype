@@ -264,7 +264,7 @@ fn parse_length(value: &str, base: f32) -> Option<f32> {
     (4.0..=96.0).contains(&size).then_some(size)
 }
 
-/// A Velotype theme from a Typora CSS theme: `base` (picked by the caller
+/// A Velin theme from a Typora CSS theme: `base` (picked by the caller
 /// from the background brightness) with the style sheet's colors and sizes.
 pub(crate) fn theme_from_css(name: &str, css: &str, light_base: Theme, dark_base: Theme) -> Theme {
     let rules = CssRules::parse(css);
@@ -489,14 +489,13 @@ mod tests {
 
 #[cfg(test)]
 mod loading_tests {
-    use crate::config::VelotypeConfigDirs;
+    use crate::config::VelinConfigDirs;
     use crate::theme::ThemeManager;
 
     #[test]
     fn css_files_in_the_theme_folder_become_themes_and_export_their_css() {
-        let root =
-            std::env::temp_dir().join(format!("velotype-css-themes-{}", uuid::Uuid::new_v4()));
-        let dirs = VelotypeConfigDirs::from_root(&root);
+        let root = std::env::temp_dir().join(format!("velin-css-themes-{}", uuid::Uuid::new_v4()));
+        let dirs = VelinConfigDirs::from_root(&root);
         std::fs::create_dir_all(dirs.themes_dir()).unwrap();
         std::fs::write(
             dirs.themes_dir().join("Paper White.css"),

@@ -94,8 +94,8 @@ fn upload_paths(
             PastedImageSource::LocalPath(path) => paths.push(path.clone()),
             PastedImageSource::ClipboardImage(image) => {
                 if temporary.is_none() {
-                    let dir = std::env::temp_dir()
-                        .join(format!("velotype-picgo-{}", uuid::Uuid::new_v4()));
+                    let dir =
+                        std::env::temp_dir().join(format!("velin-picgo-{}", uuid::Uuid::new_v4()));
                     fs::create_dir(&dir)
                         .with_context(|| format!("failed to create '{}'", dir.display()))?;
                     temporary = Some(TempImages(dir));
@@ -289,8 +289,7 @@ mod tests {
             write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", reply.len()).unwrap();
             stream.write_all(reply).unwrap();
         });
-        let root =
-            std::env::temp_dir().join(format!("velotype-picgo-test-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("velin-picgo-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir(&root).unwrap();
         let paths = [root.join("one.png"), root.join("two.png")];
         for path in &paths {
