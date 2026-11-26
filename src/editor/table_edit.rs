@@ -315,13 +315,24 @@ impl Editor {
             index,
         };
         if hovered {
+            self.table_axis_preview_hovers = if self.table_axis_preview == Some(marker) {
+                self.table_axis_preview_hovers + 1
+            } else {
+                1
+            };
             self.set_table_axis_preview(Some(marker), cx);
         } else if self.table_axis_preview == Some(marker) {
             // Only clear on a leave that still owns the preview. Adjacent
             // handles share one preview slot, and a leave can arrive after
             // the next handle's enter; clearing unconditionally would erase
-            // the highlight the pointer just moved onto.
-            self.set_table_axis_preview(None, cx);
+            // the highlight the pointer just moved onto. A column's top-edge
+            // strip and the band it reveals preview the same axis: showing
+            // the band moves the table down so the pointer lands on it, and
+            // the strip's leave must not hide the band again (that flickered).
+            self.table_axis_preview_hovers = self.table_axis_preview_hovers.saturating_sub(1);
+            if self.table_axis_preview_hovers == 0 {
+                self.set_table_axis_preview(None, cx);
+            }
         }
     }
 

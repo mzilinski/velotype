@@ -1579,6 +1579,49 @@ async fn body_row_preview_survives_stale_header_leave(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn column_band_keeps_preview_when_the_top_edge_strip_is_left(cx: &mut TestAppContext) {
+    use crate::components::TableAxisKind;
+    let markdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n");
+    let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
+
+    editor.update(cx, |editor, cx| {
+        let table = editor.document.first_root().expect("table root").clone();
+        let id = table.entity_id();
+        let column = Some(super::TableAxisSelection {
+            table_block_id: id,
+            kind: TableAxisKind::Column,
+            index: 1,
+        });
+
+        // The strip on the header's top edge reveals the band above the
+        // table, which moves the table down under the pointer: the band is
+        // entered (it paints first) and then the strip is left.
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, true, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, true, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, false, cx);
+        assert_eq!(editor.table_axis_preview, column, "the band stays visible");
+
+        // Moving back down onto the strip, in either order.
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, false, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, true, cx);
+        assert_eq!(editor.table_axis_preview, column);
+
+        // Leaving the last handle clears it.
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, false, cx);
+        assert_eq!(editor.table_axis_preview, None);
+
+        // Another column takes over without inheriting the count.
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, true, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, true, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 0, true, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, false, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 1, false, cx);
+        editor.preview_table_axis(id, TableAxisKind::Column, 0, false, cx);
+        assert_eq!(editor.table_axis_preview, None);
+    });
+}
+
+#[gpui::test]
 async fn deleting_table_column_moves_selection_to_nearest_survivor(cx: &mut TestAppContext) {
     let markdown = ["| A | B | C |", "| --- | --- | --- |", "| 1 | 2 | 3 |"].join("\n");
     let editor = cx.new(|cx| Editor::from_markdown(cx, markdown, None));
