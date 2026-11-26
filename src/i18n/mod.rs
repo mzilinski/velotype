@@ -629,22 +629,40 @@ pub struct I18nStrings {
     pub context_menu_table: String,
     /// Table-axis menu item for left-aligning a column.
     pub table_axis_align_column_left: String,
+    /// Table-axis menu item for left-aligning several selected columns.
+    pub table_axis_align_columns_left: String,
     /// Table-axis menu item for center-aligning a column.
     pub table_axis_align_column_center: String,
+    /// Table-axis menu item for center-aligning several selected columns.
+    pub table_axis_align_columns_center: String,
     /// Table-axis menu item for right-aligning a column.
     pub table_axis_align_column_right: String,
+    /// Table-axis menu item for right-aligning several selected columns.
+    pub table_axis_align_columns_right: String,
     /// Table-axis menu item for moving a column left.
     pub table_axis_move_column_left: String,
+    /// Table-axis menu item for moving several selected columns left.
+    pub table_axis_move_columns_left: String,
     /// Table-axis menu item for moving a column right.
     pub table_axis_move_column_right: String,
+    /// Table-axis menu item for moving several selected columns right.
+    pub table_axis_move_columns_right: String,
     /// Table-axis menu item for deleting a column.
     pub table_axis_delete_column: String,
+    /// Table-axis menu item for deleting several selected columns.
+    pub table_axis_delete_columns: String,
     /// Table-axis menu item for moving a row up.
     pub table_axis_move_row_up: String,
+    /// Table-axis menu item for moving several selected rows up.
+    pub table_axis_move_rows_up: String,
     /// Table-axis menu item for moving a row down.
     pub table_axis_move_row_down: String,
+    /// Table-axis menu item for moving several selected rows down.
+    pub table_axis_move_rows_down: String,
     /// Table-axis menu item for deleting a row.
     pub table_axis_delete_row: String,
+    /// Table-axis menu item for deleting several selected rows.
+    pub table_axis_delete_rows: String,
     /// Table-axis menu item for inserting an empty row above.
     pub table_axis_insert_row_above: String,
     /// Table-axis menu item for inserting an empty row below.
@@ -1285,22 +1303,40 @@ struct I18nStringsDe {
     context_menu_table: Option<String>,
     /// Optional left-align-column action label.
     table_axis_align_column_left: Option<String>,
+    /// Optional label for left-aligning several selected columns.
+    table_axis_align_columns_left: Option<String>,
     /// Optional center-align-column action label.
     table_axis_align_column_center: Option<String>,
+    /// Optional label for center-aligning several selected columns.
+    table_axis_align_columns_center: Option<String>,
     /// Optional right-align-column action label.
     table_axis_align_column_right: Option<String>,
+    /// Optional label for right-aligning several selected columns.
+    table_axis_align_columns_right: Option<String>,
     /// Optional move-column-left action label.
     table_axis_move_column_left: Option<String>,
+    /// Optional label for moving several selected columns left.
+    table_axis_move_columns_left: Option<String>,
     /// Optional move-column-right action label.
     table_axis_move_column_right: Option<String>,
+    /// Optional label for moving several selected columns right.
+    table_axis_move_columns_right: Option<String>,
     /// Optional delete-column action label.
     table_axis_delete_column: Option<String>,
+    /// Optional label for deleting several selected columns.
+    table_axis_delete_columns: Option<String>,
     /// Optional move-row-up action label.
     table_axis_move_row_up: Option<String>,
+    /// Optional label for moving several selected rows up.
+    table_axis_move_rows_up: Option<String>,
     /// Optional move-row-down action label.
     table_axis_move_row_down: Option<String>,
+    /// Optional label for moving several selected rows down.
+    table_axis_move_rows_down: Option<String>,
     /// Optional delete-row action label.
     table_axis_delete_row: Option<String>,
+    /// Optional label for deleting several selected rows.
+    table_axis_delete_rows: Option<String>,
     table_axis_insert_row_above: Option<String>,
     table_axis_insert_row_below: Option<String>,
     table_axis_insert_column_left: Option<String>,
@@ -1774,14 +1810,23 @@ const I18N_STRING_KEYS: &[&str] = &[
     "context_menu_insert",
     "context_menu_table",
     "table_axis_align_column_left",
+    "table_axis_align_columns_left",
     "table_axis_align_column_center",
+    "table_axis_align_columns_center",
     "table_axis_align_column_right",
+    "table_axis_align_columns_right",
     "table_axis_move_column_left",
+    "table_axis_move_columns_left",
     "table_axis_move_column_right",
+    "table_axis_move_columns_right",
     "table_axis_delete_column",
+    "table_axis_delete_columns",
     "table_axis_move_row_up",
+    "table_axis_move_rows_up",
     "table_axis_move_row_down",
+    "table_axis_move_rows_down",
     "table_axis_delete_row",
+    "table_axis_delete_rows",
     "table_axis_insert_row_above",
     "table_axis_insert_row_below",
     "table_axis_insert_column_left",
@@ -2834,30 +2879,57 @@ impl I18nStringsDe {
             table_axis_align_column_left: self
                 .table_axis_align_column_left
                 .unwrap_or(defaults.table_axis_align_column_left),
+            table_axis_align_columns_left: self
+                .table_axis_align_columns_left
+                .unwrap_or(defaults.table_axis_align_columns_left),
             table_axis_align_column_center: self
                 .table_axis_align_column_center
                 .unwrap_or(defaults.table_axis_align_column_center),
+            table_axis_align_columns_center: self
+                .table_axis_align_columns_center
+                .unwrap_or(defaults.table_axis_align_columns_center),
             table_axis_align_column_right: self
                 .table_axis_align_column_right
                 .unwrap_or(defaults.table_axis_align_column_right),
+            table_axis_align_columns_right: self
+                .table_axis_align_columns_right
+                .unwrap_or(defaults.table_axis_align_columns_right),
             table_axis_move_column_left: self
                 .table_axis_move_column_left
                 .unwrap_or(defaults.table_axis_move_column_left),
+            table_axis_move_columns_left: self
+                .table_axis_move_columns_left
+                .unwrap_or(defaults.table_axis_move_columns_left),
             table_axis_move_column_right: self
                 .table_axis_move_column_right
                 .unwrap_or(defaults.table_axis_move_column_right),
+            table_axis_move_columns_right: self
+                .table_axis_move_columns_right
+                .unwrap_or(defaults.table_axis_move_columns_right),
             table_axis_delete_column: self
                 .table_axis_delete_column
                 .unwrap_or(defaults.table_axis_delete_column),
+            table_axis_delete_columns: self
+                .table_axis_delete_columns
+                .unwrap_or(defaults.table_axis_delete_columns),
             table_axis_move_row_up: self
                 .table_axis_move_row_up
                 .unwrap_or(defaults.table_axis_move_row_up),
+            table_axis_move_rows_up: self
+                .table_axis_move_rows_up
+                .unwrap_or(defaults.table_axis_move_rows_up),
             table_axis_move_row_down: self
                 .table_axis_move_row_down
                 .unwrap_or(defaults.table_axis_move_row_down),
+            table_axis_move_rows_down: self
+                .table_axis_move_rows_down
+                .unwrap_or(defaults.table_axis_move_rows_down),
             table_axis_delete_row: self
                 .table_axis_delete_row
                 .unwrap_or(defaults.table_axis_delete_row),
+            table_axis_delete_rows: self
+                .table_axis_delete_rows
+                .unwrap_or(defaults.table_axis_delete_rows),
             table_axis_insert_row_above: self
                 .table_axis_insert_row_above
                 .unwrap_or(defaults.table_axis_insert_row_above),
@@ -3346,14 +3418,23 @@ impl I18nStrings {
             context_menu_insert: "插入".into(),
             context_menu_table: "表格".into(),
             table_axis_align_column_left: "左对齐此列".into(),
+            table_axis_align_columns_left: "左对齐所选列".into(),
             table_axis_align_column_center: "居中此列".into(),
+            table_axis_align_columns_center: "居中所选列".into(),
             table_axis_align_column_right: "右对齐此列".into(),
+            table_axis_align_columns_right: "右对齐所选列".into(),
             table_axis_move_column_left: "向左移动此列".into(),
+            table_axis_move_columns_left: "向左移动所选列".into(),
             table_axis_move_column_right: "向右移动此列".into(),
+            table_axis_move_columns_right: "向右移动所选列".into(),
             table_axis_delete_column: "删除此列".into(),
+            table_axis_delete_columns: "删除所选列".into(),
             table_axis_move_row_up: "向上移动此行".into(),
+            table_axis_move_rows_up: "向上移动所选行".into(),
             table_axis_move_row_down: "向下移动此行".into(),
+            table_axis_move_rows_down: "向下移动所选行".into(),
             table_axis_delete_row: "删除此行".into(),
+            table_axis_delete_rows: "删除所选行".into(),
             table_axis_insert_row_above: "在上方插入行".into(),
             table_axis_insert_row_below: "在下方插入行".into(),
             table_axis_insert_column_left: "在左侧插入列".into(),
@@ -3860,14 +3941,23 @@ impl I18nStrings {
             context_menu_insert: "Insert".into(),
             context_menu_table: "Table".into(),
             table_axis_align_column_left: "Align Column Left".into(),
+            table_axis_align_columns_left: "Align Columns Left".into(),
             table_axis_align_column_center: "Align Column Center".into(),
+            table_axis_align_columns_center: "Align Columns Center".into(),
             table_axis_align_column_right: "Align Column Right".into(),
+            table_axis_align_columns_right: "Align Columns Right".into(),
             table_axis_move_column_left: "Move Column Left".into(),
+            table_axis_move_columns_left: "Move Columns Left".into(),
             table_axis_move_column_right: "Move Column Right".into(),
+            table_axis_move_columns_right: "Move Columns Right".into(),
             table_axis_delete_column: "Delete Column".into(),
+            table_axis_delete_columns: "Delete Columns".into(),
             table_axis_move_row_up: "Move Row Up".into(),
+            table_axis_move_rows_up: "Move Rows Up".into(),
             table_axis_move_row_down: "Move Row Down".into(),
+            table_axis_move_rows_down: "Move Rows Down".into(),
             table_axis_delete_row: "Delete Row".into(),
+            table_axis_delete_rows: "Delete Rows".into(),
             table_axis_insert_row_above: "Insert Row Above".into(),
             table_axis_insert_row_below: "Insert Row Below".into(),
             table_axis_insert_column_left: "Insert Column Left".into(),
@@ -4319,14 +4409,23 @@ impl I18nStrings {
             context_menu_insert: "Einfügen".into(),
             context_menu_table: "Tabelle".into(),
             table_axis_align_column_left: "Spalte links ausrichten".into(),
+            table_axis_align_columns_left: "Spalten links ausrichten".into(),
             table_axis_align_column_center: "Spalte zentrieren".into(),
+            table_axis_align_columns_center: "Spalten zentrieren".into(),
             table_axis_align_column_right: "Spalte rechts ausrichten".into(),
+            table_axis_align_columns_right: "Spalten rechts ausrichten".into(),
             table_axis_move_column_left: "Spalte nach links".into(),
+            table_axis_move_columns_left: "Spalten nach links".into(),
             table_axis_move_column_right: "Spalte nach rechts".into(),
+            table_axis_move_columns_right: "Spalten nach rechts".into(),
             table_axis_delete_column: "Spalte löschen".into(),
+            table_axis_delete_columns: "Spalten löschen".into(),
             table_axis_move_row_up: "Zeile nach oben".into(),
+            table_axis_move_rows_up: "Zeilen nach oben".into(),
             table_axis_move_row_down: "Zeile nach unten".into(),
+            table_axis_move_rows_down: "Zeilen nach unten".into(),
             table_axis_delete_row: "Zeile löschen".into(),
+            table_axis_delete_rows: "Zeilen löschen".into(),
             table_axis_insert_row_above: "Zeile oberhalb einfügen".into(),
             table_axis_insert_row_below: "Zeile unterhalb einfügen".into(),
             table_axis_insert_column_left: "Spalte links einfügen".into(),
